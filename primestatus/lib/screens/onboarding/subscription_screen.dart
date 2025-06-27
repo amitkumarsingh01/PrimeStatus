@@ -2,7 +2,6 @@ import 'package:primestatus/screens/home_screen.dart';
 import 'package:primestatus/services/onboarding_service.dart';
 import 'package:primestatus/services/user_service.dart';
 import 'package:flutter/material.dart';
-import 'otp_verification_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({Key? key}) : super(key: key);
@@ -12,8 +11,8 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  final _onboardingService = OnboardingService.instance;
-  final _userService = UserService();
+  final OnboardingService _onboardingService = OnboardingService.instance;
+  final UserService _userService = UserService();
   bool _isLoading = false;
 
   Future<void> _registerUser(String subscriptionType) async {
@@ -22,59 +21,35 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
 
     try {
-      if (subscriptionType == 'free') {
-        // For free plan, navigate directly to home screen without OTP verification
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Welcome to QuoteCraft!')),
-        );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-          (route) => false,
-        );
-      } else {
-        // For paid plans, go through OTP verification
-        await _userService.registerUserWithPhone(
-          phoneNumber: _onboardingService.mobileNumber!,
-          name: _onboardingService.name!,
-          language: _onboardingService.language!,
-          usageType: _onboardingService.usageType!,
-          religion: _onboardingService.religion!,
-          state: _onboardingService.state!,
-          profilePhotoUrl: _onboardingService.profilePhotoUrl,
-          subscription: subscriptionType,
-        );
-
-        // Navigate to OTP verification screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OtpVerificationScreen(
-              phoneNumber: _onboardingService.mobileNumber!,
-              onVerified: (bool isExistingUser) {
-                // Handle verification success for new user registration
-                if (!isExistingUser) {
-                  // New user registration successful
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Registration successful!')),
-                  );
-                  // Navigate to home screen
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomeScreen()),
-                    (route) => false,
-                  );
-                } else {
-                  // User already exists, this shouldn't happen for new registrations
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('User already exists')),
-                  );
-                }
-              },
-            ),
-          ),
-        );
+      // Get current user
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        throw 'No authenticated user found. Please sign in with Google first.';
       }
+
+      // Create or update user with subscription
+      await _userService.updateUserData(currentUser.uid, {
+        'name': _onboardingService.name ?? currentUser.displayName ?? 'User',
+        'language': _onboardingService.language ?? 'English',
+        'usageType': _onboardingService.usageType ?? 'Personal',
+        'religion': _onboardingService.religion ?? 'Other',
+        'state': _onboardingService.state ?? 'Other',
+        'profilePhotoUrl': _onboardingService.profilePhotoUrl ?? currentUser.photoURL,
+        'subscription': subscriptionType,
+        'subscriptionDate': DateTime.now().toIso8601String(),
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration successful!')),
+      );
+
+      // Navigate to home screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+        (route) => false,
+      );
     } catch (e) {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(

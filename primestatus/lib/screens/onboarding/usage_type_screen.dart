@@ -30,7 +30,7 @@ class UsageTypeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'How will you use QuoteCraft?',
+                  'How will you use P?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,

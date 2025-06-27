@@ -1,22 +1,28 @@
-import 'package:primestatus/screens/onboarding/login_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:primestatus/screens/onboarding/login_screen.dart';
 import 'services/firebase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
+    // Step 1: Initialize Firebase
     await FirebaseConfig.initializeFirebase();
     await FirebaseConfig.enableOfflinePersistence();
     print('Firebase initialized successfully');
+
+    // Step 2: Enable App Check (debug only for development)
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug, // ✅ Debug for development only
+      appleProvider: AppleProvider.debug,     // Optional for iOS
+    );
+    print('Firebase App Check activated');
   } catch (e) {
-    print('Failed to initialize Firebase: $e');
+    print('Firebase initialization/App Check failed: $e');
   }
-  
-  runApp(QuoteCraftApp());
+
+  runApp(const QuoteCraftApp());
 }
 
 class QuoteCraftApp extends StatelessWidget {
@@ -25,11 +31,11 @@ class QuoteCraftApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'QuoteCraft',
+      title: 'Prime Status',
       theme: ThemeData(
         primarySwatch: Colors.purple,
         scaffoldBackgroundColor: Colors.white,
-        appBarTheme: AppBarTheme(
+        appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           elevation: 0,
           iconTheme: IconThemeData(color: Colors.black87),
@@ -40,7 +46,7 @@ class QuoteCraftApp extends StatelessWidget {
           ),
         ),
       ),
-      home: LoginScreen(),
+      home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

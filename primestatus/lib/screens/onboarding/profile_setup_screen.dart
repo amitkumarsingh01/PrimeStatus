@@ -189,11 +189,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           padding: EdgeInsets.symmetric(horizontal: 8),
                           children: [
                             _buildDataCard(
-                              'Mobile Number',
-                              _onboardingService.mobileNumber,
-                              Icons.phone_android,
-                            ),
-                            _buildDataCard(
                               'Language',
                               _onboardingService.language,
                               Icons.language,

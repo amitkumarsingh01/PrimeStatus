@@ -3,10 +3,9 @@ import 'dart:math';
 import '../data/quote_data.dart';
 import '../constants/app_constants.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/admin_post_feed_widget.dart';
+import '../widgets/user_posts_widget.dart';
 import 'quote_editor_screen.dart';
-import 'package:primestatus/screens/onboarding/login_screen.dart';
-import 'package:primestatus/screens/onboarding/otp_verification_screen.dart';
-import 'package:primestatus/services/onboarding_service.dart';
 import 'package:primestatus/services/user_service.dart';
 import 'package:primestatus/services/quote_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool isLoggedIn = false;
   String userName = '';
-  String userMobile = '';
+  String userEmail = '';
   String userLanguage = '';
   String userUsageType = '';
   String userReligion = '';
@@ -78,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (userData != null) {
         setState(() {
           userName = userData['name'] ?? '';
-          userMobile = userData['mobileNumber'] ?? '';
+          userEmail = userData['email'] ?? '';
           userLanguage = userData['language'] ?? '';
           userUsageType = userData['usageType'] ?? '';
           userReligion = userData['religion'] ?? '';
@@ -97,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _clearUserData() {
     setState(() {
       userName = '';
-      userMobile = '';
+      userEmail = '';
       userLanguage = '';
       userUsageType = '';
       userReligion = '';
@@ -190,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('QuoteCraft'),
+          title: Text('Prime Status'),
           backgroundColor: Colors.transparent,
           actions: [
             IconButton(
@@ -205,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildHomeTab(),
             _buildCategoriesTab(),
             _buildFavoritesTab(),
+            _buildAdminFeedTab(),
             _buildProfileTab(),
           ],
         ),
@@ -218,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+            BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -236,6 +237,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildQuickActions(),
           SizedBox(height: 24),
           _buildFeaturedCategories(),
+          SizedBox(height: 24),
+          _buildAdminPostFeed(),
         ],
       ),
     );
@@ -378,6 +381,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAdminPostFeed() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.feed, color: Colors.purple, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Latest Posts',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Container(
+          height: 400, // Fixed height for the feed
+          child: AdminPostFeedWidget(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategoriesTab() {
     return ListView.builder(
       padding: EdgeInsets.all(16),
@@ -460,6 +490,54 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           );
+  }
+
+  Widget _buildAdminFeedTab() {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // Header
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.feed, color: Colors.purple, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Admin Feed',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                Spacer(),
+                IconButton(
+                  icon: Icon(Icons.refresh, color: Colors.purple),
+                  onPressed: () {
+                    setState(() {});
+                  },
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Feed content
+          Expanded(
+            child: AdminPostFeedWidget(),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfileTab() {
@@ -607,9 +685,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       _buildUserDataCard(
-                        'Mobile Number',
-                        userMobile,
-                        Icons.phone_android,
+                        'Email',
+                        userEmail,
+                        Icons.email,
                       ),
                       _buildUserDataCard(
                         'Language',
@@ -660,6 +738,38 @@ class _HomeScreenState extends State<HomeScreen> {
           CommonWidgets.buildProfileOption('Rate Us', Icons.thumb_up, () => CommonWidgets.showComingSoonSnackBar(context)),
           CommonWidgets.buildProfileOption('Help & Support', Icons.help, () => CommonWidgets.showComingSoonSnackBar(context)),
           CommonWidgets.buildProfileOption('About', Icons.info, () => _showAboutDialog()),
+          
+          // User Posts Section
+          SizedBox(height: 32),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'My Posts & Likes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 300,
+                  child: UserPostsWidget(
+                    userId: _currentUser!.uid,
+                    userName: userName.isNotEmpty ? userName : 'User',
+                    userPhotoUrl: userProfilePhotoUrl,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -805,8 +915,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final mobileController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -814,13 +922,39 @@ class _HomeScreenState extends State<HomeScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: mobileController,
-              decoration: InputDecoration(
-                labelText: 'Mobile Number',
-                border: OutlineInputBorder(),
+            Text(
+              'Sign in with Google to continue',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await _userService.signInWithGoogle();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Sign in successful!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Sign in failed: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: Image.network(
+                'https://developers.google.com/identity/images/g-logo.png',
+                height: 20,
+                width: 20,
               ),
-              keyboardType: TextInputType.phone,
+              label: Text('Continue with Google'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -828,61 +962,6 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (mobileController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter mobile number')),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              // Check if user exists and navigate to appropriate screen
-              try {
-                bool userExists = await _userService.userExistsByPhone(mobileController.text);
-                if (userExists) {
-                  // User exists, navigate to OTP verification
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OtpVerificationScreen(
-                        phoneNumber: mobileController.text,
-                        onVerified: (bool isExistingUser) {
-                          // Handle verification success
-                          if (isExistingUser) {
-                            // User exists, they're now logged in
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Login successful!')),
-                            );
-                          } else {
-                            // User doesn't exist, this shouldn't happen for existing users
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('User not found')),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  );
-                } else {
-                  // New user, navigate to login screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                  );
-                }
-              } catch (e) {
-                // If error, navigate to login screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                );
-              }
-            },
-            child: Text('Sign In'),
           ),
         ],
       ),
@@ -970,9 +1049,9 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('About QuoteCraft'),
+        title: Text('About Prime Status'),
         content: Text(
-          'QuoteCraft v1.0\n\nCreate beautiful quote designs with stunning backgrounds. Share your inspiration with the world.\n\nDeveloped with ❤️ using Flutter',
+          'Prime Status v1.0\n\nCreate beautiful quote designs with stunning backgrounds. Share your inspiration with the world.\n\nDeveloped with ❤️ using Flutter',
         ),
         actions: [
           TextButton(

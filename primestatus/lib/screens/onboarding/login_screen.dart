@@ -1,11 +1,9 @@
-import 'package:primestatus/services/onboarding_service.dart';
 import 'package:primestatus/services/user_service.dart';
+import 'package:primestatus/services/firebase_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'language_selection_screen.dart';
-import 'otp_verification_screen.dart';
 import 'package:primestatus/screens/home_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -15,71 +13,52 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _mobileNumberController = TextEditingController();
-  final _onboardingService = OnboardingService.instance;
   final _userService = UserService();
+  final _authService = FirebaseAuthService();
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    _mobileNumberController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleContinue() async {
-    await FirebaseAuth.instance.setSettings(
-      appVerificationDisabledForTesting: true,
-    );
-    String phoneNumber = _mobileNumberController.text.trim();
-    
-    if (phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter your mobile number')),
-      );
-      return;
-    }
-
-    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-
-    if (cleanNumber.length != 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
-      );
-      return;
-    }
-
+  Future<void> _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
     });
-    
-    _onboardingService.mobileNumber = phoneNumber;
-    setState(() {
-      _isLoading = false;
-    });
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OtpVerificationScreen(
-          phoneNumber: phoneNumber,
-          onVerified: (isExistingUser) {
-            if (isExistingUser) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeScreen()),
-                (route) => false,
-              );
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => LanguageSelectionScreen()),
-                (route) => false,
-              );
-            }
-          },
+    try {
+      final userCredential = await _authService.signInWithGoogle();
+      final user = userCredential.user;
+      
+      if (user != null) {
+        // Check if user exists in our database
+        final userData = await _userService.getUserData(user.uid);
+        final isExistingUser = userData != null;
+        
+        if (isExistingUser) {
+          // User exists, go to home screen
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen()),
+            (route) => false,
+          );
+        } else {
+          // New user, go to onboarding
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => LanguageSelectionScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign in failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
-      ),
-    );
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -110,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 SizedBox(height: 48),
                 Text(
-                  'Welcome to QuoteCraft',
+                  'Welcome to Prime Status',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -120,28 +99,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Enter your mobile number to continue',
+                  'Sign in with Google to continue',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 32),
-                TextField(
-                  controller: _mobileNumberController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.phone_android),
-                    labelText: 'Mobile Number',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                SizedBox(height: 48),
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  icon: _isLoading 
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Image.network(
+                        'https://developers.google.com/identity/images/g-logo.png',
+                        height: 20,
+                        width: 20,
+                      ),
+                  label: Text(
+                    _isLoading ? 'Signing in...' : 'Continue with Google',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
-                ),
-                SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleContinue,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.purple,
@@ -149,12 +134,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          'Continue',
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'By continuing, you agree to our Terms of Service and Privacy Policy',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
                 ),
               ],
             ),

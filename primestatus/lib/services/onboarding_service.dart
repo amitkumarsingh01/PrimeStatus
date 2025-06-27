@@ -9,7 +9,6 @@ class OnboardingService {
   static OnboardingService get instance => _instance;
 
   // User data
-  String? mobileNumber;
   String? language;
   String? usageType;
   String? name;
@@ -19,7 +18,6 @@ class OnboardingService {
   String? subscription;
 
   void reset() {
-    mobileNumber = null;
     language = null;
     usageType = null;
     name = null;

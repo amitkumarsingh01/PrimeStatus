@@ -11,33 +11,7 @@ class FirebaseAuthService {
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Sign in with email and password
-  Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
-    try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      throw _handleAuthError(e);
-    }
-  }
-
-  // Sign up with email and password
-  Future<UserCredential> createUserWithEmailAndPassword(
-      String email, String password) async {
-    try {
-      return await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      throw _handleAuthError(e);
-    }
-  }
-
-  // Sign in with Google
+  // Sign in with Google (primary authentication method)
   Future<UserCredential> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -59,30 +33,27 @@ class FirebaseAuthService {
     }
   }
 
-  // Sign in with phone number
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required Function(String) onCodeSent,
-    required Function(PhoneAuthCredential) onVerificationCompleted,
-    required Function(FirebaseAuthException) onVerificationFailed,
-    required Function(String) onCodeAutoRetrievalTimeout,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: onVerificationCompleted,
-      verificationFailed: onVerificationFailed,
-      codeSent: (String verificationId, int? resendToken) {
-        onCodeSent(verificationId);
-      },
-      codeAutoRetrievalTimeout: onCodeAutoRetrievalTimeout,
-    );
+  // Sign in with email and password (fallback)
+  Future<UserCredential> signInWithEmailAndPassword(
+      String email, String password) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      throw _handleAuthError(e);
+    }
   }
 
-  // Sign in with phone credential
-  Future<UserCredential> signInWithPhoneCredential(
-      PhoneAuthCredential credential) async {
+  // Sign up with email and password (fallback)
+  Future<UserCredential> createUserWithEmailAndPassword(
+      String email, String password) async {
     try {
-      return await _auth.signInWithCredential(credential);
+      return await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
     } catch (e) {
       throw _handleAuthError(e);
     }
@@ -140,6 +111,29 @@ class FirebaseAuthService {
     }
   }
 
+  // Check if user is signed in with Google
+  bool isGoogleUser() {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    
+    // Check if the user has any Google provider
+    for (var provider in user.providerData) {
+      if (provider.providerId == 'google.com') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Get user display name
+  String? get userDisplayName => _auth.currentUser?.displayName;
+
+  // Get user email
+  String? get userEmail => _auth.currentUser?.email;
+
+  // Get user photo URL
+  String? get userPhotoURL => _auth.currentUser?.photoURL;
+
   // Handle authentication errors
   String _handleAuthError(dynamic error) {
     if (error is FirebaseAuthException) {
@@ -160,10 +154,12 @@ class FirebaseAuthService {
           return 'Too many requests. Please try again later.';
         case 'operation-not-allowed':
           return 'This operation is not allowed.';
-        case 'invalid-verification-code':
-          return 'Invalid verification code.';
-        case 'invalid-verification-id':
-          return 'Invalid verification ID.';
+        case 'account-exists-with-different-credential':
+          return 'An account already exists with the same email address but different sign-in credentials.';
+        case 'invalid-credential':
+          return 'The credential is invalid or has expired.';
+        case 'network-request-failed':
+          return 'Network error. Please check your internet connection.';
         default:
           return error.message ?? 'An authentication error occurred.';
       }

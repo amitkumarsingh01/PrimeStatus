@@ -55,7 +55,7 @@ class FirebaseFirestoreService {
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
     try {
       data['updatedAt'] = FieldValue.serverTimestamp();
-      await _usersCollection.doc(uid).update(data);
+      await _usersCollection.doc(uid).set(data, SetOptions(merge: true));
     } catch (e) {
       throw 'Failed to update user: $e';
     }
