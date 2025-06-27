@@ -1,7 +1,11 @@
 import 'package:primestatus/services/onboarding_service.dart';
+import 'package:primestatus/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'language_selection_screen.dart';
+import 'otp_verification_screen.dart';
+import 'package:primestatus/screens/home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -13,11 +17,69 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _mobileNumberController = TextEditingController();
   final _onboardingService = OnboardingService.instance;
+  final _userService = UserService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _mobileNumberController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleContinue() async {
+    await FirebaseAuth.instance.setSettings(
+      appVerificationDisabledForTesting: true,
+    );
+    String phoneNumber = _mobileNumberController.text.trim();
+    
+    if (phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter your mobile number')),
+      );
+      return;
+    }
+
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cleanNumber.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+    
+    _onboardingService.mobileNumber = phoneNumber;
+    setState(() {
+      _isLoading = false;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OtpVerificationScreen(
+          phoneNumber: phoneNumber,
+          onVerified: (isExistingUser) {
+            if (isExistingUser) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+                (route) => false,
+              );
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => LanguageSelectionScreen()),
+                (route) => false,
+              );
+            }
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -79,17 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_mobileNumberController.text.isNotEmpty) {
-                      _onboardingService.mobileNumber = _mobileNumberController.text;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LanguageSelectionScreen(),
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: _isLoading ? null : _handleContinue,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.purple,
@@ -97,10 +149,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
-                    'Continue',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Continue',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
               ],
             ),

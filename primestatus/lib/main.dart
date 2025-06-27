@@ -1,68 +1,47 @@
+import 'package:primestatus/screens/onboarding/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'services/auth_service.dart';
-import 'services/fcm_service.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/firebase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    await FCMService.initialize();
+    await FirebaseConfig.initializeFirebase();
+    await FirebaseConfig.enableOfflinePersistence();
     print('Firebase initialized successfully');
   } catch (e) {
-    print('Firebase initialization error: $e');
+    print('Failed to initialize Firebase: $e');
   }
-  runApp(MyApp());
+  
+  runApp(QuoteCraftApp());
 }
 
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final AuthService _authService = AuthService();
-
-  @override
-  void initState() {
-    super.initState();
-    print('MyApp initialized');
-    // Check current user immediately
-    final currentUser = _authService.currentUser;
-    print('Current user on init: ${currentUser?.uid ?? 'null'}');
-  }
+class QuoteCraftApp extends StatelessWidget {
+  const QuoteCraftApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    print('Building MyApp');
     return MaterialApp(
-      title: 'Quote Template App',
+      title: 'QuoteCraft',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        primarySwatch: Colors.purple,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black87),
+          titleTextStyle: TextStyle(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      home: StreamBuilder<User?>(
-        stream: _authService.authStateChanges,
-        builder: (context, snapshot) {
-          print('Auth state: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, error: ${snapshot.error}');
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            print('Showing loading screen');
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
-          }
-          if (snapshot.hasData) {
-            print('User authenticated: ${snapshot.data?.uid}');
-            return HomeScreen();
-          }
-          print('No user authenticated, showing login screen');
-          return LoginScreen();
-        },
-      ),
+      home: LoginScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

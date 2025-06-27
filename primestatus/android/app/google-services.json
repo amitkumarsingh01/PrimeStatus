@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "344256821707-rp59lapbcos8msbpr693jue0crbfli0h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aksmlibts.primestatus",
+            "certificate_hash": "a536e08c024012fe8d1c5af3de6c35cde042b9ff"
+          }
+        },
+        {
           "client_id": "344256821707-331fba5ihveq8f3jf1eliugihef5nbnv.apps.googleusercontent.com",
           "client_type": 3
         }

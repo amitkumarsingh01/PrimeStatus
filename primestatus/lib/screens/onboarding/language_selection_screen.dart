@@ -1,5 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'usage_type_screen.dart';
 
@@ -8,28 +7,10 @@ class LanguageSelectionScreen extends StatelessWidget {
 
   final List<String> languages = const ['English', 'Hindi', 'Telugu', 'Kannada'];
 
-  Future<void> _updateLanguage(BuildContext context, String language) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'language': language,
-    }, SetOptions(merge: true));
-    Navigator.pop(context); // Remove loading
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UsageTypeScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final onboardingService = OnboardingService.instance;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -76,7 +57,15 @@ class LanguageSelectionScreen extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          onTap: () => _updateLanguage(context, languages[index]),
+                          onTap: () {
+                            onboardingService.language = languages[index];
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UsageTypeScreen(),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },

@@ -1,33 +1,14 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'profile_setup_screen.dart';
 
 class UsageTypeScreen extends StatelessWidget {
   const UsageTypeScreen({Key? key}) : super(key: key);
 
-  Future<void> _updateUsageType(BuildContext context, String usageType) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'usage_type': usageType,
-    }, SetOptions(merge: true));
-    Navigator.pop(context); // Remove loading
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfileSetupScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final onboardingService = OnboardingService.instance;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -62,14 +43,30 @@ class UsageTypeScreen extends StatelessWidget {
                   context: context,
                   title: 'For Personal Use',
                   icon: Icons.person,
-                  onTap: () => _updateUsageType(context, 'Personal'),
+                  onTap: () {
+                    onboardingService.usageType = 'Personal';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileSetupScreen(),
+                      ),
+                    );
+                  },
                 ),
                 SizedBox(height: 16),
                 _buildUsageCard(
                   context: context,
                   title: 'For Business Use',
                   icon: Icons.business,
-                  onTap: () => _updateUsageType(context, 'Business'),
+                  onTap: () {
+                    onboardingService.usageType = 'Business';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileSetupScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

@@ -1,5 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'state_selection_screen.dart';
 
@@ -16,28 +15,10 @@ class ReligionSelectionScreen extends StatelessWidget {
     'Other'
   ];
 
-  Future<void> _updateReligion(BuildContext context, String religion) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'religion': religion,
-    }, SetOptions(merge: true));
-    Navigator.pop(context); // Remove loading
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StateSelectionScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final onboardingService = OnboardingService.instance;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -84,7 +65,15 @@ class ReligionSelectionScreen extends StatelessWidget {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          onTap: () => _updateReligion(context, religions[index]),
+                          onTap: () {
+                            onboardingService.religion = religions[index];
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => StateSelectionScreen(),
+                              ),
+                            );
+                          },
                           child: Center(
                             child: Text(
                               religions[index],

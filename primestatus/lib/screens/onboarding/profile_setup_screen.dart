@@ -1,5 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'religion_selection_screen.dart';
 
@@ -12,7 +11,16 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameController = TextEditingController();
-  // TODO: Add photo upload logic if needed
+  final _onboardingService = OnboardingService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill name if available
+    if (_onboardingService.name != null) {
+      _nameController.text = _onboardingService.name!;
+    }
+  }
 
   @override
   void dispose() {
@@ -20,23 +28,43 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     super.dispose();
   }
 
-  Future<void> _updateProfile(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _nameController.text.isEmpty) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'name': _nameController.text,
-      // 'profile_photo_url': ... // Add photo upload logic if implemented
-    }, SetOptions(merge: true));
-    Navigator.pop(context); // Remove loading
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReligionSelectionScreen(),
+  Widget _buildDataCard(String title, String? value, IconData icon) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.purple, size: 24),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    value ?? 'Not set',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: value != null ? Colors.black87 : Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -57,63 +85,169 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Setup Your Profile',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'Setup Your Profile',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Review your information and add your name',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 32),
-                Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Colors.purple.shade100,
+              ),
+              
+              // Profile Photo Section
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.purple.shade100,
+                      child: Icon(
+                        Icons.person,
+                        size: 60,
+                        color: Colors.purple,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.purple,
                         child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.purple,
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.purple,
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 32),
-                TextField(
+              ),
+              
+              SizedBox(height: 24),
+              
+              // Name Input
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
                     labelText: 'Your Name',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
-                SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => _updateProfile(context),
+              ),
+              
+              SizedBox(height: 24),
+              
+              // Data Review Section
+              Expanded(
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'Your Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          children: [
+                            _buildDataCard(
+                              'Mobile Number',
+                              _onboardingService.mobileNumber,
+                              Icons.phone_android,
+                            ),
+                            _buildDataCard(
+                              'Language',
+                              _onboardingService.language,
+                              Icons.language,
+                            ),
+                            _buildDataCard(
+                              'Usage Type',
+                              _onboardingService.usageType,
+                              Icons.category,
+                            ),
+                            _buildDataCard(
+                              'Religion',
+                              _onboardingService.religion,
+                              Icons.church,
+                            ),
+                            _buildDataCard(
+                              'State',
+                              _onboardingService.state,
+                              Icons.location_on,
+                            ),
+                            _buildDataCard(
+                              'Subscription',
+                              _onboardingService.subscription ?? 'Free',
+                              Icons.star,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Continue Button
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_nameController.text.isNotEmpty) {
+                      _onboardingService.name = _nameController.text;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReligionSelectionScreen(),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Please enter your name to continue'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.purple,
@@ -126,8 +260,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
 import 'subscription_screen.dart';
 
@@ -12,6 +11,8 @@ class StateSelectionScreen extends StatefulWidget {
 
 class _StateSelectionScreenState extends State<StateSelectionScreen> {
   String? _selectedState;
+  final _onboardingService = OnboardingService.instance;
+
   final List<String> states = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
     'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -22,26 +23,6 @@ class _StateSelectionScreenState extends State<StateSelectionScreen> {
     'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
     'Ladakh', 'Lakshadweep', 'Puducherry'
   ];
-
-  Future<void> _updateState(BuildContext context, String state) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'state': state,
-    }, SetOptions(merge: true));
-    Navigator.pop(context); // Remove loading
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SubscriptionScreen(),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +63,8 @@ class _StateSelectionScreenState extends State<StateSelectionScreen> {
                   onChanged: (String? newValue) {
                     setState(() {
                       _selectedState = newValue;
+                      _onboardingService.state = newValue;
                     });
-                    if (newValue != null) {
-                      _updateState(context, newValue);
-                    }
                   },
                   items: states.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
@@ -101,6 +80,27 @@ class _StateSelectionScreenState extends State<StateSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _selectedState != null ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SubscriptionScreen(),
+                      ),
+                    );
+                  } : null,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.purple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Continue',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
