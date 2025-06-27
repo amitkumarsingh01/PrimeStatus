@@ -14,10 +14,10 @@ import 'package:image_picker/image_picker.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool isLoggedIn = false;
   String userName = '';

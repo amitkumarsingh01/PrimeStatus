@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Save, X, Type, Move, Circle, Square, Palette, Eye, EyeOff } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface ImageEditorProps {
   media: string;
@@ -58,12 +60,30 @@ export default function ImageEditor({ media, category, language, userName, onSav
     setIsDraggingProfile(false);
   };
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    // Compose the post data for Firestore
+    const postData = {
       mainImage: media,
+      category,
+      language,
       textSettings,
       profileSettings,
-    });
+      adminName: userName,
+      adminPhotoUrl: profileSettings.enabled ? (/* provide actual photo URL if available */ '') : '',
+      likes: 0,
+      shares: 0,
+      isPublished: true,
+      createdBy: userName, // or userId if available
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    try {
+      await addDoc(collection(db, 'admin_posts'), postData);
+      alert('Post saved to Firestore!');
+      onSave(postData);
+    } catch (e) {
+      alert('Error saving post: ' + e);
+    }
   };
 
   const isVideo = media.startsWith('data:video/');

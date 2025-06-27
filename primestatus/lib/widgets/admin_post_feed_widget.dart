@@ -5,6 +5,7 @@ import '../services/admin_post_service.dart';
 import '../services/user_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../screens/home_screen.dart';
 
 class AdminPostFeedWidget extends StatefulWidget {
   final String? category;
@@ -97,249 +98,134 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   }
 
   Widget _buildPostCard(Map<String, dynamic> post) {
-    final String postId = post['id'] ?? '';
-    final String title = post['title'] ?? '';
-    final String content = post['content'] ?? '';
-    final String imageUrl = post['imageUrl'] ?? '';
-    final String category = post['category'] ?? '';
-    final String language = post['language'] ?? '';
-    final int likes = post['likes'] ?? 0;
-    final int shares = post['shares'] ?? 0;
-    final bool isLiked = post['isLiked'] ?? false;
-    final Timestamp? createdAt = post['createdAt'];
-    final String? adminName = post['adminName'] ?? 'Admin';
-    final String? adminPhotoUrl = post['adminPhotoUrl'];
+    final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+    final textSettings = post['textSettings'] ?? {};
+    final profileSettings = post['profileSettings'] ?? {};
+    final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
+    final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
 
     return Card(
       margin: EdgeInsets.only(bottom: 16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Admin info header
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            final double height = constraints.maxHeight;
+
+            // Calculate overlay positions in pixels
+            final double textX = (textSettings['x'] ?? 50) / 100 * width;
+            final double textY = (textSettings['y'] ?? 90) / 100 * height;
+            final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+            final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+            final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+
+            return Stack(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.purple.shade100,
-                  backgroundImage: adminPhotoUrl != null
-                      ? CachedNetworkImageProvider(adminPhotoUrl)
-                      : null,
-                  child: adminPhotoUrl == null
-                      ? Icon(Icons.admin_panel_settings, color: Colors.purple)
-                      : null,
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        adminName ?? 'Admin',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (createdAt != null)
-                        Text(
-                          _formatTimestamp(createdAt),
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
+                // Main image fills the card
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: Icon(Icons.error, color: Colors.grey),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
                           ),
-                        ),
-                    ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) => _handlePostAction(value, postId),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'share',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share, size: 20),
-                          SizedBox(width: 8),
-                          Text('Share'),
+                // Username text overlay (current user)
+                if (textSettings.isNotEmpty)
+                  Positioned(
+                    left: textX,
+                    top: textY,
+                    child: Transform.translate(
+                      offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: textSettings['hasBackground'] == true
+                            ? BoxDecoration(
+                                color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : null,
+                        child: Text(
+                          userName,
+                          style: TextStyle(
+                            fontFamily: textSettings['font'] ?? 'Arial',
+                            fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                            color: _parseColor(textSettings['color'] ?? '#ffffff'),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Profile photo overlay (current user)
+                if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
+                  Positioned(
+                    left: profileX - profileSize / 2,
+                    top: profileY - profileSize / 2,
+                    child: Container(
+                      width: profileSize,
+                      height: profileSize,
+                      decoration: BoxDecoration(
+                        color: profileSettings['hasBackground'] == true
+                            ? Colors.white.withOpacity(0.9)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          profileSettings['shape'] == 'circle'
+                              ? profileSize / 2
+                              : 8,
+                        ),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
                         ],
                       ),
-                    ),
-                    PopupMenuItem(
-                      value: 'report',
-                      child: Row(
-                        children: [
-                          Icon(Icons.report, size: 20),
-                          SizedBox(width: 8),
-                          Text('Report'),
-                        ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          profileSettings['shape'] == 'circle'
+                              ? profileSize / 2
+                              : 8,
+                        ),
+                        child: CachedNetworkImage(
+                          imageUrl: userProfilePhotoUrl,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
               ],
-            ),
-          ),
-
-          // Post image
-          if (imageUrl.isNotEmpty)
-            Container(
-              width: double.infinity,
-              height: 200,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[200],
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
-                    child: Icon(Icons.error, color: Colors.grey),
-                  ),
-                ),
-              ),
-            ),
-
-          // Post content
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title.isNotEmpty) ...[
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                ],
-                Text(
-                  content,
-                  style: TextStyle(
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-                SizedBox(height: 12),
-                
-                // Category and language tags
-                Row(
-                  children: [
-                    if (category.isNotEmpty)
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            color: Colors.purple,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    if (category.isNotEmpty && language.isNotEmpty)
-                      SizedBox(width: 8),
-                    if (language.isNotEmpty)
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          language,
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Action buttons
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                // Like button
-                InkWell(
-                  onTap: () => _toggleLike(postId),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: isLiked ? Colors.red : Colors.grey,
-                        size: 24,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        likes.toString(),
-                        style: TextStyle(
-                          color: isLiked ? Colors.red : Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 24),
-                
-                // Share button
-                InkWell(
-                  onTap: () => _sharePost(postId),
-                  child: Row(
-                    children: [
-                      Icon(Icons.share, color: Colors.grey, size: 24),
-                      SizedBox(width: 4),
-                      Text(
-                        shares.toString(),
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Spacer(),
-                
-                // Create design button
-                ElevatedButton.icon(
-                  onPressed: () => _createDesignFromPost(post),
-                  icon: Icon(Icons.create, size: 18),
-                  label: Text('Create Design'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
+  }
+
+  // Helper to parse hex color strings
+  Color _parseColor(String hexColor) {
+    hexColor = hexColor.replaceFirst('#', '');
+    if (hexColor.length == 6) hexColor = 'FF$hexColor';
+    return Color(int.parse('0x$hexColor'));
   }
 
   String _formatTimestamp(Timestamp timestamp) {
