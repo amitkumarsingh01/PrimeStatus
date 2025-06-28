@@ -21,6 +21,11 @@ class FirebaseFirestoreService {
     required String state,
     String? profilePhotoUrl,
     String subscription = 'free',
+    String? email,
+    String? phoneNumber,
+    String? address,
+    String? dateOfBirth,
+    String? city,
   }) async {
     try {
       await _usersCollection.doc(uid).set({
@@ -32,6 +37,11 @@ class FirebaseFirestoreService {
         'state': state,
         'profilePhotoUrl': profilePhotoUrl,
         'subscription': subscription,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'address': address,
+        'dateOfBirth': dateOfBirth,
+        'city': city,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });

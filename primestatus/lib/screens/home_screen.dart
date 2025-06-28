@@ -11,6 +11,7 @@ import 'package:primestatus/services/quote_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'onboarding/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -28,6 +29,10 @@ class HomeScreenState extends State<HomeScreen> {
   String userState = '';
   String userSubscription = '';
   String? userProfilePhotoUrl;
+  String userDob = '';
+  String userPhoneNumber = '';
+  String userAddress = '';
+  String userCity = '';
   late TextEditingController _quoteController;
   String quoteOfTheDay = '';
   List<String> favoriteQuotes = [];
@@ -84,6 +89,10 @@ class HomeScreenState extends State<HomeScreen> {
           userState = userData['state'] ?? '';
           userSubscription = userData['subscription'] ?? '';
           userProfilePhotoUrl = userData['profilePhotoUrl'];
+          userPhoneNumber = userData['phoneNumber'] ?? '';
+          userAddress = userData['address'] ?? '';
+          userDob = userData['dateOfBirth'] ?? '';
+          userCity = userData['city'] ?? '';
         });
       }
     } catch (e) {
@@ -103,6 +112,10 @@ class HomeScreenState extends State<HomeScreen> {
       userState = '';
       userSubscription = '';
       userProfilePhotoUrl = null;
+      userPhoneNumber = '';
+      userAddress = '';
+      userDob = '';
+      userCity = '';
     });
   }
 
@@ -113,6 +126,10 @@ class HomeScreenState extends State<HomeScreen> {
     String? religion,
     String? state,
     String? profilePhotoUrl,
+    String? phoneNumber,
+    String? address,
+    String? dateOfBirth,
+    String? city,
   }) async {
     if (_currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -129,6 +146,10 @@ class HomeScreenState extends State<HomeScreen> {
         usageType: usageType,
         religion: religion,
         state: state,
+        phoneNumber: phoneNumber,
+        address: address,
+        dateOfBirth: dateOfBirth,
+        city: city,
       );
       
       // Refresh user data
@@ -181,30 +202,122 @@ class HomeScreenState extends State<HomeScreen> {
           end: Alignment.bottomRight,
           colors: [
             Colors.white,
-            Colors.pink.shade50,
-            Colors.purple.shade50,
+            const Color.fromARGB(255, 255, 250, 247),
+            const Color.fromARGB(255, 255, 252, 248),
           ],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('Prime Status'),
           backgroundColor: Colors.transparent,
-          actions: [
-            IconButton(
-              icon: Icon(isLoggedIn ? Icons.account_circle : Icons.login),
-              onPressed: _showLoginDialog,
+          elevation: 0,
+          // title: Text('Prime Status'),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(30),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
+              child: Row(
+                children: [
+                  // 60% Search Bar
+                  Expanded(
+                    flex: 6,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.all(2), // Border thickness
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            prefixIcon: Icon(Icons.search),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+
+                  SizedBox(width: 12),
+
+                  // 30% Create Button
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() => _selectedIndex = 3);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          "Create",
+                          style: TextStyle(color: Color(0xfffaeac7)),
+                        ),
+                      ),
+                    ),
+                  ),
+
+
+                  SizedBox(width: 12),
+
+                  // 10% Profile/Login Icon
+                  Expanded(
+                    flex: 1,
+                    child: isLoggedIn && userProfilePhotoUrl != null
+                        ? GestureDetector(
+                            onTap: () => setState(() => _selectedIndex = 4),
+                            child: CircleAvatar(
+                              radius: 16,
+                              backgroundImage: NetworkImage(userProfilePhotoUrl!),
+                              backgroundColor: Colors.grey.shade200,
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(Icons.login),
+                            onPressed: _showLoginDialog,
+                            color: Colors.white,
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
+
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            _buildHomeTab(),
+            _buildAdminFeedTab(),
             _buildCategoriesTab(),
             _buildFavoritesTab(),
-            _buildAdminFeedTab(),
+            _buildHomeTab(),
             _buildProfileTab(),
           ],
         ),
@@ -212,13 +325,13 @@ class HomeScreenState extends State<HomeScreen> {
           currentIndex: _selectedIndex,
           onTap: (index) => setState(() => _selectedIndex = index),
           type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.purple,
+          selectedItemColor: Colors.deepOrange,
           unselectedItemColor: Colors.grey,
           items: [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
-            BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
+            BottomNavigationBarItem(icon: Icon(Icons.create), label: 'Create'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -237,8 +350,8 @@ class HomeScreenState extends State<HomeScreen> {
           _buildQuickActions(),
           SizedBox(height: 24),
           _buildFeaturedCategories(),
-          SizedBox(height: 24),
-          _buildAdminPostFeed(),
+          // SizedBox(height: 24),
+          // _buildAdminPostFeed(),
         ],
       ),
     );
@@ -250,14 +363,14 @@ class HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.purple.shade400, Colors.pink.shade400],
+          colors: [Colors.deepOrange.shade400, Colors.deepOrange.shade400],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
+            color: Colors.deepOrange.withOpacity(0.3),
             blurRadius: 8,
             offset: Offset(0, 4),
           ),
@@ -295,7 +408,7 @@ class HomeScreenState extends State<HomeScreen> {
             onPressed: () => _createQuote(quoteOfTheDay),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: Colors.purple,
+              foregroundColor: Colors.deepOrange,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -326,7 +439,7 @@ class HomeScreenState extends State<HomeScreen> {
               child: CommonWidgets.buildActionCard(
                 'Create Quote',
                 Icons.create,
-                Colors.purple,
+                Colors.deepOrange,
                 () => _showQuoteSelectionDialog(),
               ),
             ),
@@ -350,7 +463,7 @@ class HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Featured Categories',
+          'Categories',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -358,24 +471,63 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.5,
+        Container(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            itemCount: QuoteData.categories.length,
+            itemBuilder: (context, index) {
+              final category = QuoteData.categories[index];
+              return Container(
+                width: MediaQuery.of(context).size.width / 5.5, // Show 5 categories at a time
+                margin: EdgeInsets.only(right: 12),
+                child: GestureDetector(
+                  onTap: () => _showCategoryQuotes(category),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _getCategoryIcon(category),
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        category,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-          itemCount: 4,
-          itemBuilder: (context, index) {
-            final category = QuoteData.categories[index];
-            return CommonWidgets.buildCategoryCard(
-              category,
-              AppConstants.categoryColors[index],
-              () => _showCategoryQuotes(category),
-            );
-          },
         ),
       ],
     );
@@ -387,7 +539,7 @@ class HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.feed, color: Colors.purple, size: 24),
+            Icon(Icons.feed, color: Colors.deepOrange, size: 24),
             SizedBox(width: 8),
             Text(
               'Latest Posts',
@@ -419,8 +571,8 @@ class HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.purple.shade100,
-              child: Icon(Icons.format_quote, color: Colors.purple),
+              backgroundColor: Colors.deepOrange.shade100,
+              child: Icon(Icons.format_quote, color: Colors.deepOrange),
             ),
             title: Text(
               category,
@@ -498,37 +650,106 @@ class HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           // Header
+          // Container(
+          //   padding: EdgeInsets.all(16),
+          //   decoration: BoxDecoration(
+          //     color: Colors.white.withOpacity(0.9),
+          //     borderRadius: BorderRadius.only(
+          //       bottomLeft: Radius.circular(20),
+          //       bottomRight: Radius.circular(20),
+          //     ),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       Icon(Icons.feed, color: Colors.purple, size: 28),
+          //       SizedBox(width: 12),
+          //       Text(
+          //         'Latest Posts',
+          //         style: TextStyle(
+          //           fontSize: 24,
+          //           fontWeight: FontWeight.bold,
+          //           color: Colors.black87,
+          //         ),
+          //       ),
+          //       Spacer(),
+          //       IconButton(
+          //         icon: Icon(Icons.refresh, color: Colors.deepOrange),
+          //         onPressed: () {
+          //           setState(() {});
+          //         },
+          //       ),
+          //     ],
+          //   ),
+          // ),
+          SizedBox(height: 16),
+          
+          // Horizontal Categories Scroll
           Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
+            height: 100,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.feed, color: Colors.purple, size: 28),
-                SizedBox(width: 12),
-                Text(
-                  'Admin Feed',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                Expanded(
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: QuoteData.categories.length,
+                    itemBuilder: (context, index) {
+                      final category = QuoteData.categories[index];
+                      return Container(
+                        width: MediaQuery.of(context).size.width / 5.5, // Show 5 categories at a time
+                        margin: EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () => _showCategoryQuotes(category),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  _getCategoryIcon(category),
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                category,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-                Spacer(),
-                IconButton(
-                  icon: Icon(Icons.refresh, color: Colors.purple),
-                  onPressed: () {
-                    setState(() {});
-                  },
                 ),
               ],
             ),
           ),
+          
           SizedBox(height: 16),
           
           // Feed content
@@ -548,11 +769,11 @@ class HomeScreenState extends State<HomeScreen> {
           children: [
             CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.purple.shade100,
+              backgroundColor: Colors.deepOrange.shade100,
               child: Icon(
                 Icons.person,
                 size: 60,
-                color: Colors.purple,
+                color: Colors.deepOrange,
               ),
             ),
             SizedBox(height: 16),
@@ -573,7 +794,7 @@ class HomeScreenState extends State<HomeScreen> {
               onPressed: _showLoginDialog,
               child: Text('Sign In'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
+                backgroundColor: Colors.deepOrange,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -597,7 +818,7 @@ class HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.all(12),
           child: Row(
             children: [
-              Icon(icon, color: Colors.purple, size: 20),
+              Icon(icon, color: Colors.deepOrange, size: 20),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -637,12 +858,12 @@ class HomeScreenState extends State<HomeScreen> {
             onTap: _pickProfilePhoto,
             child: CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.purple.shade100,
+              backgroundColor: Colors.deepOrange.shade100,
               backgroundImage: userProfilePhotoUrl != null
                   ? NetworkImage(userProfilePhotoUrl!)
                   : null,
               child: userProfilePhotoUrl == null
-                  ? Icon(Icons.account_circle, size: 60, color: Colors.purple)
+                  ? Icon(Icons.account_circle, size: 60, color: Colors.deepOrange)
                   : null,
             ),
           ),
@@ -700,6 +921,26 @@ class HomeScreenState extends State<HomeScreen> {
                         Icons.category,
                       ),
                       _buildUserDataCard(
+                        'Phone Number',
+                        userPhoneNumber,
+                        Icons.phone,
+                      ),
+                      _buildUserDataCard(
+                        'Address',
+                        userAddress,
+                        Icons.location_on,
+                      ),
+                      _buildUserDataCard(
+                        'City',
+                        userCity,
+                        Icons.location_city,
+                      ),
+                      _buildUserDataCard(
+                        'D.O.B',
+                        userDob,
+                        Icons.calendar_today,
+                      ),
+                      _buildUserDataCard(
                         'Religion',
                         userReligion,
                         Icons.church,
@@ -728,7 +969,7 @@ class HomeScreenState extends State<HomeScreen> {
             onPressed: _showEditProfileDialog,
             child: Text('Edit Profile'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: Colors.deepOrange,
               foregroundColor: Colors.white,
             ),
           ),
@@ -881,7 +1122,7 @@ class HomeScreenState extends State<HomeScreen> {
                                 },
                                 child: Text('Create'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.purple,
+                                  backgroundColor: Colors.deepOrange,
                                   foregroundColor: Colors.white,
                                 ),
                               ),
@@ -952,7 +1193,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               label: Text('Continue with Google'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
+                backgroundColor: Colors.deepOrange,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -981,7 +1222,7 @@ class HomeScreenState extends State<HomeScreen> {
               title: Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                setState(() => _selectedIndex = 3);
+                setState(() => _selectedIndex = 4);
               },
             ),
             ListTile(
@@ -993,6 +1234,12 @@ class HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Signed out successfully')),
+                  );
+                  // Navigate to login screen after signing out
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1036,7 +1283,7 @@ class HomeScreenState extends State<HomeScreen> {
             },
             child: Text('Upgrade Now'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: Colors.deepOrange,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1069,6 +1316,10 @@ class HomeScreenState extends State<HomeScreen> {
     final usageTypeController = TextEditingController(text: userUsageType);
     final religionController = TextEditingController(text: userReligion);
     final stateController = TextEditingController(text: userState);
+    final phoneController = TextEditingController(text: userPhoneNumber);
+    final addressController = TextEditingController(text: userAddress);
+    final dobController = TextEditingController(text: userDob);
+    final cityController = TextEditingController(text: userCity);
     
     showDialog(
       context: context,
@@ -1098,6 +1349,24 @@ class HomeScreenState extends State<HomeScreen> {
                 controller: stateController,
                 decoration: InputDecoration(labelText: 'State'),
               ),
+              TextField(
+                controller: phoneController,
+                decoration: InputDecoration(labelText: 'Phone Number'),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: addressController,
+                decoration: InputDecoration(labelText: 'Address'),
+                maxLines: 2,
+              ),
+              TextField(
+                controller: dobController,
+                decoration: InputDecoration(labelText: 'Date of Birth (DD/MM/YYYY)'),
+              ),
+              TextField(
+                controller: cityController,
+                decoration: InputDecoration(labelText: 'City'),
+              ),
               SizedBox(height: 8),
               ElevatedButton(
                 onPressed: _pickProfilePhoto,
@@ -1119,6 +1388,10 @@ class HomeScreenState extends State<HomeScreen> {
                 usageType: usageTypeController.text,
                 religion: religionController.text,
                 state: stateController.text,
+                phoneNumber: phoneController.text,
+                address: addressController.text,
+                dateOfBirth: dobController.text,
+                city: cityController.text,
               );
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1136,5 +1409,28 @@ class HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _quoteController.dispose();
     super.dispose();
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Good Morning':
+        return Icons.wb_sunny;
+      case 'Motivational':
+        return Icons.trending_up;
+      case 'Love':
+        return Icons.favorite;
+      case 'Festival':
+        return Icons.celebration;
+      case 'Success':
+        return Icons.star;
+      case 'Inspiration':
+        return Icons.lightbulb;
+      case 'Life':
+        return Icons.psychology;
+      case 'Friendship':
+        return Icons.people;
+      default:
+        return Icons.format_quote;
+    }
   }
 } 

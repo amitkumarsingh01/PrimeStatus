@@ -16,6 +16,10 @@ class OnboardingService {
   String? religion;
   String? state;
   String? subscription;
+  String? phoneNumber;
+  String? address;
+  String? dateOfBirth;
+  String? city;
 
   void reset() {
     language = null;
@@ -25,5 +29,9 @@ class OnboardingService {
     religion = null;
     state = null;
     subscription = null;
+    phoneNumber = null;
+    address = null;
+    dateOfBirth = null;
+    city = null;
   }
 } 

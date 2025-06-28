@@ -18,6 +18,21 @@ class ReligionSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onboardingService = OnboardingService.instance;
+    final isKannada = onboardingService.language == 'Kannada';
+    final title = isKannada ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಧರ್ಮವನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Please select your religion';
+    final religionsKn = const [
+      'ಹಿಂದೂ', 'ಮುಸ್ಲಿಂ', 'ಕ್ರಿಶ್ಚಿಯನ್', 'ಜೈನ್', 'ಬೌದ್ಧ', 'ಸಿಖ್', 'ಇತರೆ'
+    ];
+    final religionsList = isKannada ? religionsKn : religions;
+    final icons = [
+      Icons.emoji_emotions, // Hindu (Om is not in Material Icons)
+      Icons.star, // Muslim (fallback)
+      Icons.church, // Christian
+      Icons.spa, // Jain
+      Icons.self_improvement, // Buddhist
+      Icons.temple_hindu, // Sikh (closest available)
+      Icons.help_outline, // Other
+    ];
 
     return Scaffold(
       body: Container(
@@ -33,61 +48,81 @@ class ReligionSelectionScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Select Your Preference',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 32),
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 2.5,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFD74D02),
                     ),
-                    itemCount: religions.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            onboardingService.religion = religions[index];
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => StateSelectionScreen(),
-                              ),
-                            );
-                          },
-                          child: Center(
-                            child: Text(
-                              religions[index],
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
+                  ),
+                  SizedBox(height: 32),
+                  SizedBox(
+                    width: 400,
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.1,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: religionsList.length,
+                      itemBuilder: (context, index) {
+                        return Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          color: Colors.white,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () {
+                              onboardingService.religion = religionsList[index];
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => StateSelectionScreen(),
+                                ),
+                              );
+                            },
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    icons[index],
+                                    size: 36,
+                                    color: Color(0xFFD74D02),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    religionsList[index],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2C0036),
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

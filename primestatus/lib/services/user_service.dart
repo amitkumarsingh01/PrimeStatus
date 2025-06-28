@@ -36,6 +36,11 @@ class UserService {
           state: 'Other', // Default
           profilePhotoUrl: userCredential.user!.photoURL,
           subscription: 'free',
+          email: userCredential.user!.email ?? '',
+          phoneNumber: userCredential.user!.phoneNumber ?? '',
+          address: '',
+          dateOfBirth: '',
+          city: '',
         );
       }
 
@@ -91,6 +96,10 @@ class UserService {
     String? religion,
     String? state,
     String? subscription,
+    String? phoneNumber,
+    String? address,
+    String? dateOfBirth,
+    String? city,
   }) async {
     try {
       Map<String, dynamic> updateData = {};
@@ -101,6 +110,10 @@ class UserService {
       if (religion != null) updateData['religion'] = religion;
       if (state != null) updateData['state'] = state;
       if (subscription != null) updateData['subscription'] = subscription;
+      if (phoneNumber != null) updateData['phoneNumber'] = phoneNumber;
+      if (address != null) updateData['address'] = address;
+      if (dateOfBirth != null) updateData['dateOfBirth'] = dateOfBirth;
+      if (city != null) updateData['city'] = city;
 
       await _firestoreService.updateUser(uid, updateData);
 
@@ -163,6 +176,24 @@ class UserService {
       return await _firestoreService.getUserStats(uid);
     } catch (e) {
       throw 'Failed to get user stats: $e';
+    }
+  }
+
+  // Check if user has previous session
+  Future<bool> hasPreviousSession() async {
+    try {
+      // Check if there's a current user (even if not fully authenticated)
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        return true;
+      }
+      
+      // Check if there's any cached user data in Firestore
+      // This is a simple implementation - you might want to use SharedPreferences
+      // or other local storage for a more robust solution
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 } 

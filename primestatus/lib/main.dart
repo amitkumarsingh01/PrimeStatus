@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:primestatus/screens/onboarding/login_screen.dart';
+import 'package:primestatus/screens/onboarding/splash_screen.dart';
 import 'services/firebase_config.dart';
 
 void main() async {
@@ -33,7 +33,7 @@ class QuoteCraftApp extends StatelessWidget {
     return MaterialApp(
       title: 'Prime Status',
       theme: ThemeData(
-        primarySwatch: Colors.purple,
+        primarySwatch: Colors.deepOrange,
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
@@ -46,7 +46,7 @@ class QuoteCraftApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const LoginScreen(),
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

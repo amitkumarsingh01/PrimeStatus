@@ -8,6 +8,11 @@ class UsageTypeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onboardingService = OnboardingService.instance;
+    final isKannada = onboardingService.language == 'Kannada';
+
+    final title = isKannada ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಉದ್ದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Please select your purpose';
+    final personalText = isKannada ? 'ವೈಯಕ್ತಿಕ ಬಳಕೆಗಾಗಿ' : 'For Personal Use';
+    final businessText = isKannada ? 'ವ್ಯಾಪಾರ ಬಳಕೆಗಾಗಿ' : 'For Business Use';
 
     return Scaffold(
       body: Container(
@@ -30,21 +35,19 @@ class UsageTypeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'How will you use P?',
+                  title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Color(0xFFd74d02),
                   ),
                 ),
                 SizedBox(height: 32),
                 _buildUsageCard(
                   context: context,
-                  title: 'For Personal Use',
-                  icon: Icons.person,
+                  title: personalText,
                   onTap: () {
-                    onboardingService.usageType = 'Personal';
+                    onboardingService.usageType = isKannada ? 'ವೈಯಕ್ತಿಕ' : 'Personal';
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -52,14 +55,14 @@ class UsageTypeScreen extends StatelessWidget {
                       ),
                     );
                   },
+                  icon: Icons.person,
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 20),
                 _buildUsageCard(
                   context: context,
-                  title: 'For Business Use',
-                  icon: Icons.business,
+                  title: businessText,
                   onTap: () {
-                    onboardingService.usageType = 'Business';
+                    onboardingService.usageType = isKannada ? 'ವ್ಯಾಪಾರ' : 'Business';
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -67,6 +70,7 @@ class UsageTypeScreen extends StatelessWidget {
                       ),
                     );
                   },
+                  icon: Icons.business_center,
                 ),
               ],
             ),
@@ -79,32 +83,61 @@ class UsageTypeScreen extends StatelessWidget {
   Widget _buildUsageCard({
     required BuildContext context,
     required String title,
-    required IconData icon,
     required VoidCallback onTap,
+    required IconData icon,
   }) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
+      color: Colors.white,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Row(
-            children: [
-              Icon(icon, size: 40, color: Colors.purple),
-              SizedBox(width: 16),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            // Gradient border layer
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFD74D02), Color(0xFF2C0036)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(18),
               ),
-            ],
-          ),
+            ),
+            // White background with padding to reveal border
+            Container(
+              margin: EdgeInsets.all(3), // Border thickness
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 40,
+                    color: Color(0xFFD74D02),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Color(0xFF2C0036),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

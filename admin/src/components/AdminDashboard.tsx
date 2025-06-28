@@ -3,6 +3,7 @@ import { Plus, Upload, Type, Move, Settings, Save } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Post } from '../types';
 import ImageEditor from './ImageEditor';
+import { uploadMediaFile } from '../firebase';
 
 export default function AdminDashboard() {
   const { state, addPost } = useApp();
@@ -11,15 +12,22 @@ export default function AdminDashboard() {
   const [category, setCategory] = useState('');
   const [language, setLanguage] = useState<'english' | 'kannada'>('english');
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setSelectedMedia(event.target?.result as string);
-        setShowEditor(true);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('video/')) {
+        // Upload video to Firebase Storage
+        const url = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
+        setSelectedMedia(url); // Pass URL, not base64
+      } else {
+        // For images, you can still use base64 if you want
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setSelectedMedia(event.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+      setShowEditor(true);
     }
   };
 

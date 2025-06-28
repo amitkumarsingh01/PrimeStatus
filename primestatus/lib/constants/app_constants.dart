@@ -9,39 +9,39 @@ class AppConstants {
     Colors.red,
     Colors.blue,
     Colors.green,
-    Colors.purple,
+    Colors.deepOrange,
     Colors.orange,
     Colors.pink,
   ];
 
   static const List<Gradient> backgrounds = [
     LinearGradient(
-      colors: [Colors.purple, Colors.pink],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     LinearGradient(
-      colors: [Colors.blue, Colors.purple],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
     ),
     LinearGradient(
-      colors: [Colors.orange, Colors.red],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     LinearGradient(
-      colors: [Colors.green, Colors.blue],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.topRight,
       end: Alignment.bottomLeft,
     ),
     LinearGradient(
-      colors: [Colors.pink, Colors.purple],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),
     LinearGradient(
-      colors: [Colors.indigo, Colors.cyan],
+      colors: [Colors.deepOrange, Colors.red],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),

@@ -6,6 +6,10 @@ import '../services/user_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../screens/home_screen.dart';
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart' show launchUrl, canLaunchUrl, LaunchMode;
+import 'package:video_player/video_player.dart';
+import 'dart:typed_data';
 
 class AdminPostFeedWidget extends StatefulWidget {
   final String? category;
@@ -108,43 +112,57 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       margin: EdgeInsets.only(bottom: 16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double width = constraints.maxWidth;
-            final double height = constraints.maxHeight;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double width = constraints.maxWidth;
+          // Set height to 1.777 * width (16:9 aspect ratio)
+          final double height = width * 1.777;
 
-            // Calculate overlay positions in pixels
-            final double textX = (textSettings['x'] ?? 50) / 100 * width;
-            final double textY = (textSettings['y'] ?? 90) / 100 * height;
-            final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
-            final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
-            final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+          // Calculate overlay positions in pixels
+          final double textX = (textSettings['x'] ?? 50) / 100 * width;
+          final double textY = (textSettings['y'] ?? 90) / 100 * height;
+          final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+          final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+          final double profileSize = (profileSettings['size'] ?? 80).toDouble();
 
-            return Stack(
+          return SizedBox(
+            width: width,
+            height: height,
+            child: Stack(
               children: [
-                // Main image fills the card
+                // Background fill for empty space
+                Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFFF3E0), // Light orange
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                // Main image centered and contained
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey[200],
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: Icon(Icons.error, color: Colors.grey),
-                            ),
-                          )
-                        : Container(
-                            color: Colors.grey[200],
-                            child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
-                          ),
+                    child: _buildMainImage(imageUrl, fit: BoxFit.contain),
+                  ),
+                ),
+                // Share and Download buttons (top right)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.share, color: Colors.green[800]),
+                        tooltip: 'Share to WhatsApp',
+                        onPressed: () => _shareToWhatsApp(imageUrl, post),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.download, color: Colors.green[800]),
+                        tooltip: 'Download & Share to WhatsApp',
+                        onPressed: () => _downloadAndShareToWhatsApp(imageUrl, post),
+                      ),
+                    ],
                   ),
                 ),
                 // Username text overlay (current user)
@@ -214,11 +232,67 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     ),
                   ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  // Helper to handle both base64 and URL images
+  Widget _buildMainImage(String imageUrl, {BoxFit fit = BoxFit.cover}) {
+    // Video support
+    if (imageUrl.startsWith('data:video')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return _Base64VideoPlayer(bytes: bytes);
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (_isVideoUrl(imageUrl)) {
+      return _NetworkVideoPlayer(url: imageUrl);
+    } else if (imageUrl.startsWith('data:image')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: fit,
+        );
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (imageUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: fit,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[200],
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        ),
+      );
+    } else {
+      return Container(
+        color: Colors.grey[200],
+        child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
+      );
+    }
+  }
+
+  bool _isVideoUrl(String url) {
+    final videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.ogg'];
+    return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
   }
 
   // Helper to parse hex color strings
@@ -331,6 +405,131 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         'initialQuote': post['content'] ?? '',
         'initialTitle': post['title'] ?? '',
         'initialImageUrl': post['imageUrl'] ?? '',
+      },
+    );
+  }
+
+  // Share to WhatsApp (just send image URL or a message)
+  Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
+    String message = 'Check out this post!';
+    if (imageUrl.isNotEmpty) {
+      message += '\n';
+      if (imageUrl.startsWith('data:image')) {
+        message += '[Image attached]';
+      } else {
+        message += imageUrl;
+      }
+    }
+    final whatsappUrl = Uri.parse('https://wa.me/?text=' + Uri.encodeComponent(message));
+    if (await canLaunchUrl(whatsappUrl)) {
+      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open WhatsApp.')),
+      );
+    }
+  }
+
+  // Download (simulate) and share to WhatsApp
+  Future<void> _downloadAndShareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
+    // For simplicity, just share as above (downloading to gallery requires more permissions and plugins)
+    await _shareToWhatsApp(imageUrl, post);
+  }
+}
+
+// Base64 video player widget
+class _Base64VideoPlayer extends StatefulWidget {
+  final List<int> bytes;
+  const _Base64VideoPlayer({required this.bytes});
+
+  @override
+  State<_Base64VideoPlayer> createState() => _Base64VideoPlayerState();
+}
+
+class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
+  late VideoPlayerController _controller;
+  late Future<void> _initializeVideoPlayerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse('data:video/mp4;base64,${widget.bytes}'));
+    _initializeVideoPlayerFuture = _controller.initialize().then((_) {
+      _controller.setLooping(true);
+      _controller.setVolume(1.0); // Always sound on
+      _controller.play();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _initializeVideoPlayerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          );
+        } else {
+          return Center(child: CircularProgressIndicator());
+        }
+      },
+    );
+  }
+}
+
+// Network video player widget
+class _NetworkVideoPlayer extends StatefulWidget {
+  final String url;
+  const _NetworkVideoPlayer({required this.url});
+
+  @override
+  State<_NetworkVideoPlayer> createState() => _NetworkVideoPlayerState();
+}
+
+class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
+  late VideoPlayerController _controller;
+  late Future<void> _initializeVideoPlayerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url);
+    _initializeVideoPlayerFuture = _controller.initialize().then((_) {
+      _controller.setLooping(true);
+      _controller.setVolume(1.0); // Always sound on
+      _controller.play();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _initializeVideoPlayerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          );
+        } else {
+          return Center(child: CircularProgressIndicator());
+        }
       },
     );
   }

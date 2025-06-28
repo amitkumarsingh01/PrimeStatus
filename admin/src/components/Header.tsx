@@ -16,7 +16,7 @@ export default function Header() {
               <Home className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Image Studio</h1>
+              <h1 className="text-xl font-bold text-gray-800">Im</h1>
               <p className="text-sm text-gray-600">
                 {state.currentUser.isAdmin ? 'Admin Dashboard' : 'User Gallery'}
               </p>
