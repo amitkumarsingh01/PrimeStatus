@@ -15,6 +15,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
   final _onboardingService = OnboardingService.instance;
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
@@ -37,6 +38,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -90,6 +92,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final nameLabel = isKannada ? 'ನಿಮ್ಮ ಹೆಸರು' : 'Your Name';
     final phoneLabel = isKannada ? 'ಫೋನ್ ಸಂಖ್ಯೆ' : 'Phone Number';
     final addressLabel = isKannada ? 'ವಿಳಾಸ' : 'Address';
+    final cityLabel = isKannada ? 'ನಗರ' : 'City';
     final dobLabel = isKannada ? 'ಜನ್ಮ ದಿನಾಂಕ' : 'Date of Birth';
     final continueText = isKannada ? 'ಮುಂದುವರಿಸಿ' : 'Continue';
     final nameEmptyMsg = isKannada ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ನಮೂದಿಸಿ' : 'Please enter your name';
@@ -213,6 +216,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               label: addressLabel,
                               icon: Icons.home,
                             ),
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _cityController,
+                              label: cityLabel,
+                              icon: Icons.location_on,
+                            ),
                           ],
                         ),
                       ),
@@ -272,6 +281,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         return;
                       }
                       _onboardingService.name = _nameController.text;
+                      // Save additional details to onboarding service
+                      _onboardingService.phoneNumber = _phoneController.text.trim();
+                      _onboardingService.address = _addressController.text.trim();
+                      _onboardingService.city = _cityController.text.trim();
+                      if (_selectedDob != null) {
+                        _onboardingService.dateOfBirth = '${_selectedDob!.day.toString().padLeft(2, '0')}/${_selectedDob!.month.toString().padLeft(2, '0')}/${_selectedDob!.year}';
+                      }
                       // Optionally save phone, address, and dob to onboardingService if needed
                       Navigator.push(
                         context,

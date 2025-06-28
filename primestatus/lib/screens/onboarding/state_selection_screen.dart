@@ -1,6 +1,6 @@
 import 'package:primestatus/services/onboarding_service.dart';
 import 'package:flutter/material.dart';
-import 'additional_details_screen.dart';
+import 'subscription_screen.dart';
 
 class StateSelectionScreen extends StatefulWidget {
   const StateSelectionScreen({Key? key}) : super(key: key);
@@ -167,7 +167,7 @@ class _StateSelectionScreenState extends State<StateSelectionScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AdditionalDetailsScreen(),
+                              builder: (context) => SubscriptionScreen(),
                             ),
                           );
                         } : null,
