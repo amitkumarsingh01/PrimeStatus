@@ -1,6 +1,6 @@
 class QuoteData {
   static const List<String> categories = [
-    'Good Morning',
+    'Morning',
     'Motivational',
     'Love',
     'Festival',

@@ -685,7 +685,7 @@ class HomeScreenState extends State<HomeScreen> {
           
           // Horizontal Categories Scroll
           Container(
-            height: 100,
+            height: 80,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -750,7 +750,7 @@ class HomeScreenState extends State<HomeScreen> {
             ),
           ),
           
-          SizedBox(height: 16),
+          // SizedBox(height: 16),
           
           // Feed content
           Expanded(
@@ -1413,7 +1413,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'Good Morning':
+      case 'Morning':
         return Icons.wb_sunny;
       case 'Motivational':
         return Icons.trending_up;
