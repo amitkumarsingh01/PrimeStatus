@@ -321,20 +321,20 @@ class HomeScreenState extends State<HomeScreen> {
             _buildProfileTab(),
           ],
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.deepOrange,
-          unselectedItemColor: Colors.grey,
-          items: [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
-            BottomNavigationBarItem(icon: Icon(Icons.create), label: 'Create'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
-        ),
+        // bottomNavigationBar: BottomNavigationBar(
+        //   currentIndex: _selectedIndex,
+        //   onTap: (index) => setState(() => _selectedIndex = index),
+        //   type: BottomNavigationBarType.fixed,
+        //   selectedItemColor: Colors.deepOrange,
+        //   unselectedItemColor: Colors.grey,
+        //   items: [
+        //     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        //     BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
+        //     BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+        //     BottomNavigationBarItem(icon: Icon(Icons.create), label: 'Create'),
+        //     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        //   ],
+        // ),
       ),
     );
   }
