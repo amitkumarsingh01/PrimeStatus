@@ -12,7 +12,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 w-10 h-10 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
               <Home className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -40,7 +40,8 @@ export default function Header() {
 
             <button
               onClick={logout}
-              className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-colors"
+              style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>

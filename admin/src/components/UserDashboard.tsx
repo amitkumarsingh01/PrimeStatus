@@ -1,18 +1,82 @@
-import React, { useState } from 'react';
-import { Search, Grid, List, Filter, Calendar, User, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Grid, List, Filter, Calendar, User, Play, MapPin, Phone } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { db } from '../firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { Post } from '../types';
 
 export default function UserDashboard() {
   const { state } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = ['all', ...new Set(state.posts.map(post => post.category))];
+  // Fetch posts from Firebase on component mount
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const postsQuery = query(collection(db, 'admin_posts'), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(postsQuery);
+        const fetchedPosts: Post[] = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedPosts.push({
+            id: doc.id,
+            userId: data.createdBy || 'admin',
+            userName: data.adminName || 'Admin',
+            userPhoto: data.adminPhotoUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+            mainImage: data.mainImage,
+            category: data.category,
+            region: data.region,
+            language: data.language,
+            textSettings: data.textSettings,
+            addressSettings: data.addressSettings || {
+              text: '',
+              x: 50,
+              y: 80,
+              font: 'Arial',
+              fontSize: 18,
+              color: '#ffffff',
+              hasBackground: true,
+              backgroundColor: '#000000',
+              enabled: false,
+            },
+            phoneSettings: data.phoneSettings || {
+              text: '',
+              x: 50,
+              y: 85,
+              font: 'Arial',
+              fontSize: 18,
+              color: '#ffffff',
+              hasBackground: true,
+              backgroundColor: '#000000',
+              enabled: false,
+            },
+            profileSettings: data.profileSettings,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          });
+        });
+        
+        setPosts(fetchedPosts);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  const categories = ['all', ...new Set(posts.map(post => post.category))];
   
-  const filteredPosts = state.posts.filter(post => {
+  const filteredPosts = posts.filter(post => {
     const matchesSearch = post.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.category.toLowerCase().includes(searchTerm.toLowerCase());
+                         post.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         post.region.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -29,8 +93,21 @@ export default function UserDashboard() {
     return mediaUrl.startsWith('data:video/');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-white/20 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#d74d02' }}></div>
+            <p className="text-gray-600">Loading posts...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+    <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-6 mb-8 border border-white/20">
@@ -47,7 +124,8 @@ export default function UserDashboard() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                  style={{ '--tw-ring-color': '#d74d02' } as React.CSSProperties}
                   placeholder="Search posts..."
                 />
               </div>
@@ -55,7 +133,8 @@ export default function UserDashboard() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                style={{ '--tw-ring-color': '#d74d02' } as React.CSSProperties}
               >
                 {categories.map(category => (
                   <option key={category} value={category}>
@@ -67,13 +146,15 @@ export default function UserDashboard() {
               <div className="flex border border-gray-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600'}`}
+                  className={`p-2 ${viewMode === 'grid' ? 'text-white' : 'bg-white text-gray-600'}`}
+                  style={viewMode === 'grid' ? { background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' } : {}}
                 >
                   <Grid className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600'}`}
+                  className={`p-2 ${viewMode === 'list' ? 'text-white' : 'bg-white text-gray-600'}`}
+                  style={viewMode === 'list' ? { background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' } : {}}
                 >
                   <List className="h-5 w-5" />
                 </button>
@@ -141,6 +222,46 @@ export default function UserDashboard() {
                     {state.currentUser?.name || 'User'}
                   </div>
                   
+                  {/* Address Text Overlay */}
+                  {post.addressSettings?.enabled && post.addressSettings.text && (
+                    <div
+                      className="absolute pointer-events-none px-2 py-1 rounded"
+                      style={{
+                        left: `${post.addressSettings.x}%`,
+                        top: `${post.addressSettings.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: post.addressSettings.font,
+                        fontSize: `${post.addressSettings.fontSize * 0.6}px`,
+                        color: post.addressSettings.color,
+                        fontWeight: 'bold',
+                        backgroundColor: post.addressSettings.hasBackground ? post.addressSettings.backgroundColor : 'transparent',
+                        textShadow: post.addressSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                      }}
+                    >
+                      {post.addressSettings.text}
+                    </div>
+                  )}
+                  
+                  {/* Phone Number Text Overlay */}
+                  {post.phoneSettings?.enabled && post.phoneSettings.text && (
+                    <div
+                      className="absolute pointer-events-none px-2 py-1 rounded"
+                      style={{
+                        left: `${post.phoneSettings.x}%`,
+                        top: `${post.phoneSettings.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: post.phoneSettings.font,
+                        fontSize: `${post.phoneSettings.fontSize * 0.6}px`,
+                        color: post.phoneSettings.color,
+                        fontWeight: 'bold',
+                        backgroundColor: post.phoneSettings.hasBackground ? post.phoneSettings.backgroundColor : 'transparent',
+                        textShadow: post.phoneSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                      }}
+                    >
+                      {post.phoneSettings.text}
+                    </div>
+                  )}
+                  
                   {/* Current User's Profile Photo Overlay (using admin's positioning but current user's photo) */}
                   {post.profileSettings.enabled && state.currentUser && (
                     <div
@@ -180,6 +301,7 @@ export default function UserDashboard() {
                       <div>
                         <h3 className="font-semibold text-gray-800">{post.userName}</h3>
                         <p className="text-sm text-gray-500">{post.category}</p>
+                        <p className="text-xs text-gray-400">Region: {post.region}</p>
                         <p className="text-xs text-gray-400">Created by Admin</p>
                       </div>
                     </div>
@@ -193,6 +315,25 @@ export default function UserDashboard() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Contact Information */}
+                  {(post.addressSettings?.text || post.phoneSettings?.text) && (
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Contact Information</h4>
+                      {post.addressSettings?.text && (
+                        <div className="flex items-start space-x-2 mb-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-gray-600">{post.addressSettings.text}</p>
+                        </div>
+                      )}
+                      {post.phoneSettings?.text && (
+                        <div className="flex items-center space-x-2">
+                          <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <p className="text-xs text-gray-600">{post.phoneSettings.text}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

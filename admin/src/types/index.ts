@@ -12,6 +12,7 @@ export interface Post {
   userPhoto: string;
   mainImage: string;
   category: string;
+  region: string;
   language: 'english' | 'kannada';
   textSettings: {
     text: string;
@@ -22,6 +23,28 @@ export interface Post {
     color: string;
     hasBackground: boolean;
     backgroundColor: string;
+  };
+  addressSettings: {
+    text: string;
+    x: number;
+    y: number;
+    font: string;
+    fontSize: number;
+    color: string;
+    hasBackground: boolean;
+    backgroundColor: string;
+    enabled: boolean;
+  };
+  phoneSettings: {
+    text: string;
+    x: number;
+    y: number;
+    font: string;
+    fontSize: number;
+    color: string;
+    hasBackground: boolean;
+    backgroundColor: string;
+    enabled: boolean;
   };
   profileSettings: {
     x: number;
