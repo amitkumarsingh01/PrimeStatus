@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 400,
                   height: 400,
                 ),
-                SizedBox(height: 38),
+                // SizedBox(height: 38),
                 Image.asset(
                   'assets/logo.png',
                   width: 120,
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 48),
+                SizedBox(height: 20),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(

@@ -21,11 +21,13 @@ import 'dart:ui' as ui;
 class AdminPostFeedWidget extends StatefulWidget {
   final String? category;
   final String? language;
+  final void Function(List<Map<String, dynamic>> posts, int initialIndex)? onPostTap;
 
   const AdminPostFeedWidget({
     Key? key,
     this.category,
     this.language,
+    this.onPostTap,
   }) : super(key: key);
 
   @override
@@ -51,7 +53,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     return Column(
       children: [
         // Business Information Status (for Business users)
-        if (isBusinessUser)
+        if (isBusinessUser && 1<0)
           Container(
             margin: EdgeInsets.all(16),
             padding: EdgeInsets.all(12),
@@ -170,7 +172,17 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                   itemCount: posts.length,
                   itemBuilder: (context, index) {
                     final post = posts[index].data() as Map<String, dynamic>;
-                    return _buildPostCard(post);
+                    return GestureDetector(
+                      onTap: () {
+                        if (widget.onPostTap != null) {
+                          widget.onPostTap!(
+                            posts.map((doc) => doc.data() as Map<String, dynamic>).toList(),
+                            index,
+                          );
+                        }
+                      },
+                      child: _buildPostCard(post),
+                    );
                   },
                 ),
               );
@@ -211,6 +223,254 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     );
   }
 
+  // Widget _buildPostCard(Map<String, dynamic> post) {
+  //   final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+  //   final textSettings = post['textSettings'] ?? {};
+  //   final profileSettings = post['profileSettings'] ?? {};
+  //   final addressSettings = post['addressSettings'] ?? {};
+  //   final phoneSettings = post['phoneSettings'] ?? {};
+  //   final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
+  //   final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
+  //   final String userUsageType = (context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '');
+  //   final String userAddress = (context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '');
+  //   final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
+  //   final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
+
+  //   return Card(
+  //     margin: EdgeInsets.only(bottom: 16),
+  //     elevation: 4,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //     child: Column(
+  //       children: [
+  //         // Image content
+  //         LayoutBuilder(
+  //           builder: (context, constraints) {
+  //             final double width = constraints.maxWidth;
+  //             // Set height to 1.777 * width (16:9 aspect ratio)
+  //             final double height = width * 1.777;
+
+  //             // Calculate overlay positions in pixels
+  //             final double textX = (textSettings['x'] ?? 50) / 100 * width;
+  //             final double textY = (textSettings['y'] ?? 90) / 100 * height;
+  //             final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+  //             final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+  //             final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+              
+  //             // Address and phone positions (if enabled)
+  //             final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+  //             final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
+  //             final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
+  //             final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+
+  //             return SizedBox(
+  //               width: width,
+  //               height: height,
+  //               child: Stack(
+  //                 children: [
+  //                   // Background fill for empty space
+  //                   Container(
+  //                     width: width,
+  //                     height: height,
+  //                     decoration: BoxDecoration(
+  //                       color: Color(0xFFFFF3E0), // Light orange
+  //                       borderRadius: BorderRadius.only(
+  //                         topLeft: Radius.circular(16),
+  //                         topRight: Radius.circular(16),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   // Main image centered and contained
+  //                   Positioned.fill(
+  //                     child: ClipRRect(
+  //                       borderRadius: BorderRadius.only(
+  //                         topLeft: Radius.circular(16),
+  //                         topRight: Radius.circular(16),
+  //                       ),
+  //                       child: _buildMainImage(imageUrl, fit: BoxFit.contain),
+  //                     ),
+  //                   ),
+  //                   // Username text overlay (current user)
+  //                   if (textSettings.isNotEmpty)
+  //                     Positioned(
+  //                       left: textX,
+  //                       top: textY,
+  //                       child: Transform.translate(
+  //                         offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+  //                         child: Container(
+  //                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  //                           decoration: textSettings['hasBackground'] == true
+  //                               ? BoxDecoration(
+  //                                   color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+  //                                   borderRadius: BorderRadius.circular(8),
+  //                                 )
+  //                               : null,
+  //                           child: Text(
+  //                             userName,
+  //                             style: TextStyle(
+  //                               fontFamily: textSettings['font'] ?? 'Arial',
+  //                               fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+  //                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
+  //                               fontWeight: FontWeight.bold,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   // Address text overlay (for business users)
+  //                   if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+  //                     Positioned(
+  //                       left: addressX,
+  //                       top: addressY,
+  //                       child: Transform.translate(
+  //                         offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+  //                         child: Container(
+  //                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  //                           decoration: addressSettings['hasBackground'] == true
+  //                               ? BoxDecoration(
+  //                                   color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+  //                                   borderRadius: BorderRadius.circular(8),
+  //                                 )
+  //                               : null,
+  //                           child: Text(
+  //                             userAddress,
+  //                             style: TextStyle(
+  //                               fontFamily: addressSettings['font'] ?? 'Arial',
+  //                               fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+  //                               color: _parseColor(addressSettings['color'] ?? '#ffffff'),
+  //                               fontWeight: FontWeight.bold,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   // Phone number text overlay (for business users)
+  //                   if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+  //                     Positioned(
+  //                       left: phoneX,
+  //                       top: phoneY,
+  //                       child: Transform.translate(
+  //                         offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+  //                         child: Container(
+  //                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  //                           decoration: phoneSettings['hasBackground'] == true
+  //                               ? BoxDecoration(
+  //                                   color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+  //                                   borderRadius: BorderRadius.circular(8),
+  //                                 )
+  //                               : null,
+  //                           child: Text(
+  //                             userPhoneNumber,
+  //                             style: TextStyle(
+  //                               fontFamily: phoneSettings['font'] ?? 'Arial',
+  //                               fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+  //                               color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+  //                               fontWeight: FontWeight.bold,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   // Profile photo overlay (current user) - with background removal
+  //                   if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
+  //                     Positioned(
+  //                       left: profileX - profileSize / 2,
+  //                       top: profileY - profileSize / 2,
+  //                       child: Container(
+  //                         width: profileSize,
+  //                         height: profileSize,
+  //                         decoration: BoxDecoration(
+  //                           color: profileSettings['hasBackground'] == true
+  //                               ? Colors.white.withOpacity(0.9)
+  //                               : Colors.transparent,
+  //                           borderRadius: BorderRadius.circular(
+  //                             profileSettings['shape'] == 'circle'
+  //                                 ? profileSize / 2
+  //                                 : 8,
+  //                           ),
+  //                           border: Border.all(color: Colors.white, width: 2),
+  //                           boxShadow: [
+  //                             BoxShadow(
+  //                               color: Colors.black.withOpacity(0.2),
+  //                               blurRadius: 8,
+  //                               offset: Offset(0, 2),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                         child: ClipRRect(
+  //                           borderRadius: BorderRadius.circular(
+  //                             profileSettings['shape'] == 'circle'
+  //                                 ? profileSize / 2
+  //                                 : 8,
+  //                           ),
+  //                           child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             );
+  //           },
+  //         ),
+  //         // Action buttons at the bottom
+  //         Container(
+  //           padding: EdgeInsets.all(12),
+  //           child: Row(
+  //             children: [
+  //               // Share Button - 40%
+  //               Expanded(
+  //                 flex: 45,
+  //                 child: ElevatedButton.icon(
+  //                   onPressed: () => _showShareOptions(imageUrl, post),
+  //                   icon: Icon(Icons.share, color: Colors.white),
+  //                   label: Text('Share', style: TextStyle(color: Colors.white)),
+  //                   style: ElevatedButton.styleFrom(
+  //                     backgroundColor: Colors.green[600],
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(8),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(width: 8),
+  //               // Download Button - 40%
+  //               Expanded(
+  //                 flex: 45,
+  //                 child: ElevatedButton.icon(
+  //                   onPressed: () => _showSubscriptionDialog(),
+  //                   icon: Icon(Icons.download, color: Colors.white),
+  //                   label: Text('Download', style: TextStyle(color: Colors.white)),
+  //                   style: ElevatedButton.styleFrom(
+  //                     backgroundColor: Colors.blue[600],
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(8),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(width: 8),
+  //               // Change Profile Photo Button - 20%
+  //               Expanded(
+  //                 flex: 15,
+  //                 child: ElevatedButton(
+  //                   onPressed: () => _showProfilePhotoDialog(),
+  //                   style: ElevatedButton.styleFrom(
+  //                     backgroundColor: Colors.orange[600],
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(8),
+  //                     ),
+  //                   ),
+  //                   child: Icon(Icons.person, color: Colors.white),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
   Widget _buildPostCard(Map<String, dynamic> post) {
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
     final textSettings = post['textSettings'] ?? {};
@@ -225,7 +485,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
 
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
@@ -259,7 +519,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     Container(
                       width: width,
                       height: height,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Color(0xFFFFF3E0), // Light orange
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
@@ -270,7 +530,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     // Main image centered and contained
                     Positioned.fill(
                       child: ClipRRect(
-                        borderRadius: BorderRadius.only(
+                        borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
                           topRight: Radius.circular(16),
                         ),
@@ -359,7 +619,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                         ),
                       ),
                     // Profile photo overlay (current user) - with background removal
-                    if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
+                    if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                       Positioned(
                         left: profileX - profileSize / 2,
                         top: profileY - profileSize / 2,
@@ -380,7 +640,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.2),
                                 blurRadius: 8,
-                                offset: Offset(0, 2),
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
@@ -390,7 +650,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                                   ? profileSize / 2
                                   : 8,
                             ),
-                            child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl),
+                            child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
                           ),
                         ),
                       ),
@@ -401,16 +661,16 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           ),
           // Action buttons at the bottom
           Container(
-            padding: EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Share Button
+                // Share Button - 45%
                 Expanded(
+                  flex: 45,
                   child: ElevatedButton.icon(
                     onPressed: () => _showShareOptions(imageUrl, post),
-                    icon: Icon(Icons.share, color: Colors.white),
-                    label: Text('Share', style: TextStyle(color: Colors.white)),
+                    icon: const Icon(Icons.share, color: Colors.white),
+                    label: const Text('Share', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[600],
                       shape: RoundedRectangleBorder(
@@ -419,13 +679,14 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
-                // Download Button
+                const SizedBox(width: 8),
+                // Download Button - 45%
                 Expanded(
+                  flex: 45,
                   child: ElevatedButton.icon(
                     onPressed: () => _showSubscriptionDialog(),
-                    icon: Icon(Icons.download, color: Colors.white),
-                    label: Text('Download', style: TextStyle(color: Colors.white)),
+                    icon: const Icon(Icons.download, color: Colors.white),
+                    label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],
                       shape: RoundedRectangleBorder(
@@ -434,19 +695,20 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
-                // Change Profile Photo Button
+                const SizedBox(width: 8),
+                // Change Profile Photo Button - 10%
                 Expanded(
-                  child: ElevatedButton.icon(
+                  flex: 10,
+                  child: ElevatedButton(
                     onPressed: () => _showProfilePhotoDialog(),
-                    icon: Icon(Icons.person, color: Colors.white),
-                    label: Text('Edit', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange[600],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      padding: const EdgeInsets.all(8),
                     ),
+                    child: const Icon(Icons.person, color: Colors.white),
                   ),
                 ),
               ],
@@ -938,16 +1200,36 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         ),
       );
 
-      // Capture the widget as an image
-      return await _screenshotController.captureFromWidget(
-        imageWithOverlays,
-        delay: Duration(milliseconds: 100),
-        pixelRatio: 2.0, // Higher quality
-      );
+      // Try to capture the widget as an image
+      try {
+        return await _screenshotController.captureFromWidget(
+          imageWithOverlays,
+          delay: Duration(milliseconds: 100),
+          pixelRatio: 2.0, // Higher quality
+        );
+      } catch (e) {
+        print('Screenshot capture failed, trying fallback: $e');
+        // Fallback: share the original image URL
+        return await _fallbackShareMethod(imageUrl);
+      }
     } catch (e) {
       print('Error capturing image: $e');
       return null;
     }
+  }
+
+  // Fallback method for sharing when screenshot fails
+  Future<Uint8List?> _fallbackShareMethod(String imageUrl) async {
+    try {
+      // Download the image and share it directly
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+    } catch (e) {
+      print('Fallback method failed: $e');
+    }
+    return null;
   }
 
   void _showSubscriptionDialog() {
@@ -1830,6 +2112,325 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
           return Center(child: CircularProgressIndicator());
         }
       },
+    );
+  }
+}
+
+class AdminPostFeedWidgetHelpers {
+  static Widget buildMainImage(String imageUrl, {BoxFit fit = BoxFit.cover}) {
+    if (imageUrl.startsWith('data:video')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return _Base64VideoPlayer(bytes: bytes);
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (isVideoUrl(imageUrl)) {
+      return _NetworkVideoPlayer(url: imageUrl);
+    } else if (imageUrl.startsWith('data:image')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: fit,
+        );
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (imageUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: fit,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[200],
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        ),
+      );
+    } else {
+      return Container(
+        color: Colors.grey[200],
+        child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
+      );
+    }
+  }
+
+  static bool isVideoUrl(String url) {
+    final videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.ogg'];
+    return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
+  }
+
+  static Color parseColor(String hexColor) {
+    hexColor = hexColor.replaceFirst('#', '');
+    if (hexColor.length == 6) hexColor = 'FF$hexColor';
+    return Color(int.parse('0x$hexColor'));
+  }
+
+  static Widget buildProfilePhotoWithoutBackground(String photoUrl) {
+    return CachedNetworkImage(
+      imageUrl: photoUrl,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[200],
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.grey[200],
+        child: Icon(Icons.person, color: Colors.grey),
+      ),
+    );
+  }
+
+  static void showShareOptions(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Not available in preview mode')),
+    );
+  }
+  static void showSubscriptionDialog(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Not available in preview mode')),
+    );
+  }
+  static void showProfilePhotoDialog(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Not available in preview mode')),
+    );
+  }
+
+  static Widget buildPostCardStatic(BuildContext context, Map<String, dynamic> post) {
+    final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+    final textSettings = post['textSettings'] ?? {};
+    final profileSettings = post['profileSettings'] ?? {};
+    final addressSettings = post['addressSettings'] ?? {};
+    final phoneSettings = post['phoneSettings'] ?? {};
+    final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
+    final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
+    final String userUsageType = (context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '');
+    final String userAddress = (context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '');
+    final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
+    final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
+
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            final double height = width * 1.777;
+            final double textX = (textSettings['x'] ?? 50) / 100 * width;
+            final double textY = (textSettings['y'] ?? 90) / 100 * height;
+            final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+            final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+            final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+            final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+            final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
+            final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
+            final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                children: [
+                  Container(
+                    width: width,
+                    height: height,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                      child: buildMainImage(imageUrl, fit: BoxFit.contain),
+                    ),
+                  ),
+                  if (textSettings.isNotEmpty)
+                    Positioned(
+                      left: textX,
+                      top: textY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: textSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userName,
+                            style: TextStyle(
+                              fontFamily: textSettings['font'] ?? 'Arial',
+                              fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                              color: parseColor(textSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+                    Positioned(
+                      left: addressX,
+                      top: addressY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: addressSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userAddress,
+                            style: TextStyle(
+                              fontFamily: addressSettings['font'] ?? 'Arial',
+                              fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                              color: parseColor(addressSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+                    Positioned(
+                      left: phoneX,
+                      top: phoneY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: phoneSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userPhoneNumber,
+                            style: TextStyle(
+                              fontFamily: phoneSettings['font'] ?? 'Arial',
+                              fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                              color: parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
+                    Positioned(
+                      left: profileX - profileSize / 2,
+                      top: profileY - profileSize / 2,
+                      child: Container(
+                        width: profileSize,
+                        height: profileSize,
+                        decoration: BoxDecoration(
+                          color: profileSettings['hasBackground'] == true
+                              ? Colors.white.withOpacity(0.9)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? profileSize / 2
+                                : 8,
+                          ),
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? profileSize / 2
+                                : 8,
+                          ),
+                          child: buildProfilePhotoWithoutBackground(userProfilePhotoUrl),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        Container(
+          padding: EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 45,
+                child: ElevatedButton.icon(
+                  onPressed: () => showShareOptions(context),
+                  icon: Icon(Icons.share, color: Colors.white),
+                  label: Text('Share', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                flex: 45,
+                child: ElevatedButton.icon(
+                  onPressed: () => showSubscriptionDialog(context),
+                  icon: Icon(Icons.download, color: Colors.white),
+                  label: Text('Download', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                flex: 15,
+                child: ElevatedButton(
+                  onPressed: () => showProfilePhotoDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Icon(Icons.person, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 } 

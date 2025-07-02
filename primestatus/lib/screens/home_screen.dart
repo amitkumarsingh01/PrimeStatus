@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:primestatus/widgets/fullscreen_post_viewer.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -414,35 +415,35 @@ class HomeScreenState extends State<HomeScreen> {
                       SizedBox(width: 12),
 
                       // 30% Create Button
-                      Expanded(
-                        flex: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() => _selectedIndex = 0);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: EdgeInsets.all(12), 
-                            ),
-                            child: Icon(
-                              Icons.home,
-                              color: Color(0xfffaeac7),
-                              size: 32,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Expanded(
+                      //   flex: 1,
+                      //   child: Container(
+                      //     decoration: BoxDecoration(
+                      //       gradient: LinearGradient(
+                      //         colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                      //       ),
+                      //       borderRadius: BorderRadius.circular(10),
+                      //     ),
+                      //     child: ElevatedButton(
+                      //       onPressed: () {
+                      //         setState(() => _selectedIndex = 0);
+                      //       },
+                      //       style: ElevatedButton.styleFrom(
+                      //         backgroundColor: Colors.transparent,
+                      //         shadowColor: Colors.transparent,
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(10),
+                      //         ),
+                      //         padding: EdgeInsets.all(12), 
+                      //       ),
+                      //       child: Icon(
+                      //         Icons.home,
+                      //         color: Color(0xfffaeac7),
+                      //         size: 32,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
 
 
                       SizedBox(width: 12),
@@ -674,48 +675,45 @@ class HomeScreenState extends State<HomeScreen> {
               return Container(
                 width: MediaQuery.of(context).size.width / 5.5, // Show 5 categories at a time
                 margin: EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () => _showCategoryQuotes(category),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          _getCategoryIcon(category),
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        ],
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        category,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      child: Icon(
+                        _getCategoryIcon(category),
+                        color: Colors.white,
+                        size: 20,
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      category,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               );
             },
@@ -772,7 +770,6 @@ class HomeScreenState extends State<HomeScreen> {
             ),
             subtitle: Text('${QuoteData.quotes[category]?.length ?? 0} quotes'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => _showCategoryQuotes(category),
           ),
         );
       },
@@ -841,41 +838,7 @@ class HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.transparent,
       body: Column(
         children: [
-          // Header
-          // Container(
-          //   padding: EdgeInsets.all(16),
-          //   decoration: BoxDecoration(
-          //     color: Colors.white.withOpacity(0.9),
-          //     borderRadius: BorderRadius.only(
-          //       bottomLeft: Radius.circular(20),
-          //       bottomRight: Radius.circular(20),
-          //     ),
-          //   ),
-          //   child: Row(
-          //     children: [
-          //       Icon(Icons.feed, color: Colors.purple, size: 28),
-          //       SizedBox(width: 12),
-          //       Text(
-          //         'Latest Posts',
-          //         style: TextStyle(
-          //           fontSize: 24,
-          //           fontWeight: FontWeight.bold,
-          //           color: Colors.black87,
-          //         ),
-          //       ),
-          //       Spacer(),
-          //       IconButton(
-          //         icon: Icon(Icons.refresh, color: Colors.deepOrange),
-          //         onPressed: () {
-          //           setState(() {});
-          //         },
-          //       ),
-          //     ],
-          //   ),
-          // ),
           SizedBox(height: 16),
-          
-          // Horizontal Categories Scroll
           Container(
             height: 80,
             child: Column(
@@ -891,48 +854,45 @@ class HomeScreenState extends State<HomeScreen> {
                       return Container(
                         width: MediaQuery.of(context).size.width / 5.5, // Show 5 categories at a time
                         margin: EdgeInsets.only(right: 12),
-                        child: GestureDetector(
-                          onTap: () => _showCategoryQuotes(category),
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: AppConstants.categoryColors[index % AppConstants.categoryColors.length],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppConstants.categoryColors[index % AppConstants.categoryColors.length][0].withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  _getCategoryIcon(category),
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
+                                ],
                               ),
-                              SizedBox(height: 6),
-                              Text(
-                                category,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              child: Icon(
+                                _getCategoryIcon(category),
+                                color: Colors.white,
+                                size: 20,
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -941,12 +901,20 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
-          // SizedBox(height: 16),
-          
-          // Feed content
           Expanded(
-            child: AdminPostFeedWidget(),
+            child: AdminPostFeedWidget(
+              onPostTap: (posts, initialIndex) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FullscreenPostViewer(
+                      posts: posts,
+                      initialIndex: initialIndex,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -1056,6 +1024,27 @@ class HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.all(16),
       child: Column(
         children: [
+          // Add a button to top left corner to go back to the home screen
+          Container(
+            alignment: Alignment.topLeft,
+            padding: EdgeInsets.all(16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back),
+                  onPressed: () => setState(() => _selectedIndex = 0),
+                ),
+                Text(
+                  'Go to Home Screen',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
           GestureDetector(
             onTap: _pickProfilePhoto,
             child: CircleAvatar(
@@ -1301,6 +1290,80 @@ class HomeScreenState extends State<HomeScreen> {
           
           SizedBox(height: 24),
           
+          // Action Buttons Row
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                // Go to Home Button
+                // Expanded(
+                //   child: Container(
+                //     decoration: BoxDecoration(
+                //       gradient: LinearGradient(
+                //         colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                //       ),
+                //       borderRadius: BorderRadius.circular(12),
+                //     ),
+                //     child: ElevatedButton.icon(
+                //       onPressed: () => setState(() => _selectedIndex = 0),
+                //       icon: Icon(Icons.home, color: Color(0xfffaeac7)),
+                //       label: Text(
+                //         'Go to Home',
+                //         style: TextStyle(
+                //           fontSize: 16,
+                //           color: Color(0xfffaeac7),
+                //           fontWeight: FontWeight.w600,
+                //         ),
+                //       ),
+                //       style: ElevatedButton.styleFrom(
+                //         padding: EdgeInsets.symmetric(vertical: 16),
+                //         backgroundColor: Colors.transparent,
+                //         shadowColor: Colors.transparent,
+                //         shape: RoundedRectangleBorder(
+                //           borderRadius: BorderRadius.circular(12),
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
+                
+                // SizedBox(width: 16),
+                
+                // Logout Button
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade600, Colors.red.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: Icon(Icons.logout, color: Colors.white),
+                      label: Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
         ],
       ),
     );
@@ -1320,10 +1383,6 @@ class HomeScreenState extends State<HomeScreen> {
               final category = QuoteData.categories[index];
               return ListTile(
                 title: Text(category),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showCategoryQuotes(category);
-                },
               );
             },
           ),
@@ -1942,6 +2001,60 @@ class HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete profile photo: $e')),
+      );
+    }
+  }
+
+  void _handleLogout() async {
+    try {
+      // Show confirmation dialog
+      bool shouldLogout = await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Logout'),
+          content: Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Logout'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ) ?? false;
+
+      if (shouldLogout) {
+        // Sign out from Firebase
+        await _userService.signOut();
+        
+        // Clear user data
+        _clearUserData();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logged out successfully')),
+        );
+        
+        // Navigate to login screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

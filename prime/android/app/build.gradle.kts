@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.aksmlibts.prime"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
