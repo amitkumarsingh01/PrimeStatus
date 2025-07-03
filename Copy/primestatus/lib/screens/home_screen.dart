@@ -42,7 +42,7 @@ class HomeScreenState extends State<HomeScreen> {
   late TextEditingController _quoteController;
   String quoteOfTheDay = '';
   List<String> favoriteQuotes = [];
-  List<String> userProfilePhotos = []; // List to store multiple profile photos
+  List<Map<String, dynamic>> userProfilePhotos = []; // List to store multiple profile photos (now as maps)
   bool _isProcessingPhoto = false;
   
   final UserService _userService = UserService();
@@ -121,7 +121,6 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchUserProfilePhotos() async {
     if (_currentUser == null) return;
-    
     try {
       final photosSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -129,10 +128,9 @@ class HomeScreenState extends State<HomeScreen> {
           .collection('profilePhotos')
           .orderBy('uploadedAt', descending: true)
           .get();
-      
       setState(() {
         userProfilePhotos = photosSnapshot.docs
-            .map((doc) => doc.data()['photoUrl'] as String)
+            .map((doc) => doc.data())
             .toList();
       });
     } catch (e) {
@@ -220,13 +218,10 @@ class HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    
     try {
       setState(() {
         _isProcessingPhoto = true;
       });
-
-      // Pick image from gallery (normal - with background)
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
@@ -234,19 +229,27 @@ class HomeScreenState extends State<HomeScreen> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-
       if (pickedFile != null) {
         File imageFile = File(pickedFile.path);
-        
-        // Upload to Firebase Storage (with background)
+        // Upload original
         String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
-        
-        // Add to user's profile photos collection
-        await _addProfilePhotoToGallery(downloadUrl);
-        
-        // Refresh profile photos
+        // Remove background and upload processed image
+        String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+        String? downloadUrlNoBg;
+        if (processedUrl != null) {
+          // Download processed image and upload to Firebase Storage
+          final response = await http.get(Uri.parse(processedUrl));
+          if (response.statusCode == 200) {
+            final tempDir = Directory.systemTemp;
+            final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
+            await tempFile.writeAsBytes(response.bodyBytes);
+            downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
+            await tempFile.delete();
+          }
+        }
+        // Add both to Firestore
+        await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
         await _fetchUserProfilePhotos();
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Profile photo added to gallery!')),
         );
@@ -269,13 +272,10 @@ class HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    
     try {
       setState(() {
         _isProcessingPhoto = true;
       });
-
-      // Take photo with camera (normal - with background)
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
@@ -283,19 +283,25 @@ class HomeScreenState extends State<HomeScreen> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-
       if (pickedFile != null) {
         File imageFile = File(pickedFile.path);
-        
-        // Upload to Firebase Storage (with background)
+        // Upload original
         String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
-        
-        // Add to user's profile photos collection
-        await _addProfilePhotoToGallery(downloadUrl);
-        
-        // Refresh profile photos
+        // Remove background and upload processed image
+        String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+        String? downloadUrlNoBg;
+        if (processedUrl != null) {
+          final response = await http.get(Uri.parse(processedUrl));
+          if (response.statusCode == 200) {
+            final tempDir = Directory.systemTemp;
+            final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
+            await tempFile.writeAsBytes(response.bodyBytes);
+            downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
+            await tempFile.delete();
+          }
+        }
+        await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
         await _fetchUserProfilePhotos();
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Profile photo added to gallery!')),
         );
@@ -311,9 +317,8 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _addProfilePhotoToGallery(String photoUrl) async {
+  Future<void> _addProfilePhotoToGallery(String photoUrl, {String? photoUrlNoBg}) async {
     if (_currentUser == null) return;
-    
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -321,9 +326,10 @@ class HomeScreenState extends State<HomeScreen> {
           .collection('profilePhotos')
           .add({
         'photoUrl': photoUrl,
+        'photoUrlNoBg': photoUrlNoBg,
         'uploadedAt': FieldValue.serverTimestamp(),
         'isActive': false,
-        'withoutBackground': false, // Mark as not processed
+        'withoutBackground': photoUrlNoBg != null, // Mark as processed if available
       });
     } catch (e) {
       print('Error adding profile photo to gallery: $e');
@@ -1238,61 +1244,117 @@ class HomeScreenState extends State<HomeScreen> {
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 itemCount: userProfilePhotos.length,
                                 itemBuilder: (context, index) {
-                                  final photoUrl = userProfilePhotos[index];
+                                  final photoDoc = userProfilePhotos[index];
+                                  // If userProfilePhotos is a list of URLs, update _fetchUserProfilePhotos to fetch the full doc data
+                                  final photoUrl = photoDoc is String ? photoDoc : photoDoc['photoUrl'] as String?;
+                                  final photoUrlNoBg = photoDoc is String ? null : photoDoc['photoUrlNoBg'] as String?;
                                   final isActive = photoUrl == userProfilePhotoUrl;
-                                  
-                                  return Container(
-                                    margin: EdgeInsets.only(right: 12),
-                                    child: GestureDetector(
-                                      onTap: () => _selectProfilePhoto(photoUrl),
-                                      onLongPress: () => _showDeletePhotoDialog(photoUrl, index),
-                                      child: Stack(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 40,
-                                            backgroundImage: NetworkImage(photoUrl),
-                                            backgroundColor: Colors.grey.shade200,
-                                          ),
-                                          if (isActive)
-                                            Positioned(
-                                              right: 0,
-                                              bottom: 0,
-                                              child: Container(
-                                                padding: EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green,
-                                                  shape: BoxShape.circle,
+                                  return Row(
+                                    children: [
+                                      if (photoUrl != null)
+                                        GestureDetector(
+                                          onTap: () => _selectProfilePhoto(photoUrl as String),
+                                          onLongPress: () => _showDeletePhotoDialog(photoUrl as String, index),
+                                          child: Stack(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 40,
+                                                backgroundImage: NetworkImage(photoUrl as String),
+                                                backgroundColor: Colors.grey.shade200,
+                                              ),
+                                              if (isActive)
+                                                Positioned(
+                                                  right: 0,
+                                                  bottom: 0,
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.check,
+                                                      color: Colors.white,
+                                                      size: 16,
+                                                    ),
+                                                  ),
                                                 ),
-                                                child: Icon(
-                                                  Icons.check,
-                                                  color: Colors.white,
-                                                  size: 16,
+                                              Positioned(
+                                                top: 0,
+                                                left: 0,
+                                                child: GestureDetector(
+                                                  onTap: () => _showDeletePhotoDialog(photoUrl as String, index),
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.delete,
+                                                      color: Colors.white,
+                                                      size: 12,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          // Delete button
-                                          Positioned(
-                                            top: 0,
-                                            left: 0,
-                                            child: GestureDetector(
-                                              onTap: () => _showDeletePhotoDialog(photoUrl, index),
-                                              child: Container(
-                                                padding: EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red,
-                                                  shape: BoxShape.circle,
+                                            ],
+                                          ),
+                                        ),
+                                      if (photoUrlNoBg != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 8.0),
+                                          child: GestureDetector(
+                                            onTap: () => _selectProfilePhoto(photoUrlNoBg as String),
+                                            onLongPress: () => _showDeletePhotoDialog(photoUrlNoBg as String, index),
+                                            child: Stack(
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 40,
+                                                  backgroundImage: NetworkImage(photoUrlNoBg as String),
+                                                  backgroundColor: Colors.grey.shade200,
                                                 ),
-                                                child: Icon(
-                                                  Icons.delete,
-                                                  color: Colors.white,
-                                                  size: 12,
+                                                if (photoUrlNoBg == userProfilePhotoUrl)
+                                                  Positioned(
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    child: Container(
+                                                      padding: EdgeInsets.all(4),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.check,
+                                                        color: Colors.white,
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                Positioned(
+                                                  top: 0,
+                                                  left: 0,
+                                                  child: GestureDetector(
+                                                    onTap: () => _showDeletePhotoDialog(photoUrlNoBg as String, index),
+                                                    child: Container(
+                                                      padding: EdgeInsets.all(4),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.delete,
+                                                        color: Colors.white,
+                                                        size: 12,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                    ],
                                   );
                                 },
                               ),

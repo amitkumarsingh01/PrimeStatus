@@ -47,10 +47,16 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   final BackgroundRemovalService _bgRemovalService = BackgroundRemovalService();
   bool _isProcessingShare = false;
 
+  List<Map<String, dynamic>> _userProfilePhotos = [];
+  String? _activeProfilePhotoUrl;
+  bool _isLoadingProfilePhotos = false;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: widget.initialIndex);
+    _activeProfilePhotoUrl = widget.userProfilePhotoUrl;
+    _fetchUserProfilePhotos();
   }
 
   @override
@@ -573,121 +579,22 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           height: 400,
           child: Column(
             children: [
-              // Current profile photo
-              Text(
-                'Current Profile Photo',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              SizedBox(height: 16),
+              // Profile photo gallery
+              Expanded(
+                child: _buildProfilePhotoGallery(),
               ),
-              SizedBox(height: 8),
-              CircleAvatar(
-                radius: 40,
-                backgroundImage: widget.userProfilePhotoUrl != null
-                    ? NetworkImage(widget.userProfilePhotoUrl!)
-                    : null,
-                child: widget.userProfilePhotoUrl == null
-                    ? Icon(Icons.person, size: 40)
-                    : null,
-              ),
-              
-              // Business Information (if Business user)
-              if (widget.userUsageType == 'Business')
-                Container(
-                  margin: EdgeInsets.only(top: 16),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.business, color: Colors.blue.shade700, size: 16),
-                          SizedBox(width: 8),
-                          Text(
-                            'Business Information',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      if (widget.userAddress.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                widget.userAddress,
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (widget.userPhoneNumber.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.phone, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              widget.userPhoneNumber,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      if (widget.userCity.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.location_city, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              widget.userCity,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      if (widget.userAddress.isEmpty || widget.userPhoneNumber.isEmpty || widget.userCity.isEmpty)
-                        Container(
-                          margin: EdgeInsets.only(top: 8),
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.orange.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info, color: Colors.orange.shade700, size: 14),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Complete your business profile to display contact info on posts',
-                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              
               SizedBox(height: 16),
               // Add new photo button
-              ElevatedButton.icon(
-                onPressed: () => _addNewProfilePhoto(),
-                icon: Icon(Icons.add_a_photo),
-                label: Text('Add New Photo'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+              // ElevatedButton.icon(
+              //   onPressed: () => _addNewProfilePhoto(),
+              //   icon: Icon(Icons.add_a_photo),
+              //   label: Text('Add New Photo'),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: Colors.orange,
+              //     foregroundColor: Colors.white,
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -942,6 +849,191 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         ],
       ),
     );
+  }
+
+  Future<void> _fetchUserProfilePhotos() async {
+    setState(() { _isLoadingProfilePhotos = true; });
+    try {
+      final user = _userService.currentUser;
+      if (user == null) return;
+      final photosSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('profilePhotos')
+          .orderBy('uploadedAt', descending: true)
+          .get();
+      setState(() {
+        _userProfilePhotos = photosSnapshot.docs.map((doc) => doc.data()).toList();
+        _activeProfilePhotoUrl = widget.userProfilePhotoUrl;
+      });
+    } catch (e) {
+      print('Error fetching profile photos: $e');
+    } finally {
+      setState(() { _isLoadingProfilePhotos = false; });
+    }
+  }
+
+  Widget _buildProfilePhotoGallery() {
+    if (_isLoadingProfilePhotos) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (_userProfilePhotos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('No profile photos yet', style: TextStyle(color: Colors.grey[600])),
+            SizedBox(height: 8),
+            Text('Add your first profile photo!', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          ],
+        ),
+      );
+    }
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: _userProfilePhotos.length,
+      itemBuilder: (context, index) {
+        final photoDoc = _userProfilePhotos[index];
+        final photoUrl = photoDoc['photoUrl'] as String?;
+        final photoUrlNoBg = photoDoc['photoUrlNoBg'] as String?;
+        final isActive = photoUrl == _activeProfilePhotoUrl || photoUrlNoBg == _activeProfilePhotoUrl;
+        return Row(
+          children: [
+            if (photoUrl != null)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectProfilePhotoFromGallery(photoUrl),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive && _activeProfilePhotoUrl == photoUrl ? Colors.green : Colors.grey.shade300,
+                        width: isActive && _activeProfilePhotoUrl == photoUrl ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            photoUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            ),
+                          ),
+                          if (isActive && _activeProfilePhotoUrl == photoUrl)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.check, color: Colors.white, size: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (photoUrlNoBg != null)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectProfilePhotoFromGallery(photoUrlNoBg),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive && _activeProfilePhotoUrl == photoUrlNoBg ? Colors.green : Colors.grey.shade300,
+                        width: isActive && _activeProfilePhotoUrl == photoUrlNoBg ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            photoUrlNoBg,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            ),
+                          ),
+                          if (isActive && _activeProfilePhotoUrl == photoUrlNoBg)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.check, color: Colors.white, size: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _selectProfilePhotoFromGallery(String photoUrl) async {
+    final user = _userService.currentUser;
+    if (user == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'profilePhotoUrl': photoUrl});
+      setState(() {
+        _activeProfilePhotoUrl = photoUrl;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile photo updated!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update profile photo: $e')),
+      );
+    }
   }
 }
 

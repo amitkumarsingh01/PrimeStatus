@@ -1064,108 +1064,108 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           child: Column(
             children: [
               // Current profile photo
-              Text(
-                'Current Profile Photo',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              CircleAvatar(
-                radius: 40,
-                backgroundImage: (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl != null)
-                    ? NetworkImage(context.findAncestorStateOfType<HomeScreenState>()!.userProfilePhotoUrl!)
-                    : null,
-                child: (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl == null)
-                    ? Icon(Icons.person, size: 40)
-                    : null,
-              ),
+              // Text(
+              //   'Current Profile Photo',
+              //   style: TextStyle(fontWeight: FontWeight.bold),
+              // ),
+              // SizedBox(height: 8),
+              // CircleAvatar(
+              //   radius: 40,
+              //   backgroundImage: (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl != null)
+              //       ? NetworkImage(context.findAncestorStateOfType<HomeScreenState>()!.userProfilePhotoUrl!)
+              //       : null,
+              //   child: (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl == null)
+              //       ? Icon(Icons.person, size: 40)
+              //       : null,
+              // ),
               
               // Business Information (if Business user)
-              if (userUsageType == 'Business')
-                Container(
-                  margin: EdgeInsets.only(top: 16),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.business, color: Colors.blue.shade700, size: 16),
-                          SizedBox(width: 8),
-                          Text(
-                            'Business Information',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      if (userAddress.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                userAddress,
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (userPhoneNumber.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.phone, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              userPhoneNumber,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      if (userCity.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(Icons.location_city, color: Colors.grey.shade600, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              userCity,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      if (userAddress.isEmpty || userPhoneNumber.isEmpty || userCity.isEmpty)
-                        Container(
-                          margin: EdgeInsets.only(top: 8),
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.orange.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info, color: Colors.orange.shade700, size: 14),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Complete your business profile to display contact info on posts',
-                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+              // if (userUsageType == 'Business')
+              //   Container(
+              //     margin: EdgeInsets.only(top: 16),
+              //     padding: EdgeInsets.all(12),
+              //     decoration: BoxDecoration(
+              //       color: Colors.blue.shade50,
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(color: Colors.blue.shade200),
+              //     ),
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Row(
+              //           children: [
+              //             Icon(Icons.business, color: Colors.blue.shade700, size: 16),
+              //             SizedBox(width: 8),
+              //             Text(
+              //               'Business Information',
+              //               style: TextStyle(
+              //                 fontWeight: FontWeight.bold,
+              //                 color: Colors.blue.shade700,
+              //               ),
+              //             ),
+              //           ],
+              //         ),
+              //         SizedBox(height: 8),
+              //         if (userAddress.isNotEmpty)
+              //           Row(
+              //             children: [
+              //               Icon(Icons.location_on, color: Colors.grey.shade600, size: 14),
+              //               SizedBox(width: 4),
+              //               Expanded(
+              //                 child: Text(
+              //                   userAddress,
+              //                   style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         if (userPhoneNumber.isNotEmpty)
+              //           Row(
+              //             children: [
+              //               Icon(Icons.phone, color: Colors.grey.shade600, size: 14),
+              //               SizedBox(width: 4),
+              //               Text(
+              //                 userPhoneNumber,
+              //                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              //               ),
+              //             ],
+              //           ),
+              //         if (userCity.isNotEmpty)
+              //           Row(
+              //             children: [
+              //               Icon(Icons.location_city, color: Colors.grey.shade600, size: 14),
+              //               SizedBox(width: 4),
+              //               Text(
+              //                 userCity,
+              //                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              //               ),
+              //             ],
+              //           ),
+              //         if (userAddress.isEmpty || userPhoneNumber.isEmpty || userCity.isEmpty)
+              //           Container(
+              //             margin: EdgeInsets.only(top: 8),
+              //             padding: EdgeInsets.all(8),
+              //             decoration: BoxDecoration(
+              //               color: Colors.orange.shade50,
+              //               borderRadius: BorderRadius.circular(4),
+              //               border: Border.all(color: Colors.orange.shade200),
+              //             ),
+              //             child: Row(
+              //               children: [
+              //                 Icon(Icons.info, color: Colors.orange.shade700, size: 14),
+              //                 SizedBox(width: 4),
+              //                 Expanded(
+              //                   child: Text(
+              //                     'Complete your business profile to display contact info on posts',
+              //                     style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+              //                   ),
+              //                 ),
+              //               ],
+              //             ),
+              //           ),
+              //       ],
+              //     ),
+              //   ),
               
               SizedBox(height: 16),
               // Profile photo gallery
@@ -1174,15 +1174,15 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               ),
               SizedBox(height: 16),
               // Add new photo button
-              ElevatedButton.icon(
-                onPressed: () => _addNewProfilePhoto(),
-                icon: Icon(Icons.add_a_photo),
-                label: Text('Add New Photo'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+              // ElevatedButton.icon(
+              //   onPressed: () => _addNewProfilePhoto(),
+              //   icon: Icon(Icons.add_a_photo),
+              //   label: Text('Add New Photo'),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: Colors.orange,
+              //     foregroundColor: Colors.white,
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -1230,80 +1230,159 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       ),
       itemCount: userProfilePhotos.length,
       itemBuilder: (context, index) {
-        final photoUrl = userProfilePhotos[index];
-        final isActive = photoUrl == homeScreenState?.userProfilePhotoUrl;
-        
-        return GestureDetector(
-          onTap: () => _selectProfilePhotoFromGallery(photoUrl),
-          onLongPress: () => _showDeletePhotoDialog(photoUrl, index),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isActive ? Colors.green : Colors.grey.shade300,
-                width: isActive ? 2 : 1,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Stack(
-                children: [
-                  // Show normal photo in gallery (with background)
-                  CachedNetworkImage(
-                    imageUrl: photoUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey.shade200,
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.shade200,
-                      child: Icon(Icons.person, size: 30, color: Colors.grey),
-                    ),
-                  ),
-                  if (isActive)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Container(
-                        padding: EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 12,
-                        ),
+        final photoDoc = userProfilePhotos[index];
+        final photoUrl = photoDoc['photoUrl'] as String?;
+        final photoUrlNoBg = photoDoc['photoUrlNoBg'] as String?;
+        final isActive = photoUrl == homeScreenState?.userProfilePhotoUrl || photoUrlNoBg == homeScreenState?.userProfilePhotoUrl;
+        return Row(
+          children: [
+            if (photoUrl != null)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectProfilePhotoFromGallery(photoUrl),
+                  onLongPress: () => _showDeletePhotoDialog(photoUrl, index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive && homeScreenState?.userProfilePhotoUrl == photoUrl ? Colors.green : Colors.grey.shade300,
+                        width: isActive && homeScreenState?.userProfilePhotoUrl == photoUrl ? 2 : 1,
                       ),
                     ),
-                  // Delete button (only show on long press or always visible)
-                  Positioned(
-                    top: 4,
-                    left: 4,
-                    child: GestureDetector(
-                      onTap: () => _showDeletePhotoDialog(photoUrl, index),
-                      child: Container(
-                        padding: EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.delete,
-                          color: Colors.white,
-                          size: 12,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Stack(
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: photoUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey.shade200,
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            ),
+                          ),
+                          if (isActive && homeScreenState?.userProfilePhotoUrl == photoUrl)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 4,
+                            left: 4,
+                            child: GestureDetector(
+                              onTap: () => _showDeletePhotoDialog(photoUrl, index),
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            if (photoUrlNoBg != null)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _selectProfilePhotoFromGallery(photoUrlNoBg),
+                  onLongPress: () => _showDeletePhotoDialog(photoUrlNoBg, index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive && homeScreenState?.userProfilePhotoUrl == photoUrlNoBg ? Colors.green : Colors.grey.shade300,
+                        width: isActive && homeScreenState?.userProfilePhotoUrl == photoUrlNoBg ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Stack(
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: photoUrlNoBg,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey.shade200,
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            ),
+                          ),
+                          if (isActive && homeScreenState?.userProfilePhotoUrl == photoUrlNoBg)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 4,
+                            left: 4,
+                            child: GestureDetector(
+                              onTap: () => _showDeletePhotoDialog(photoUrlNoBg, index),
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
