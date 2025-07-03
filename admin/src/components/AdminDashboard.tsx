@@ -2,16 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Type, Move, Settings, Save, Eye, Trash2, X } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Post } from '../types';
-import ImageEditor from './ImageEditor';
 import { uploadMediaFile } from '../firebase';
 import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+  onOpenImageEditor: (props: {
+    media: string;
+    category: string;
+    region: string;
+    language: 'english' | 'kannada';
+    userName: string;
+    onSave: (postData: any) => void;
+    onCancel: () => void;
+  }) => void;
+}
+
+export default function AdminDashboard({ onOpenImageEditor }: AdminDashboardProps) {
   const { state, addPost } = useApp();
-  const [showEditor, setShowEditor] = useState(false);
   const [showExisting, setShowExisting] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<string>('');
   const [language, setLanguage] = useState<'english' | 'kannada'>('english');
   const [existingPosts, setExistingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,19 +98,29 @@ export default function AdminDashboard() {
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      let mediaUrl = '';
       if (file.type.startsWith('video/')) {
         // Upload video to Firebase Storage
-        const url = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
-        setSelectedMedia(url); // Pass URL, not base64
+        mediaUrl = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
       } else {
         // For images, you can still use base64 if you want
         const reader = new FileReader();
         reader.onload = (event) => {
-          setSelectedMedia(event.target?.result as string);
+          mediaUrl = event.target?.result as string;
         };
         reader.readAsDataURL(file);
       }
-      setShowEditor(true);
+      
+      // Open image editor through the layout
+      onOpenImageEditor({
+        media: mediaUrl,
+        category: '',
+        region: '',
+        language,
+        userName: state.currentUser?.name || '',
+        onSave: handlePostSave,
+        onCancel: () => {},
+      });
     }
   };
 
@@ -121,8 +140,6 @@ export default function AdminDashboard() {
     };
     
     addPost(newPost);
-    setShowEditor(false);
-    setSelectedMedia('');
   };
 
   const formatDate = (dateString: string) => {
@@ -139,19 +156,7 @@ export default function AdminDashboard() {
     return mediaUrl.startsWith('data:video/') || mediaUrl.startsWith('http') && mediaUrl.includes('video');
   };
 
-  if (showEditor && selectedMedia) {
-    return (
-      <ImageEditor
-        media={selectedMedia}
-        category=""
-        region=""
-        language={language}
-        userName={state.currentUser?.name || ''}
-        onSave={handlePostSave}
-        onCancel={() => setShowEditor(false)}
-      />
-    );
-  }
+
 
   if (showExisting) {
     return (
@@ -304,9 +309,10 @@ export default function AdminDashboard() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-white/20">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <img src="/assets/logo.png" alt="Logo" className="h-24 w-24 mx-auto mb-4" />
+            {/* <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
               <Settings className="h-8 w-8 text-white" />
-            </div>
+            </div> */}
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
             <p className="text-gray-600">Create and manage your posts</p>
           </div>

@@ -35,9 +35,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-purple-50 to-orange-100 flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-md border border-white/20">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
-            <User className="h-8 w-8 text-white" />
-          </div>
+          <img src="/assets/logo.png" alt="Logo" className="h-20 w-20 mx-auto mb-4" />
+          {/* <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <img src="/assets/logo.png" alt="Logo" className="h-8 w-8" />
+          </div> */}
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Login</h1>
           <p className="text-gray-600">Sign in to access admin dashboard</p>
         </div>
