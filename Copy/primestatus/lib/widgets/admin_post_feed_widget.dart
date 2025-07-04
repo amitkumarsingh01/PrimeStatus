@@ -281,7 +281,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                       width: width,
                       height: height,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFFF3E0), // Light orange
+                        color: Colors.white, // Changed from Color(0xFFFFF3E0) to white
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
                           topRight: Radius.circular(16),
@@ -422,6 +422,13 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           ),
           // Action buttons at the bottom
           Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xffffffff), Color(0xffffffff)], // Replace with your two colors
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
@@ -431,7 +438,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                   child: ElevatedButton.icon(
                     onPressed: () => _showShareOptions(imageUrl, post),
                     icon: const Icon(Icons.share, color: Colors.white),
-                    label: const Text('Share', style: TextStyle(color: Colors.white)),
+                    label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[600],
                       shape: RoundedRectangleBorder(
@@ -678,63 +685,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   }
 
   void _showShareOptions(String imageUrl, Map<String, dynamic> post) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Share Image',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildShareOption(
-                  'WhatsApp',
-                  Icons.message,
-                  Colors.green,
-                  () => _shareImage(imageUrl, post, 'WhatsApp'),
-                ),
-                _buildShareOption(
-                  'Instagram',
-                  Icons.camera_alt,
-                  Colors.purple,
-                  () => _shareImage(imageUrl, post, 'Instagram'),
-                ),
-                _buildShareOption(
-                  'Facebook',
-                  Icons.facebook,
-                  Colors.blue,
-                  () => _shareImage(imageUrl, post, 'Facebook'),
-                ),
-                _buildShareOption(
-                  'More',
-                  Icons.more_horiz,
-                  Colors.grey,
-                  () => _shareImage(imageUrl, post, 'General'),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            if (_isProcessingShare)
-              Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 8),
-                  Text('Processing image...'),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
+    // Directly call _shareImage with 'General' for all options
+    _shareImage(imageUrl, post, 'General');
   }
 
   Widget _buildShareOption(String title, IconData icon, Color color, VoidCallback onTap) {

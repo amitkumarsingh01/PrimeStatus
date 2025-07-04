@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_cropper/image_cropper.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -98,9 +99,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      final bytes = await picked.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      await updateUserDetails(profilePhotoUrl: base64Image);
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatioPresets: [
+          CropAspectRatioPreset.square,
+          CropAspectRatioPreset.ratio4x3,
+          CropAspectRatioPreset.original,
+        ],
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+            toolbarColor: Colors.purple,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: 'Crop Image',
+          ),
+        ],
+      );
+      if (croppedFile != null) {
+        final bytes = await croppedFile.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        await updateUserDetails(profilePhotoUrl: base64Image);
+      }
     }
   }
 

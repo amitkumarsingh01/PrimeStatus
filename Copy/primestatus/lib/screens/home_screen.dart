@@ -18,6 +18,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:primestatus/widgets/fullscreen_post_viewer.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -230,29 +231,48 @@ class HomeScreenState extends State<HomeScreen> {
         imageQuality: 85,
       );
       if (pickedFile != null) {
-        File imageFile = File(pickedFile.path);
-        // Upload original
-        String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
-        // Remove background and upload processed image
-        String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
-        String? downloadUrlNoBg;
-        if (processedUrl != null) {
-          // Download processed image and upload to Firebase Storage
-          final response = await http.get(Uri.parse(processedUrl));
-          if (response.statusCode == 200) {
-            final tempDir = Directory.systemTemp;
-            final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
-            await tempFile.writeAsBytes(response.bodyBytes);
-            downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
-            await tempFile.delete();
-          }
-        }
-        // Add both to Firestore
-        await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
-        await _fetchUserProfilePhotos();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile photo added to gallery!')),
+        // Crop the image before further processing
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Image',
+              toolbarColor: Colors.deepOrange,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Crop Image',
+            ),
+          ],
         );
+        if (croppedFile != null) {
+          File imageFile = File(croppedFile.path);
+          // Upload original
+          String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
+          // Remove background and upload processed image
+          String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+          String? downloadUrlNoBg;
+          if (processedUrl != null) {
+            // Download processed image and upload to Firebase Storage
+            final response = await http.get(Uri.parse(processedUrl));
+            if (response.statusCode == 200) {
+              final tempDir = Directory.systemTemp;
+              final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
+              await tempFile.writeAsBytes(response.bodyBytes);
+              downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
+              await tempFile.delete();
+            }
+          }
+          // Add both to Firestore
+          await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
+          await _fetchUserProfilePhotos();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profile photo added to gallery!')),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -284,27 +304,46 @@ class HomeScreenState extends State<HomeScreen> {
         imageQuality: 85,
       );
       if (pickedFile != null) {
-        File imageFile = File(pickedFile.path);
-        // Upload original
-        String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
-        // Remove background and upload processed image
-        String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
-        String? downloadUrlNoBg;
-        if (processedUrl != null) {
-          final response = await http.get(Uri.parse(processedUrl));
-          if (response.statusCode == 200) {
-            final tempDir = Directory.systemTemp;
-            final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
-            await tempFile.writeAsBytes(response.bodyBytes);
-            downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
-            await tempFile.delete();
-          }
-        }
-        await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
-        await _fetchUserProfilePhotos();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile photo added to gallery!')),
+        // Crop the image before further processing
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Image',
+              toolbarColor: Colors.deepOrange,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Crop Image',
+            ),
+          ],
         );
+        if (croppedFile != null) {
+          File imageFile = File(croppedFile.path);
+          // Upload original
+          String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
+          // Remove background and upload processed image
+          String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+          String? downloadUrlNoBg;
+          if (processedUrl != null) {
+            final response = await http.get(Uri.parse(processedUrl));
+            if (response.statusCode == 200) {
+              final tempDir = Directory.systemTemp;
+              final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
+              await tempFile.writeAsBytes(response.bodyBytes);
+              downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
+              await tempFile.delete();
+            }
+          }
+          await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
+          await _fetchUserProfilePhotos();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profile photo added to gallery!')),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -390,203 +429,15 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF2c0036), Color(0xFFd74d02)], // Replace with your two colors
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-              elevation: 0,
-              // title: Text('Prime Status'),
-              bottom: PreferredSize(
-                preferredSize: Size.fromHeight(14),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 12),
-
-                      //30% Create Button
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            // Business Button
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: userUsageType == 'Business'
-                                      ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
-                                      : null,
-                                  color: userUsageType == 'Business' ? null : Colors.grey.shade200,
-                                  borderRadius:BorderRadius.only(bottomLeft: Radius.circular(10),topLeft: Radius.circular(10))),
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    if (isLoggedIn) {
-                                      await _updateUserDetails(usageType: 'Business');
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Please sign in to change usage type')),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: EdgeInsets.all(12),
-                                  ),
-                                  child: Text(
-                                    'Business',
-                                    style: TextStyle(
-                                      color: userUsageType == 'Business' ? Color(0xfffaeac7) : Colors.black87,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Personal Button
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: userUsageType == 'Personal'
-                                      ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
-                                      : null,
-                                  color: userUsageType == 'Personal' ? null : Colors.grey.shade200,
-                                  borderRadius:BorderRadius.only(bottomRight: Radius.circular(10),topRight: Radius.circular(10))),
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    if (isLoggedIn) {
-                                      await _updateUserDetails(usageType: 'Personal');
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Please sign in to change usage type')),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: EdgeInsets.all(12),
-                                  ),
-                                  child: Text(
-                                    'Personal',
-                                    style: TextStyle(
-                                      color: userUsageType == 'Personal' ? Color(0xfffaeac7) : Colors.black87,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 10),
-
-                      // 20% Search Bar
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: EdgeInsets.all(2), // Border thickness
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: TextField(
-                              onChanged: (value) {
-                                setState(() {
-                                  _categorySearchQuery = value;
-                                });
-                              },
-                              decoration: InputDecoration(
-                                hintText: 'Search...',
-                                prefixIcon: Icon(Icons.search),
-                                filled: true,
-                                fillColor: Colors.transparent,
-                                contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(width: 12),
-
-                      // 10% Profile/Login Icon
-                      Expanded(
-                        flex: 1,
-                        child: isLoggedIn && userProfilePhotoUrl != null
-                            ? GestureDetector(
-                                onTap: () => setState(() => _selectedIndex = 4),
-                                child: CircleAvatar(
-                                  radius: 26,
-                                  backgroundImage: NetworkImage(userProfilePhotoUrl!),
-                                  backgroundColor: Colors.grey.shade200,
-                                ),
-                              )
-                            : IconButton(
-                                icon: Icon(Icons.login),
-                                onPressed: _showLoginDialog,
-                                color: Colors.white,
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            body: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                _buildAdminFeedTab(),
-                _buildCategoriesTab(),
-                _buildFavoritesTab(),
-                _buildHomeTab(),
-                _buildProfileTab(),
-              ],
-            ),
-            // bottomNavigationBar: BottomNavigationBar(
-            //   currentIndex: _selectedIndex,
-            //   onTap: (index) => setState(() => _selectedIndex = index),
-            //   type: BottomNavigationBarType.fixed,
-            //   selectedItemColor: Colors.deepOrange,
-            //   unselectedItemColor: Colors.grey,
-            //   items: [
-            //     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            //     BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
-            //     BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
-            //     BottomNavigationBarItem(icon: Icon(Icons.create), label: 'Create'),
-            //     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            //   ],
-            // ),
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: [
+              _buildAdminFeedTab(),
+              _buildCategoriesTab(),
+              _buildFavoritesTab(),
+              _buildHomeTab(),
+              _buildProfileTab(),
+            ],
           ),
         ),
         // Loading overlay for profile photo processing
@@ -607,12 +458,12 @@ class HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 16),
                     Text(
                       'Processing photo...',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black, decoration: TextDecoration.none, fontFamily: 'Roboto'),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Removing background and uploading',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12, decoration: TextDecoration.none, fontFamily: 'Roboto'),
                     ),
                   ],
                 ),
@@ -622,24 +473,253 @@ class HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
-  Widget _buildHomeTab() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildQuoteOfTheDay(),
-          SizedBox(height: 24),
-          _buildQuickActions(),
-          SizedBox(height: 24),
-          _buildFeaturedCategories(),
-          // SizedBox(height: 24),
-          // _buildAdminPostFeed(),
-        ],
+Widget _buildHomeTab() {
+  return Scaffold(
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(
+      backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+      elevation: 0,
+      bottom: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Column(
+            children: [
+              // First row: Business/Personal toggle, Search, Profile
+              Row(
+                children: [
+                  // Business/Personal Toggle
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            if (isLoggedIn) {
+                              await _updateUserDetails(usageType: 'Personal');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Please sign in to change usage type')),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Personal'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Personal' ? null : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Personal',
+                              style: TextStyle(
+                                color: userUsageType == 'Personal' ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            if (isLoggedIn) {
+                              await _updateUserDetails(usageType: 'Business');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Please sign in to change usage type')),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Business'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Business' ? null : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Business',
+                              style: TextStyle(
+                                color: userUsageType == 'Business' ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  Spacer(),
+                  
+                  // Search Button
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () { },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, size: 18, color: Colors.black87),
+                              SizedBox(width: 8),
+                              Text(
+                                'Search',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(width: 12),
+                  
+                  // Profile/Login
+                  isLoggedIn && userProfilePhotoUrl != null
+                      ? GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(userProfilePhotoUrl!),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: _showLoginDialog,
+                          child: Container(
+                            height: 36,
+                            width: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+              
+              SizedBox(height: 12),
+              
+              // Second row: Category chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildCategoryChip('All', true),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Today Special', false),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Good Morning', false),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('My Business', false, icon: Icons.business_center),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Good Night', false),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Political', false, icon: Icons.flag),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Happy Sunday', false),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('Love ❤️', false),
+                    SizedBox(width: 8),
+                    _buildCategoryChip('More (8)', false),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+        body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildQuoteOfTheDay(),
+            SizedBox(height: 24),
+            _buildQuickActions(),
+            SizedBox(height: 24),
+            _buildFeaturedCategories(),
+            // SizedBox(height: 24),
+            // _buildAdminPostFeed(),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _buildCategoryChip(String label, bool isSelected, {IconData? icon}) {
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: isSelected ? Color(0xFF1976D2) : Colors.white.withOpacity(0.9),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: isSelected ? Color(0xFF1976D2) : Colors.grey.shade300,
+        width: 1,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? Colors.white : Colors.black87,
+          ),
+          SizedBox(width: 4),
+        ],
+        Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildQuoteOfTheDay() {
     return Container(
@@ -844,118 +924,682 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoriesTab() {
-    // Filter categories based on search query (case-insensitive)
-    final filteredCategories = QuoteData.categories
-        .where((category) =>
-            _categorySearchQuery.isEmpty ||
-            category.toLowerCase().contains(_categorySearchQuery.toLowerCase()))
-        .toList();
-
-    return ListView.builder(
-      padding: EdgeInsets.all(16),
-      itemCount: filteredCategories.length,
-      itemBuilder: (context, index) {
-        final category = filteredCategories[index];
-        return Card(
-          margin: EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.deepOrange.shade100,
-              child: Icon(Icons.format_quote, color: Colors.deepOrange),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            title: Text(
-              category,
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text('${QuoteData.quotes[category]?.length ?? 0} quotes'),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
           ),
-        );
-      },
+        ),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
+            child: Row(
+              children: [
+                SizedBox(width: 8),
+                //30% Create Button
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 32,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Business'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Business' ? null : Colors.grey.shade200,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(6),
+                                bottomLeft: Radius.circular(6),
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (isLoggedIn) {
+                                  await _updateUserDetails(usageType: 'Business');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Please sign in to change usage type')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(6),
+                                    bottomLeft: Radius.circular(6),
+                                  ),
+                                ),
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size(0, 32),
+                              ),
+                              child: Text(
+                                'Business',
+                                style: TextStyle(
+                                  color: userUsageType == 'Business' ? Color(0xfffaeac7) : Colors.black87,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Personal'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Personal' ? null : Colors.grey.shade200,
+                              borderRadius: BorderRadius.only(
+                                topRight: Radius.circular(6),
+                                bottomRight: Radius.circular(6),
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (isLoggedIn) {
+                                  await _updateUserDetails(usageType: 'Personal');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Please sign in to change usage type')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.only(
+                                    topRight: Radius.circular(6),
+                                    bottomRight: Radius.circular(6),
+                                  ),
+                                ),
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size(0, 32),
+                              ),
+                              child: Text(
+                                'Personal',
+                                style: TextStyle(
+                                  color: userUsageType == 'Personal' ? Color(0xfffaeac7) : Colors.black87,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(width: 8),
+                // 20% Search Bar
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.all(2), // Border thickness
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _categorySearchQuery = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          prefixIcon: Icon(Icons.search, size: 18),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                // 10% Profile/Login Icon
+                Expanded(
+                  flex: 1,
+                  child: isLoggedIn && userProfilePhotoUrl != null
+                      ? GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(userProfilePhotoUrl!),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(Icons.login, size: 20),
+                          onPressed: _showLoginDialog,
+                          color: Colors.white,
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: ListView.builder(
+        // padding: EdgeInsets.all(16),
+        itemCount: QuoteData.categories
+            .where((category) =>
+                _categorySearchQuery.isEmpty ||
+                category.toLowerCase().contains(_categorySearchQuery.toLowerCase()))
+            .toList()
+            .length,
+        itemBuilder: (context, index) {
+          final filteredCategories = QuoteData.categories
+              .where((category) =>
+                  _categorySearchQuery.isEmpty ||
+                  category.toLowerCase().contains(_categorySearchQuery.toLowerCase()))
+              .toList();
+          final category = filteredCategories[index];
+          return Card(
+            margin: EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.deepOrange.shade100,
+                child: Icon(Icons.format_quote, color: Colors.deepOrange),
+              ),
+              title: Text(
+                category,
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text('${QuoteData.quotes[category]?.length ?? 0} quotes'),
+              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildFavoritesTab() {
-    return favoriteQuotes.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
+            child: Row(
               children: [
-                Icon(Icons.favorite_border, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'No favorite quotes yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
+                SizedBox(width: 8),
+                //30% Create Button
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 32,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Business'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Business' ? null : Colors.grey.shade200,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(6),
+                                bottomLeft: Radius.circular(6),
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (isLoggedIn) {
+                                  await _updateUserDetails(usageType: 'Business');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Please sign in to change usage type')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(6),
+                                    bottomLeft: Radius.circular(6),
+                                  ),
+                                ),
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size(0, 32),
+                              ),
+                              child: Text(
+                                'Business',
+                                style: TextStyle(
+                                  color: userUsageType == 'Business' ? Color(0xfffaeac7) : Colors.black87,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Personal'
+                                  ? LinearGradient(colors: [Color(0xFF2c0036), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Personal' ? null : Colors.grey.shade200,
+                              borderRadius: BorderRadius.only(
+                                topRight: Radius.circular(6),
+                                bottomRight: Radius.circular(6),
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (isLoggedIn) {
+                                  await _updateUserDetails(usageType: 'Personal');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Please sign in to change usage type')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.only(
+                                    topRight: Radius.circular(6),
+                                    bottomRight: Radius.circular(6),
+                                  ),
+                                ),
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size(0, 32),
+                              ),
+                              child: Text(
+                                'Personal',
+                                style: TextStyle(
+                                  color: userUsageType == 'Personal' ? Color(0xfffaeac7) : Colors.black87,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(width: 8),
+                // 20% Search Bar
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.all(2), // Border thickness
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _categorySearchQuery = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          prefixIcon: Icon(Icons.search, size: 18),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Start adding quotes to your favorites',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                  ),
+                SizedBox(width: 8),
+                // 10% Profile/Login Icon
+                Expanded(
+                  flex: 1,
+                  child: isLoggedIn && userProfilePhotoUrl != null
+                      ? GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(userProfilePhotoUrl!),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(Icons.login, size: 20),
+                          onPressed: _showLoginDialog,
+                          color: Colors.white,
+                        ),
                 ),
               ],
             ),
-          )
-        : ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: favoriteQuotes.length,
-            itemBuilder: (context, index) {
-              final quote = favoriteQuotes[index];
-              return Card(
-                margin: EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(quote),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.favorite, color: Colors.red),
-                        onPressed: () {
-                          setState(() {
-                            favoriteQuotes.remove(quote);
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.create),
-                        onPressed: () => _createQuote(quote),
-                      ),
-                    ],
+          ),
+        ),
+      ),
+      body: favoriteQuotes.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.favorite_border, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No favorite quotes yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
+                  SizedBox(height: 8),
+                  Text(
+                    'Start adding quotes to your favorites',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: EdgeInsets.all(16),
+              itemCount: favoriteQuotes.length,
+              itemBuilder: (context, index) {
+                final quote = favoriteQuotes[index];
+                return Card(
+                  margin: EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    title: Text(quote),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.favorite, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              favoriteQuotes.remove(quote);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.create),
+                          onPressed: () => _createQuote(quote),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
   }
-
-  Widget _buildAdminFeedTab() {
-    return Scaffold(
+Widget _buildAdminFeedTab() {
+  return Scaffold(
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(
       backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+      elevation: 0,
+      bottom: PreferredSize(
+        preferredSize: Size.fromHeight(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Column(
+            children: [
+              // First row: Business/Personal toggle, Search, Profile
+              Row(
+                children: [
+                  // Business/Personal Toggle
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            if (isLoggedIn) {
+                              await _updateUserDetails(usageType: 'Personal');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Please sign in to change usage type')),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Personal'
+                                  ? LinearGradient(colors: [Color(0xFFd74d02), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Personal' ? null : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Personal',
+                              style: TextStyle(
+                                color: userUsageType == 'Personal' ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            if (isLoggedIn) {
+                              await _updateUserDetails(usageType: 'Business');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Please sign in to change usage type')),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: userUsageType == 'Business'
+                                  ? LinearGradient(colors: [Color(0xFFd74d02), Color(0xFFd74d02)])
+                                  : null,
+                              color: userUsageType == 'Business' ? null : Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'Business',
+                              style: TextStyle(
+                                color: userUsageType == 'Business' ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  Spacer(),
+                  
+                  // Search Button
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () { },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, size: 18, color: Colors.black87),
+                              SizedBox(width: 8),
+                              Text(
+                                'Search',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(width: 12),
+                  
+                  // Profile/Login
+                  isLoggedIn && userProfilePhotoUrl != null
+                      ? GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(userProfilePhotoUrl!),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: _showLoginDialog,
+                          child: Container(
+                            height: 36,
+                            width: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+              
+              SizedBox(height: 12),
+              
+              // Second row: Admin Feed specific category chips
+              // SingleChildScrollView(
+              //   scrollDirection: Axis.horizontal,
+              //   child: Row(
+              //     children: [
+              //       _buildAdminCategoryChip('All', true),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Pending', false, icon: Icons.pending_actions),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Approved', false, icon: Icons.check_circle),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Rejected', false, icon: Icons.cancel),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Reported', false, icon: Icons.report),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Featured', false, icon: Icons.star),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Analytics', false, icon: Icons.analytics),
+              //       SizedBox(width: 8),
+              //       _buildAdminCategoryChip('Settings', false, icon: Icons.settings),
+              //     ],
+              //   ),
+              // ),
+            ],
+          ),
+        ),
+      ),
+    ),
       body: Column(
         children: [
           Container(
             height: 85,
+            width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF2c0036), Color(0xFFd74d02)], // Replace with your two colors
+                colors: [Color(0xff2c0036), Color(0xffd74d02)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 7),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   child: Wrap(
-                    spacing: 8, // Horizontal space between items
-                    runSpacing: 9, // Vertical space between lines
+                    spacing: 4,
+                    runSpacing: 6,
                     children: QuoteData.categories.map((category) {
                       final isSelected = _selectedCategories.contains(category);
                       return GestureDetector(
@@ -978,20 +1622,18 @@ class HomeScreenState extends State<HomeScreen> {
                           });
                         },
                         child: Container(
-                          height: 30,
-                          width: 77,
-                          padding: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isSelected ? Colors.pink : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(width: 0.5, color: Colors.pink),
+                            color: isSelected ? const Color(0xffd74d02) : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(width: 0.5, color: const Color.fromARGB(255, 255, 119, 34)),
                           ),
                           child: Text(
                             category,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : Colors.black87,
+                              color: isSelected ? Colors.white : Colors.black,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -1030,6 +1672,49 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAdminCategoryChip(String label, bool isSelected, {IconData? icon}) {
+  return GestureDetector(
+    onTap: () {
+      // Handle category selection
+      setState(() {
+        // Update your selected admin category state here
+      });
+    },
+    child: Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? Color(0xFF1976D2) : Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? Color(0xFF1976D2) : Colors.grey.shade300,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
+            SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black87,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   Widget _buildProfileTab() {
     if (!isLoggedIn) {
       return SingleChildScrollView(
@@ -1063,16 +1748,22 @@ class HomeScreenState extends State<HomeScreen> {
               onPressed: _showLoginDialog,
               child: Text('Sign In'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
+                backgroundColor: Color(0xffd74d02),
                 foregroundColor: Colors.white,
               ),
             ),
+            Text('More', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+
             SizedBox(height: 32),
-            CommonWidgets.buildProfileOption('Premium Features', Icons.star, () => _showPremiumDialog()),
-            CommonWidgets.buildProfileOption('Share App', Icons.share, () => CommonWidgets.showComingSoonSnackBar(context)),
-            CommonWidgets.buildProfileOption('Rate Us', Icons.thumb_up, () => CommonWidgets.showComingSoonSnackBar(context)),
-            CommonWidgets.buildProfileOption('Help & Support', Icons.help, () => CommonWidgets.showComingSoonSnackBar(context)),
+            // CommonWidgets.buildProfileOption('Premium Features', Icons.star, () => _showPremiumDialog()),
+            // CommonWidgets.buildProfileOption('Share App', Icons.share, () => CommonWidgets.showComingSoonSnackBar(context)),
+            // CommonWidgets.buildProfileOption('Rate Us', Icons.thumb_up, () => CommonWidgets.showComingSoonSnackBar(context)),
+            // CommonWidgets.buildProfileOption('Help & Support', Icons.help, () => CommonWidgets.showComingSoonSnackBar(context)),
             CommonWidgets.buildProfileOption('About', Icons.info, () => _showAboutDialog()),
+            CommonWidgets.buildProfileOption('Contact Us', Icons.contact_mail, () => _showContactUsDialog()),
+            CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
+            CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
+            CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
           ],
         ),
       );
@@ -1133,6 +1824,7 @@ class HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           // Add a button to top left corner to go back to the home screen
+          SizedBox(height: 26),
           Container(
             alignment: Alignment.topLeft,
             padding: EdgeInsets.all(16),
@@ -1148,6 +1840,9 @@ class HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
+                    color: Colors.black, // Normal color
+                    decoration: TextDecoration.none, // Remove underline
+                    fontFamily: 'Roboto', // Force normal font
                   ),
                 ),
               ],
@@ -1157,7 +1852,7 @@ class HomeScreenState extends State<HomeScreen> {
             onTap: _pickProfilePhoto,
             child: CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.deepOrange.shade100,
+              backgroundColor: const Color.fromARGB(255, 209, 207, 207),
               backgroundImage: userProfilePhotoUrl != null
                   ? NetworkImage(userProfilePhotoUrl!)
                   : null,
@@ -1169,18 +1864,19 @@ class HomeScreenState extends State<HomeScreen> {
           SizedBox(height: 16),
           Text(
             userName.isNotEmpty ? userName : 'User',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black, decoration: TextDecoration.none, fontFamily: 'Roboto'),
           ),
           SizedBox(height: 8),
           Text(
             'Tap photo to change',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: Colors.black, // Normal color
+              decoration: TextDecoration.none, // Remove underline
+              fontFamily: 'Roboto', // Force normal font
             ),
           ),
           SizedBox(height: 24),
-          
           // User Details Section
           Container(
             decoration: BoxDecoration(
@@ -1208,7 +1904,9 @@ class HomeScreenState extends State<HomeScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: Colors.black, // Normal color
+                                decoration: TextDecoration.none, // Remove underline
+                                fontFamily: 'Roboto', // Force normal font
                               ),
                             ),
                             Spacer(),
@@ -1245,7 +1943,6 @@ class HomeScreenState extends State<HomeScreen> {
                                 itemCount: userProfilePhotos.length,
                                 itemBuilder: (context, index) {
                                   final photoDoc = userProfilePhotos[index];
-                                  // If userProfilePhotos is a list of URLs, update _fetchUserProfilePhotos to fetch the full doc data
                                   final photoUrl = photoDoc is String ? photoDoc : photoDoc['photoUrl'] as String?;
                                   final photoUrlNoBg = photoDoc is String ? null : photoDoc['photoUrlNoBg'] as String?;
                                   final isActive = photoUrl == userProfilePhotoUrl;
@@ -1370,7 +2067,9 @@ class HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Colors.black, // Normal color
+                      decoration: TextDecoration.none, // Remove underline
+                      fontFamily: 'Roboto', // Force normal font
                     ),
                   ),
                 ),
@@ -1451,49 +2150,21 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
+          SizedBox(height: 16),
+          Text('More', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black, decoration: TextDecoration.none, fontFamily: 'Roboto'),),
           SizedBox(height: 24),
-          
           // Action Buttons Row
+          // SizedBox(height: 32),
+          CommonWidgets.buildProfileOption('About', Icons.info, () => _showAboutDialog()),
+          CommonWidgets.buildProfileOption('Contact Us', Icons.contact_mail, () => _showContactUsDialog()),
+          CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
+          CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
+          CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
+          SizedBox(height: 24),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                // Go to Home Button
-                // Expanded(
-                //   child: Container(
-                //     decoration: BoxDecoration(
-                //       gradient: LinearGradient(
-                //         colors: [Color(0xFF2c0036), Color(0xFFd74d02)],
-                //       ),
-                //       borderRadius: BorderRadius.circular(12),
-                //     ),
-                //     child: ElevatedButton.icon(
-                //       onPressed: () => setState(() => _selectedIndex = 0),
-                //       icon: Icon(Icons.home, color: Color(0xfffaeac7)),
-                //       label: Text(
-                //         'Go to Home',
-                //         style: TextStyle(
-                //           fontSize: 16,
-                //           color: Color(0xfffaeac7),
-                //           fontWeight: FontWeight.w600,
-                //         ),
-                //       ),
-                //       style: ElevatedButton.styleFrom(
-                //         padding: EdgeInsets.symmetric(vertical: 16),
-                //         backgroundColor: Colors.transparent,
-                //         shadowColor: Colors.transparent,
-                //         shape: RoundedRectangleBorder(
-                //           borderRadius: BorderRadius.circular(12),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
-                
-                // SizedBox(width: 16),
-                
-                // Logout Button
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -1527,7 +2198,7 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
+          // Profile Options (always visible and scrollable)
         ],
       ),
     );
@@ -2213,6 +2884,76 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  void _showContactUsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Contact Us'),
+        content: Text('For any queries, email us at support@primestatus.com or call +91-9876543210.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Privacy Policy'),
+        content: SingleChildScrollView(
+          child: Text('We value your privacy. All your data is securely stored and never shared with third parties. This is a sample privacy policy.'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Terms and Conditions'),
+        content: SingleChildScrollView(
+          child: Text('By using this app, you agree to our terms and conditions. This is a placeholder for the actual terms.'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRefundDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Refund Policy'),
+        content: SingleChildScrollView(
+          child: Text('Refunds are processed within 7 business days. Please contact support for any refund-related queries. This is a sample refund policy.'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
 } 

@@ -72,7 +72,7 @@ class CommonWidgets {
     return Card(
       margin: EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(icon, color: Colors.purple),
+        leading: Icon(icon, color: Color(0xffd74d02)),
         title: Text(title),
         trailing: Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,

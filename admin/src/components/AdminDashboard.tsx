@@ -95,23 +95,24 @@ export default function AdminDashboard({ onOpenImageEditor }: AdminDashboardProp
     }
   };
 
+  function readFileAsDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       let mediaUrl = '';
       if (file.type.startsWith('video/')) {
-        // Upload video to Firebase Storage
         mediaUrl = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
       } else {
-        // For images, you can still use base64 if you want
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          mediaUrl = event.target?.result as string;
-        };
-        reader.readAsDataURL(file);
+        mediaUrl = await readFileAsDataURL(file);
       }
-      
-      // Open image editor through the layout
       onOpenImageEditor({
         media: mediaUrl,
         category: '',

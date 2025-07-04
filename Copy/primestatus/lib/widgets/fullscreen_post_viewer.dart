@@ -13,6 +13,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/user_service.dart';
 import '../services/background_removal_service.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:image/image.dart' as img;
+import 'package:video_player/video_player.dart';
 
 class FullscreenPostViewer extends StatefulWidget {
   final List<Map<String, dynamic>> posts;
@@ -46,6 +49,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   final UserService _userService = UserService();
   final BackgroundRemovalService _bgRemovalService = BackgroundRemovalService();
   bool _isProcessingShare = false;
+  bool _isProcessingDownload = false;
 
   List<Map<String, dynamic>> _userProfilePhotos = [];
   String? _activeProfilePhotoUrl;
@@ -90,7 +94,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       userPhoneNumber: widget.userPhoneNumber,
                       userCity: widget.userCity,
                       onShare: () => _showShareOptions(post),
-                      onDownload: () => _showSubscriptionDialog(),
+                      onDownload: () => _downloadImage(post),
                       onEdit: () => _showProfilePhotoDialog(),
                     ),
                   ),
@@ -98,8 +102,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               );
             },
           ),
-          // Loading overlay for background removal
-          if (_isProcessingShare)
+          // Loading overlay for processing
+          if (_isProcessingShare || _isProcessingDownload)
             Container(
               color: Colors.black.withOpacity(0.5),
               child: Center(
@@ -115,7 +119,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
                       Text(
-                        'Processing image...',
+                        _isProcessingShare ? 'Processing image for sharing...' : 'Processing image for download...',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
                       SizedBox(height: 8),
@@ -136,92 +140,68 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   // Share functionality
   void _showShareOptions(Map<String, dynamic> post) {
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
-    
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Share Image',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildShareOption(
-                  'WhatsApp',
-                  Icons.message,
-                  Colors.green,
-                  () => _shareImage(imageUrl, post, 'WhatsApp'),
-                ),
-                _buildShareOption(
-                  'Instagram',
-                  Icons.camera_alt,
-                  Colors.purple,
-                  () => _shareImage(imageUrl, post, 'Instagram'),
-                ),
-                _buildShareOption(
-                  'Facebook',
-                  Icons.facebook,
-                  Colors.blue,
-                  () => _shareImage(imageUrl, post, 'Facebook'),
-                ),
-                _buildShareOption(
-                  'More',
-                  Icons.more_horiz,
-                  Colors.grey,
-                  () => _shareImage(imageUrl, post, 'General'),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            if (_isProcessingShare)
-              Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 8),
-                  Text('Processing image...'),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
+    _shareToWhatsApp(imageUrl, post);
   }
 
-  Widget _buildShareOption(String title, IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 30,
-            ),
+  // WhatsApp specific sharing
+  Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
+    setState(() {
+      _isProcessingShare = true;
+    });
+
+    try {
+      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
+      
+      if (imageBytes != null) {
+        // Save image to temporary file
+        final Directory tempDir = await getTemporaryDirectory();
+        final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
+        final String filePath = '${tempDir.path}/$fileName';
+        final File imageFile = File(filePath);
+        await imageFile.writeAsBytes(imageBytes);
+
+        // Share the image
+        await Share.shareXFiles(
+          [XFile(filePath)],
+          text: 'Check out this amazing design from Prime Status!',
+          subject: 'Shared from Prime Status',
+        );
+
+        // Clean up the temporary file after a delay
+        Future.delayed(Duration(seconds: 10), () {
+          if (imageFile.existsSync()) {
+            imageFile.deleteSync();
+          }
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image shared successfully!'),
+            backgroundColor: Colors.green,
           ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process image for sharing'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-    );
+        );
+      }
+    } catch (e) {
+      print('Error sharing image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing image: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isProcessingShare = false;
+      });
+    }
   }
 
   Future<void> _shareImage(String imageUrl, Map<String, dynamic> post, String platform) async {
@@ -267,169 +247,171 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       setState(() {
         _isProcessingShare = false;
       });
-      Navigator.pop(context);
     }
   }
 
-  Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
+  // Download functionality
+  Future<void> _downloadImage(Map<String, dynamic> post) async {
+    setState(() {
+      _isProcessingDownload = true;
+    });
+
     try {
-      final textSettings = post['textSettings'] ?? {};
-      final profileSettings = post['profileSettings'] ?? {};
-      final addressSettings = post['addressSettings'] ?? {};
-      final phoneSettings = post['phoneSettings'] ?? {};
-
-      // Create a widget with the image and overlays
-      final Widget imageWithOverlays = Container(
-        width: 1080, // Fixed width for consistent sharing
-        height: 1080 * 1.777, // 16:9 aspect ratio
-        child: Stack(
-          children: [
-            // Background image
-            Positioned.fill(
-              child: _buildMainImage(imageUrl, fit: BoxFit.contain),
-            ),
+      final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+      // Use the same cropping logic as sharing
+      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
+      
+      if (imageBytes != null) {
+        // Request storage permission
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        
+        if (status.isGranted) {
+          // Get the downloads directory
+          Directory? downloadsDir;
+          if (Platform.isAndroid) {
+            // Try multiple possible download directories
+            final List<String> possiblePaths = [
+              '/storage/emulated/0/Download',
+              '/storage/emulated/0/Downloads',
+              '/sdcard/Download',
+              '/sdcard/Downloads',
+            ];
             
-            // Username text overlay
-            if (textSettings.isNotEmpty)
-              Positioned(
-                left: (textSettings['x'] ?? 50) / 100 * 1080,
-                top: (textSettings['y'] ?? 90) / 100 * (1080 * 1.777),
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (widget.userName.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: textSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      widget.userName,
-                      style: TextStyle(
-                        fontFamily: textSettings['font'] ?? 'Arial',
-                        fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
-                        color: _parseColor(textSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+            for (String path in possiblePaths) {
+              final dir = Directory(path);
+              if (dir.existsSync()) {
+                downloadsDir = dir;
+                break;
+              }
+            }
+            
+            // If no download directory found, use external storage
+            if (downloadsDir == null) {
+              downloadsDir = await getExternalStorageDirectory();
+            }
+          } else {
+            downloadsDir = await getApplicationDocumentsDirectory();
+          }
+          
+          if (downloadsDir != null) {
+            final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String filePath = '${downloadsDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(imageBytes);
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image saved successfully!'),
+                duration: Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'Share',
+                  onPressed: () async {
+                    // Share the downloaded file
+                    try {
+                      await Share.shareXFiles([XFile(filePath)]);
+                    } catch (e) {
+                      print('Error sharing file: $e');
+                    }
+                  },
                 ),
               ),
-            
-            // Address text overlay (for business users)
-            if (widget.userUsageType == 'Business' && addressSettings['enabled'] == true && widget.userAddress.isNotEmpty)
-              Positioned(
-                left: (addressSettings['x'] ?? 50) / 100 * 1080,
-                top: (addressSettings['y'] ?? 80) / 100 * (1080 * 1.777),
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (widget.userAddress.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: addressSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      widget.userAddress,
-                      style: TextStyle(
-                        fontFamily: addressSettings['font'] ?? 'Arial',
-                        fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
-                        color: _parseColor(addressSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Phone number text overlay (for business users)
-            if (widget.userUsageType == 'Business' && phoneSettings['enabled'] == true && widget.userPhoneNumber.isNotEmpty)
-              Positioned(
-                left: (phoneSettings['x'] ?? 50) / 100 * 1080,
-                top: (phoneSettings['y'] ?? 85) / 100 * (1080 * 1.777),
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (widget.userPhoneNumber.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: phoneSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      widget.userPhoneNumber,
-                      style: TextStyle(
-                        fontFamily: phoneSettings['font'] ?? 'Arial',
-                        fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
-                        color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Profile photo overlay (with background removal)
-            if (profileSettings['enabled'] == true && widget.userProfilePhotoUrl != null && widget.userProfilePhotoUrl!.isNotEmpty)
-              Positioned(
-                left: (profileSettings['x'] ?? 20) / 100 * 1080 - (profileSettings['size'] ?? 80) / 2,
-                top: (profileSettings['y'] ?? 20) / 100 * (1080 * 1.777) - (profileSettings['size'] ?? 80) / 2,
-                child: Container(
-                  width: (profileSettings['size'] ?? 80).toDouble(),
-                  height: (profileSettings['size'] ?? 80).toDouble(),
-                  decoration: BoxDecoration(
-                    color: profileSettings['hasBackground'] == true
-                        ? Colors.white.withOpacity(0.9)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
-                    ),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
-                    ),
-                    child: _buildProfilePhotoWithoutBackground(widget.userProfilePhotoUrl!),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
-
-      // Try to capture the widget as an image
-      try {
-        return await _screenshotController.captureFromWidget(
-          imageWithOverlays,
-          delay: Duration(milliseconds: 100),
-          pixelRatio: 2.0, // Higher quality
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not access downloads directory')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Storage permission required to download images')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to process image for download')),
         );
-      } catch (e) {
-        print('Screenshot capture failed, trying fallback: $e');
-        // Fallback: share the original image URL
-        return await _fallbackShareMethod(imageUrl);
       }
     } catch (e) {
-      print('Error capturing image: $e');
-      return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading image: $e')),
+      );
+    } finally {
+      setState(() {
+        _isProcessingDownload = false;
+      });
     }
   }
+
+Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
+  try {
+    // Use the same widget as on-screen for screenshot
+    final Widget imageWithOverlays = Container(
+      width: 1080,
+      height: 1920,
+      child: AdminPostFullScreenCard(
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
+        onShare: () {}, // dummy
+        onDownload: () {}, // dummy
+        onEdit: () {}, // dummy
+      ),
+    );
+
+    // Capture the widget with increased delay and better settings
+    try {
+      final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
+        Material(
+          color: Colors.transparent,
+          child: imageWithOverlays,
+        ),
+        delay: Duration(milliseconds: 1000), // Increased delay
+        pixelRatio: 2.0,
+        context: context,
+      );
+      if (capturedBytes == null) return null;
+
+      // --- CROP TO 1:1.777 (top margin 1/4, bottom margin 3/4 of extra height) ---
+      final img.Image? original = img.decodeImage(capturedBytes);
+      if (original == null) return null;
+      int srcWidth = original.width;
+      int srcHeight = original.height;
+      double aspectRatio = 1 / 1.777;
+      int cropWidth = srcWidth;
+      int cropHeight = (srcWidth / aspectRatio).round();
+      if (cropHeight > srcHeight) {
+        cropHeight = srcHeight;
+        cropWidth = (srcHeight * aspectRatio).round();
+      }
+      int extraHeight = srcHeight - cropHeight;
+      int offsetX = 0;
+      int offsetY = (extraHeight * 1 / 5).round();
+      final img.Image cropped = img.copyCrop(
+        original,
+        x: offsetX,
+        y: offsetY,
+        width: cropWidth,
+        height: cropHeight,
+      );
+      final Uint8List croppedBytes = Uint8List.fromList(img.encodePng(cropped));
+      return croppedBytes;
+      // --- END CROP ---
+    } catch (e) {
+      print('Screenshot capture failed: $e');
+      return null;
+    }
+  } catch (e) {
+    print('Error capturing image: $e');
+    return null;
+  }
+}
 
   // Fallback method for sharing when screenshot fails
   Future<Uint8List?> _fallbackShareMethod(String imageUrl) async {
@@ -445,9 +427,40 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     return null;
   }
 
+  // Method to create a simple image with text overlay when screenshot fails
+  Future<Uint8List?> _createSimpleImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
+    try {
+      // This is a simplified version that creates a basic image with overlays
+      // In a real implementation, you might want to use a more sophisticated image processing library
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode == 200) {
+        // For now, just return the original image
+        // In the future, you could add text overlays using image processing
+        return response.bodyBytes;
+      }
+    } catch (e) {
+      print('Simple image creation failed: $e');
+    }
+    return null;
+  }
+
   // Helper to handle both base64 and URL images
   Widget _buildMainImage(String imageUrl, {BoxFit fit = BoxFit.contain}) {
-    if (imageUrl.startsWith('data:image')) {
+    // Video support
+    if (imageUrl.startsWith('data:video')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return _Base64VideoPlayer(bytes: bytes);
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (_isVideoUrl(imageUrl)) {
+      return _NetworkVideoPlayer(url: imageUrl);
+    } else if (imageUrl.startsWith('data:image')) {
       try {
         final base64Str = imageUrl.split(',').last;
         final bytes = base64Decode(base64Str);
@@ -487,6 +500,11 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     }
   }
 
+  bool _isVideoUrl(String url) {
+    final videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.ogg'];
+    return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
+  }
+
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
     return Image.network(
       photoUrl,
@@ -512,55 +530,6 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     hexColor = hexColor.replaceFirst('#', '');
     if (hexColor.length == 6) hexColor = 'FF$hexColor';
     return Color(int.parse('0x$hexColor'));
-  }
-
-  // Download functionality
-  void _showSubscriptionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Download Feature'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('To download images, you need a premium subscription.'),
-            SizedBox(height: 16),
-            Text('Premium features include:'),
-            Text('• HD downloads'),
-            Text('• No watermarks'),
-            Text('• Unlimited downloads'),
-            Text('• Priority support'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSubscriptionScreen();
-            },
-            child: Text('Get Premium'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSubscriptionScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SubscriptionScreen(),
-      ),
-    );
   }
 
   // Edit functionality
@@ -923,7 +892,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                         children: [
                           Image.network(
                             photoUrl,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             width: double.infinity,
                             height: double.infinity,
                             loadingBuilder: (context, child, loadingProgress) {
@@ -975,7 +944,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                         children: [
                           Image.network(
                             photoUrlNoBg,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             width: double.infinity,
                             height: double.infinity,
                             loadingBuilder: (context, child, loadingProgress) {
@@ -1073,138 +1042,198 @@ class AdminPostFullScreenCard extends StatelessWidget {
 
     return Stack(
       children: [
-        Container(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.width * 1.777, // 16:9 aspect ratio
-          child: Stack(
-            children: [
-              // Background image
-              Positioned.fill(
-                child: _buildMainImage(imageUrl, fit: BoxFit.contain),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.width * 1.777, // 16:9 aspect ratio for display
+              child: Stack(
+                children: [
+                  // Background image
+                  Positioned.fill(
+                    child: _buildMainImage(imageUrl, fit: BoxFit.contain),
+                  ),
+                  
+                  // Username text overlay
+                  if (textSettings.isNotEmpty)
+                    Positioned(
+                      left: (textSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
+                      top: (textSettings['y'] ?? 90) / 100 * (MediaQuery.of(context).size.width * 1.777),
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: textSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userName,
+                            style: TextStyle(
+                              fontFamily: textSettings['font'] ?? 'Arial',
+                              fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                              color: _parseColor(textSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // Address text overlay (for business users)
+                  if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+                    Positioned(
+                      left: (addressSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
+                      top: (addressSettings['y'] ?? 80) / 100 * (MediaQuery.of(context).size.width * 1.777),
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: addressSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userAddress,
+                            style: TextStyle(
+                              fontFamily: addressSettings['font'] ?? 'Arial',
+                              fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                              color: _parseColor(addressSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // Phone number text overlay (for business users)
+                  if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+                    Positioned(
+                      left: (phoneSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
+                      top: (phoneSettings['y'] ?? 85) / 100 * (MediaQuery.of(context).size.width * 1.777),
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: phoneSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userPhoneNumber,
+                            style: TextStyle(
+                              fontFamily: phoneSettings['font'] ?? 'Arial',
+                              fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                              color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // Profile photo overlay (with background removal)
+                  if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+                    Positioned(
+                      left: (profileSettings['x'] ?? 20) / 100 * MediaQuery.of(context).size.width - (profileSettings['size'] ?? 80) / 2,
+                      top: (profileSettings['y'] ?? 20) / 100 * (MediaQuery.of(context).size.width * 1.777) - (profileSettings['size'] ?? 80) / 2,
+                      child: Container(
+                        width: (profileSettings['size'] ?? 80).toDouble(),
+                        height: (profileSettings['size'] ?? 80).toDouble(),
+                        decoration: BoxDecoration(
+                          color: profileSettings['hasBackground'] == true
+                              ? Colors.white.withOpacity(0.9)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? (profileSettings['size'] ?? 80) / 2
+                                : 8,
+                          ),
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? (profileSettings['size'] ?? 80) / 2
+                                : 8,
+                          ),
+                          child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              
-              // Username text overlay
-              if (textSettings.isNotEmpty)
-                Positioned(
-                  left: (textSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                  top: (textSettings['y'] ?? 90) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                  child: Transform.translate(
-                    offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: textSettings['hasBackground'] == true
-                          ? BoxDecoration(
-                              color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
-                              borderRadius: BorderRadius.circular(8),
-                            )
-                          : null,
-                      child: Text(
-                        userName,
-                        style: TextStyle(
-                          fontFamily: textSettings['font'] ?? 'Arial',
-                          fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
-                          color: _parseColor(textSettings['color'] ?? '#ffffff'),
-                          fontWeight: FontWeight.bold,
+            ),
+            SizedBox(height: 50), // Add spacing between image and buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 0),
+              child: Row(
+                children: [
+                  // Share Button - 45%
+                  Expanded(
+                    flex: 45,
+                    child: ElevatedButton.icon(
+                      onPressed: onShare,
+                      icon: Icon(Icons.share, color: Colors.white),
+                      label: Text('Whatsapp', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
                   ),
-                ),
-              
-              // Address text overlay (for business users)
-              if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
-                Positioned(
-                  left: (addressSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                  top: (addressSettings['y'] ?? 80) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                  child: Transform.translate(
-                    offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: addressSettings['hasBackground'] == true
-                          ? BoxDecoration(
-                              color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
-                              borderRadius: BorderRadius.circular(8),
-                            )
-                          : null,
-                      child: Text(
-                        userAddress,
-                        style: TextStyle(
-                          fontFamily: addressSettings['font'] ?? 'Arial',
-                          fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
-                          color: _parseColor(addressSettings['color'] ?? '#ffffff'),
-                          fontWeight: FontWeight.bold,
+                  SizedBox(width: 8),
+                  // Download Button - 45%
+                  Expanded(
+                    flex: 45,
+                    child: ElevatedButton.icon(
+                      onPressed: onDownload,
+                      icon: Icon(Icons.download, color: Colors.white),
+                      label: Text('Download', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
                   ),
-                ),
-              
-              // Phone number text overlay (for business users)
-              if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
-                Positioned(
-                  left: (phoneSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                  top: (phoneSettings['y'] ?? 85) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                  child: Transform.translate(
-                    offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: phoneSettings['hasBackground'] == true
-                          ? BoxDecoration(
-                              color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                              borderRadius: BorderRadius.circular(8),
-                            )
-                          : null,
-                      child: Text(
-                        userPhoneNumber,
-                        style: TextStyle(
-                          fontFamily: phoneSettings['font'] ?? 'Arial',
-                          fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
-                          color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
-                          fontWeight: FontWeight.bold,
+                  SizedBox(width: 8),
+                  // Change Profile Photo Button - 10%
+                  Expanded(
+                    flex: 10,
+                    child: ElevatedButton(
+                      onPressed: onEdit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        padding: EdgeInsets.all(8),
                       ),
+                      child: Icon(Icons.edit, color: Colors.white),
                     ),
                   ),
-                ),
-              
-              // Profile photo overlay (with background removal)
-              if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
-                Positioned(
-                  left: (profileSettings['x'] ?? 20) / 100 * MediaQuery.of(context).size.width - (profileSettings['size'] ?? 80) / 2,
-                  top: (profileSettings['y'] ?? 20) / 100 * (MediaQuery.of(context).size.width * 1.777) - (profileSettings['size'] ?? 80) / 2,
-                  child: Container(
-                    width: (profileSettings['size'] ?? 80).toDouble(),
-                    height: (profileSettings['size'] ?? 80).toDouble(),
-                    decoration: BoxDecoration(
-                      color: profileSettings['hasBackground'] == true
-                          ? Colors.white.withOpacity(0.9)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(
-                        profileSettings['shape'] == 'circle'
-                            ? (profileSettings['size'] ?? 80) / 2
-                            : 8,
-                      ),
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        profileSettings['shape'] == 'circle'
-                            ? (profileSettings['size'] ?? 80) / 2
-                            : 8,
-                      ),
-                      child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
         // Back button
         Positioned(
@@ -1216,69 +1245,8 @@ class AdminPostFullScreenCard extends StatelessWidget {
             },
             child: Container(
               padding: EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
               child: Icon(Icons.arrow_back, color: Colors.white, size: 32),
             ),
-          ),
-        ),
-        // Action buttons at the bottom
-        Positioned(
-          bottom: 40,
-          left: 20,
-          right: 20,
-          child: Row(
-            children: [
-              // Share Button - 45%
-              Expanded(
-                flex: 45,
-                child: ElevatedButton.icon(
-                  onPressed: onShare,
-                  icon: Icon(Icons.share, color: Colors.white),
-                  label: Text('Share', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              // Download Button - 45%
-              Expanded(
-                flex: 45,
-                child: ElevatedButton.icon(
-                  onPressed: onDownload,
-                  icon: Icon(Icons.download, color: Colors.white),
-                  label: Text('Download', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              // Change Profile Photo Button - 10%
-              Expanded(
-                flex: 10,
-                child: ElevatedButton(
-                  onPressed: onEdit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[600],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: EdgeInsets.all(8),
-                  ),
-                  child: Icon(Icons.edit, color: Colors.white),
-                ),
-              ),
-            ],
           ),
         ),
       ],
@@ -1287,7 +1255,21 @@ class AdminPostFullScreenCard extends StatelessWidget {
 
   // Helper to handle both base64 and URL images
   Widget _buildMainImage(String imageUrl, {BoxFit fit = BoxFit.contain}) {
-    if (imageUrl.startsWith('data:image')) {
+    // Video support
+    if (imageUrl.startsWith('data:video')) {
+      try {
+        final base64Str = imageUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return _Base64VideoPlayer(bytes: bytes);
+      } catch (e) {
+        return Container(
+          color: Colors.grey[200],
+          child: Icon(Icons.error, color: Colors.grey),
+        );
+      }
+    } else if (_isVideoUrl(imageUrl)) {
+      return _NetworkVideoPlayer(url: imageUrl);
+    } else if (imageUrl.startsWith('data:image')) {
       try {
         final base64Str = imageUrl.split(',').last;
         final bytes = base64Decode(base64Str);
@@ -1327,6 +1309,11 @@ class AdminPostFullScreenCard extends StatelessWidget {
     }
   }
 
+  bool _isVideoUrl(String url) {
+    final videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.ogg'];
+    return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
+  }
+
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
     return Image.network(
       photoUrl,
@@ -1352,5 +1339,103 @@ class AdminPostFullScreenCard extends StatelessWidget {
     hexColor = hexColor.replaceFirst('#', '');
     if (hexColor.length == 6) hexColor = 'FF$hexColor';
     return Color(int.parse('0x$hexColor'));
+  }
+}
+
+// Base64 video player widget
+class _Base64VideoPlayer extends StatefulWidget {
+  final List<int> bytes;
+  const _Base64VideoPlayer({required this.bytes});
+
+  @override
+  State<_Base64VideoPlayer> createState() => _Base64VideoPlayerState();
+}
+
+class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
+  late VideoPlayerController _controller;
+  late Future<void> _initializeVideoPlayerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse('data:video/mp4;base64,${base64Encode(widget.bytes)}'));
+    _initializeVideoPlayerFuture = _controller.initialize().then((_) {
+      _controller.setLooping(true);
+      _controller.setVolume(1.0);
+      _controller.play();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _initializeVideoPlayerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          );
+        } else {
+          return Center(child: CircularProgressIndicator());
+        }
+      },
+    );
+  }
+}
+
+// Network video player widget
+class _NetworkVideoPlayer extends StatefulWidget {
+  final String url;
+  const _NetworkVideoPlayer({required this.url});
+
+  @override
+  State<_NetworkVideoPlayer> createState() => _NetworkVideoPlayerState();
+}
+
+class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
+  late VideoPlayerController _controller;
+  late Future<void> _initializeVideoPlayerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url);
+    _initializeVideoPlayerFuture = _controller.initialize().then((_) {
+      _controller.setLooping(true);
+      _controller.setVolume(1.0);
+      _controller.play();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _initializeVideoPlayerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          );
+        } else {
+          return Center(child: CircularProgressIndicator());
+        }
+      },
+    );
   }
 } 

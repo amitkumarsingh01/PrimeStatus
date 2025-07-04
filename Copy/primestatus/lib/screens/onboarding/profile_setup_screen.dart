@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'religion_selection_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:image_cropper/image_cropper.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({Key? key}) : super(key: key);
@@ -378,9 +379,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      setState(() {
-        _profileImage = File(pickedFile.path);
-      });
+      // Crop the image before further processing
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+            toolbarColor: Colors.deepOrange,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: 'Crop Image',
+          ),
+        ],
+      );
+      if (croppedFile != null) {
+        setState(() {
+          _profileImage = File(croppedFile.path);
+        });
+      }
     }
   }
 
