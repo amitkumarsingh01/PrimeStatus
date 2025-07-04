@@ -19,7 +19,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:primestatus/widgets/fullscreen_post_viewer.dart';
-import 'package:image_cropper/image_cropper.dart';
+import 'package:crop_your_image/crop_your_image.dart';
+import 'dart:typed_data';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -60,6 +61,10 @@ class HomeScreenState extends State<HomeScreen> {
   // Firebase categories state
   List<Map<String, dynamic>> _firebaseCategories = [];
   bool _isLoadingCategories = true;
+  // Search functionality state
+  bool _isSearchActive = false;
+  String _searchQuery = '';
+  List<Map<String, dynamic>> _filteredCategories = [];
   
   // Helper method to get category name based on user language
   String _getCategoryName(Map<String, dynamic> category) {
@@ -103,6 +108,7 @@ class HomeScreenState extends State<HomeScreen> {
       final categories = await _categoryService.getCategories();
       setState(() {
         _firebaseCategories = categories;
+        _filteredCategories = categories; // Initialize filtered categories
         _isLoadingCategories = false;
       });
     } catch (e) {
@@ -209,6 +215,248 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+
+
+  // Custom image cropping dialog using crop_your_image
+  Future<File?> _showCropDialog(File imageFile) async {
+    final cropController = CropController();
+    bool cropping = false;
+    
+    return await showDialog<File?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.crop, color: Colors.deepOrange),
+              SizedBox(width: 8),
+              Text('Crop Profile Photo'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Crop(
+                        controller: cropController,
+                        image: imageFile.readAsBytesSync(),
+                        aspectRatio: 1.0,
+                        onCropped: (data) async {
+                          // data can be Uint8List or CropResult depending on crop_your_image version
+                          final bytes = (data is Uint8List)
+                              ? data
+                              : (data as dynamic).bytes as Object;
+                          if (bytes is List<int>) {
+                            final tempDir = Directory.systemTemp;
+                            final tempFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
+                            await tempFile.writeAsBytes(bytes);
+                            Navigator.pop(context, tempFile);
+                          } else {
+                            Navigator.pop(context, null);
+                          }
+                        },
+                        withCircleUi: false,
+                        baseColor: Colors.deepOrange,
+                        maskColor: Colors.black.withOpacity(0.6),
+                        cornerDotBuilder: (size, edgeAlignment) => const DotControl(color: Colors.deepOrange),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Drag to adjust crop area',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: cropping
+                        ? null
+                        : () {
+                            setState(() => cropping = true);
+                            cropController.crop();
+                          },
+                      icon: Icon(Icons.crop),
+                      label: Text('Crop'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    // This return is not used, as the dialog returns the file
+  }
+
+  // Search functionality methods
+  void _showSearchDialog() {
+    _searchQuery = '';
+    _filteredCategories = _firebaseCategories;
+    _isSearchActive = true;
+
+    final TextEditingController searchController = TextEditingController();
+    final FocusNode searchFocusNode = FocusNode();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          // Request focus after the first frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!searchFocusNode.hasFocus) {
+              searchFocusNode.requestFocus();
+            }
+          });
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.search, color: Colors.deepOrange),
+                SizedBox(width: 8),
+                Text('Search Categories'),
+              ],
+            ),
+            content: Container(
+              width: double.maxFinite,
+              height: 400,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: searchController,
+                    focusNode: searchFocusNode,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Type to search categories...',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        _searchQuery = value;
+                        _filterCategories(value);
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: _isLoadingCategories
+                        ? Center(child: CircularProgressIndicator())
+                        : _filteredCategories.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.search_off, size: 48, color: Colors.grey),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      _searchQuery.isEmpty 
+                                          ? 'No categories available'
+                                          : 'No categories found for "$_searchQuery"',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _filteredCategories.length,
+                                itemBuilder: (context, index) {
+                                  final category = _filteredCategories[index];
+                                  final categoryName = _getCategoryName(category);
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.deepOrange.shade100,
+                                      child: Icon(
+                                        _getCategoryIcon(categoryName),
+                                        color: Colors.deepOrange,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      categoryName,
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    // subtitle: Text('${QuoteData.quotes[categoryName]?.length ?? 0} quotes'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _selectCategoryFromSearch(categoryName);
+                                    },
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _isSearchActive = false;
+                },
+                child: Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _filterCategories(String query) {
+    if (query.isEmpty) {
+      _filteredCategories = _firebaseCategories;
+    } else {
+      _filteredCategories = _firebaseCategories.where((category) {
+        final categoryName = _getCategoryName(category);
+        return categoryName.toLowerCase().contains(query.toLowerCase());
+      }).toList();
+    }
+  }
+
+  void _selectCategoryFromSearch(String categoryName) {
+    setState(() {
+      _selectedCategories = {categoryName};
+      _isSearchActive = false;
+    });
+    
+    // Switch to admin feed tab to show the selected category posts
+    _selectedIndex = 0;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Showing posts from "$categoryName"'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _updateUserDetails({
     String? name,
     String? language,
@@ -296,29 +544,23 @@ class HomeScreenState extends State<HomeScreen> {
         imageQuality: 85,
       );
       if (pickedFile != null) {
-        // Crop the image before further processing
-        final croppedFile = await ImageCropper().cropImage(
-          sourcePath: pickedFile.path,
-          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: 'Crop Image',
-              toolbarColor: Colors.deepOrange,
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: false,
-            ),
-            IOSUiSettings(
-              title: 'Crop Image',
-            ),
-          ],
-        );
+        File imageFile = File(pickedFile.path);
+        
+        // Use the new crop_your_image dialog
+        File? croppedImageFile;
+        final croppedFile = await _showCropDialog(imageFile);
         if (croppedFile != null) {
-          File imageFile = File(croppedFile.path);
+          croppedImageFile = croppedFile;
+        } else {
+          // User cancelled cropping, use original image
+          croppedImageFile = imageFile;
+        }
+        
+        if (croppedImageFile != null) {
           // Upload original
-          String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
+          String downloadUrl = await _userService.uploadProfilePhoto(croppedImageFile, _currentUser!.uid);
           // Remove background and upload processed image
-          String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+          String? processedUrl = await _bgRemovalService.removeBackground(croppedImageFile);
           String? downloadUrlNoBg;
           if (processedUrl != null) {
             // Download processed image and upload to Firebase Storage
@@ -369,29 +611,23 @@ class HomeScreenState extends State<HomeScreen> {
         imageQuality: 85,
       );
       if (pickedFile != null) {
-        // Crop the image before further processing
-        final croppedFile = await ImageCropper().cropImage(
-          sourcePath: pickedFile.path,
-          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: 'Crop Image',
-              toolbarColor: Colors.deepOrange,
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: false,
-            ),
-            IOSUiSettings(
-              title: 'Crop Image',
-            ),
-          ],
-        );
+        File imageFile = File(pickedFile.path);
+        
+        // Use the new crop_your_image dialog
+        File? croppedImageFile;
+        final croppedFile = await _showCropDialog(imageFile);
         if (croppedFile != null) {
-          File imageFile = File(croppedFile.path);
+          croppedImageFile = croppedFile;
+        } else {
+          // User cancelled cropping, use original image
+          croppedImageFile = imageFile;
+        }
+        
+        if (croppedImageFile != null) {
           // Upload original
-          String downloadUrl = await _userService.uploadProfilePhoto(imageFile, _currentUser!.uid);
+          String downloadUrl = await _userService.uploadProfilePhoto(croppedImageFile, _currentUser!.uid);
           // Remove background and upload processed image
-          String? processedUrl = await _bgRemovalService.removeBackground(imageFile);
+          String? processedUrl = await _bgRemovalService.removeBackground(croppedImageFile);
           String? downloadUrlNoBg;
           if (processedUrl != null) {
             final response = await http.get(Uri.parse(processedUrl));
@@ -647,7 +883,7 @@ Widget _buildHomeTab() {
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(18),
-                        onTap: () { },
+                        onTap: _showSearchDialog,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           child: Row(
@@ -1231,7 +1467,7 @@ Widget _buildHomeTab() {
                       categoryName,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    subtitle: Text('${QuoteData.quotes[categoryName]?.length ?? 0} quotes'),
+                    // subtitle: Text('${QuoteData.quotes[categoryName]?.length ?? 0} quotes'),
                     trailing: Icon(Icons.arrow_forward_ios, size: 16),
                   ),
                 );
@@ -1591,7 +1827,7 @@ Widget _buildAdminFeedTab() {
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(18),
-                        onTap: () { },
+                        onTap: _showSearchDialog,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           child: Row(
