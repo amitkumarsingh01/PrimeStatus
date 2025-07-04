@@ -16,6 +16,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image/image.dart' as img;
 import 'package:video_player/video_player.dart';
+import '../services/video_processing_service.dart';
 
 class FullscreenPostViewer extends StatefulWidget {
   final List<Map<String, dynamic>> posts;
@@ -144,7 +145,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
                       Text(
-                        _isProcessingShare ? 'Processing image for sharing...' : 'Processing image for download...',
+                        _isProcessingShare ? 'Processing video for sharing...' : 'Processing image for download...',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
                       SizedBox(height: 8),
@@ -165,7 +166,201 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   // Share functionality
   void _showShareOptions(Map<String, dynamic> post) {
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
-    _shareToWhatsApp(imageUrl, post);
+    
+    // Check if it's a video
+    if (_isVideoUrl(imageUrl) || imageUrl.startsWith('data:video')) {
+      _shareVideoWithOverlays(imageUrl, post);
+    } else {
+      _shareToWhatsApp(imageUrl, post);
+    }
+  }
+
+  // Video sharing with overlays
+  Future<void> _shareVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
+    setState(() {
+      _isProcessingShare = true;
+    });
+
+    try {
+      print('Starting video share process for: $videoUrl');
+      
+      // Show processing options dialog
+      final String? processingMethod = await _showVideoProcessingOptions();
+      if (processingMethod == null) {
+        setState(() {
+          _isProcessingShare = false;
+        });
+        return;
+      }
+
+      String? processedFilePath;
+      
+      if (processingMethod == 'full_video') {
+        print('Processing full video with overlays...');
+        // Process full video with overlays
+        processedFilePath = await VideoProcessingService.processVideoWithOverlays(
+          videoUrl: videoUrl,
+          post: post,
+          userUsageType: widget.userUsageType,
+          userName: widget.userName,
+          userProfilePhotoUrl: widget.userProfilePhotoUrl,
+          userAddress: widget.userAddress,
+          userPhoneNumber: widget.userPhoneNumber,
+          userCity: widget.userCity,
+        );
+      } else {
+        print('Creating thumbnail with overlay...');
+        // Create thumbnail with overlay
+        processedFilePath = await VideoProcessingService.createVideoThumbnailWithOverlay(
+          videoUrl: videoUrl,
+          post: post,
+          userUsageType: widget.userUsageType,
+          userName: widget.userName,
+          userProfilePhotoUrl: widget.userProfilePhotoUrl,
+          userAddress: widget.userAddress,
+          userPhoneNumber: widget.userPhoneNumber,
+          userCity: widget.userCity,
+        );
+      }
+
+      if (processedFilePath != null) {
+        print('File processed successfully: $processedFilePath');
+        
+        // Check if file exists
+        final file = File(processedFilePath);
+        if (!await file.exists()) {
+          throw Exception('Processed file does not exist');
+        }
+        
+        // Share the processed file
+        await Share.shareXFiles(
+          [XFile(processedFilePath)],
+          text: 'Check out this amazing video from Prime Status!',
+          subject: 'Shared from Prime Status',
+        );
+
+        // Clean up the processed file after a delay
+        Future.delayed(Duration(seconds: 10), () {
+          if (processedFilePath != null) {
+            final file = File(processedFilePath);
+            if (file.existsSync()) {
+              file.deleteSync();
+              print('Cleaned up shared file: $processedFilePath');
+            }
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video shared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        print('Failed to process video - processedFilePath is null');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process video. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error sharing video: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing video: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isProcessingShare = false;
+      });
+    }
+  }
+
+  // Show video processing options dialog
+  Future<String?> _showVideoProcessingOptions() async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.video_library, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Video Sharing Options'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Choose how you want to share your video:',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            _buildProcessingOption(
+              'Full Video with Overlays',
+              'Process the entire video with your information overlays',
+              Icons.video_file,
+              Colors.green,
+            ),
+            SizedBox(height: 8),
+            _buildProcessingOption(
+              'Thumbnail with Overlays',
+              'Share a thumbnail image with your information (faster)',
+              Icons.image,
+              Colors.orange,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProcessingOption(String title, String description, IconData icon, Color color) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context, title == 'Full Video with Overlays' ? 'full_video' : 'thumbnail');
+      },
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // WhatsApp specific sharing
@@ -283,10 +478,137 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
     try {
       final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
-      // Use the same cropping logic as sharing
-      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
       
-      if (imageBytes != null) {
+      // Check if it's a video
+      if (_isVideoUrl(imageUrl) || imageUrl.startsWith('data:video')) {
+        await _downloadVideoWithOverlays(imageUrl, post);
+      } else {
+        // Use the same cropping logic as sharing for images
+        final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
+        
+        if (imageBytes != null) {
+          // Request storage permission
+          var status = await Permission.storage.status;
+          if (!status.isGranted) {
+            status = await Permission.storage.request();
+          }
+          
+          if (status.isGranted) {
+            // Get the downloads directory
+            Directory? downloadsDir;
+            if (Platform.isAndroid) {
+              // Try multiple possible download directories
+              final List<String> possiblePaths = [
+                '/storage/emulated/0/Download',
+                '/storage/emulated/0/Downloads',
+                '/sdcard/Download',
+                '/sdcard/Downloads',
+              ];
+              
+              for (String path in possiblePaths) {
+                final dir = Directory(path);
+                if (dir.existsSync()) {
+                  downloadsDir = dir;
+                  break;
+                }
+              }
+              
+              // If no download directory found, use external storage
+              if (downloadsDir == null) {
+                downloadsDir = await getExternalStorageDirectory();
+              }
+            } else {
+              downloadsDir = await getApplicationDocumentsDirectory();
+            }
+            
+            if (downloadsDir != null) {
+              final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.png';
+              final String filePath = '${downloadsDir.path}/$fileName';
+              final File imageFile = File(filePath);
+              await imageFile.writeAsBytes(imageBytes);
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Image saved successfully!'),
+                  duration: Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'Share',
+                    onPressed: () async {
+                      // Share the downloaded file
+                      try {
+                        await Share.shareXFiles([XFile(filePath)]);
+                      } catch (e) {
+                        print('Error sharing file: $e');
+                      }
+                    },
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not access downloads directory')),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Storage permission required to download images')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to process image for download')),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading image: $e')),
+      );
+    } finally {
+      setState(() {
+        _isProcessingDownload = false;
+      });
+    }
+  }
+
+  // Download video with overlays
+  Future<void> _downloadVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
+    try {
+      // Show processing options dialog
+      final String? processingMethod = await _showVideoProcessingOptions();
+      if (processingMethod == null) {
+        return;
+      }
+
+      String? processedFilePath;
+      
+      if (processingMethod == 'full_video') {
+        // Process full video with overlays
+        processedFilePath = await VideoProcessingService.processVideoWithOverlays(
+          videoUrl: videoUrl,
+          post: post,
+          userUsageType: widget.userUsageType,
+          userName: widget.userName,
+          userProfilePhotoUrl: widget.userProfilePhotoUrl,
+          userAddress: widget.userAddress,
+          userPhoneNumber: widget.userPhoneNumber,
+          userCity: widget.userCity,
+        );
+      } else {
+        // Create thumbnail with overlay
+        processedFilePath = await VideoProcessingService.createVideoThumbnailWithOverlay(
+          videoUrl: videoUrl,
+          post: post,
+          userUsageType: widget.userUsageType,
+          userName: widget.userName,
+          userProfilePhotoUrl: widget.userProfilePhotoUrl,
+          userAddress: widget.userAddress,
+          userPhoneNumber: widget.userPhoneNumber,
+          userCity: widget.userCity,
+        );
+      }
+
+      if (processedFilePath != null) {
         // Request storage permission
         var status = await Permission.storage.status;
         if (!status.isGranted) {
@@ -322,19 +644,23 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           }
           
           if (downloadsDir != null) {
-            final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String fileName = processingMethod == 'full_video' 
+                ? 'PrimeStatus_Video_${DateTime.now().millisecondsSinceEpoch}.mp4'
+                : 'PrimeStatus_Thumbnail_${DateTime.now().millisecondsSinceEpoch}.png';
             final String filePath = '${downloadsDir.path}/$fileName';
-            final File imageFile = File(filePath);
-            await imageFile.writeAsBytes(imageBytes);
+            
+            // Copy the processed file to downloads
+            final File sourceFile = File(processedFilePath);
+            final File destFile = File(filePath);
+            await sourceFile.copy(destFile.path);
             
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Image saved successfully!'),
+                content: Text('${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} saved successfully!'),
                 duration: Duration(seconds: 3),
                 action: SnackBarAction(
                   label: 'Share',
                   onPressed: () async {
-                    // Share the downloaded file
                     try {
                       await Share.shareXFiles([XFile(filePath)]);
                     } catch (e) {
@@ -351,22 +677,18 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Storage permission required to download images')),
+            SnackBar(content: Text('Storage permission required to download videos')),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process image for download')),
+          SnackBar(content: Text('Failed to process video for download')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error downloading image: $e')),
+        SnackBar(content: Text('Error downloading video: $e')),
       );
-    } finally {
-      setState(() {
-        _isProcessingDownload = false;
-      });
     }
   }
 
@@ -1007,6 +1329,54 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
       );
     }
   }
+
+  // Test video processing (for debugging)
+  Future<void> _testVideoProcessing(String videoUrl, Map<String, dynamic> post) async {
+    try {
+      print('=== TESTING VIDEO PROCESSING ===');
+      print('Video URL: $videoUrl');
+      print('Post data: $post');
+      
+      // Test thumbnail creation first (faster)
+      print('Testing thumbnail creation...');
+      final String? thumbnailPath = await VideoProcessingService.createVideoThumbnailWithOverlay(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
+      );
+      
+      if (thumbnailPath != null) {
+        print('✅ Thumbnail created successfully: $thumbnailPath');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thumbnail test successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        print('❌ Thumbnail creation failed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thumbnail test failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Test failed with error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Test failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }
 
 class AdminPostFullScreenCard extends StatelessWidget {
@@ -1259,6 +1629,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                       child: const Icon(Icons.edit, color: Colors.white),
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -1368,6 +1739,8 @@ class AdminPostFullScreenCard extends StatelessWidget {
     if (hexColor.length == 6) hexColor = 'FF$hexColor';
     return Color(int.parse('0x$hexColor'));
   }
+
+
 }
 
 // Base64 video player widget
