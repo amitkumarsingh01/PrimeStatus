@@ -6,19 +6,20 @@ import ImageEditor from './ImageEditor';
 import ExistingPosts from './ExistingPosts';
 import VideoEditor from './VideoEditor';
 import NewImageEditor from './NewImageEditor';
-type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor';
+import CategoryManager from './CategoryManager';
+
+type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager';
 
 export default function AdminLayout() {
-  const [activePage, setActivePage] = useState<AdminPage>('dashboard');
+  const [activePage, setActivePage] = useState<AdminPage>('existing-posts');
   const [editorProps, setEditorProps] = useState<{
     media: string;
-    category: string;
-    region: string;
+    frameSize: { width: number; height: number };
+    mediaType: 'image' | 'video';
     language: 'english' | 'kannada';
     userName: string;
-    onSave: (postData: any) => void;
-    onCancel: () => void;
   } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handlePageChange = (page: AdminPage) => {
     setActivePage(page);
@@ -28,50 +29,50 @@ export default function AdminLayout() {
     }
   };
 
-  const openImageEditor = (props: typeof editorProps) => {
-    setEditorProps(props);
-    setActivePage('image-editor');
+  const openEditor = (props: {
+    media: string;
+    frameSize: { width: number; height: number };
+    mediaType: 'image' | 'video';
+    language: 'english' | 'kannada';
+    userName: string;
+  }) => {
+    setEditorProps({ ...props });
+    setIsEditing(true);
   };
 
-  const closeImageEditor = () => {
+  const closeEditor = () => {
     setEditorProps(null);
-    setActivePage('dashboard');
+    setIsEditing(false);
   };
 
   const renderActivePage = () => {
+    if (isEditing && editorProps) {
+      return (
+        <ImageEditor
+          media={editorProps.media}
+          frameSize={editorProps.frameSize}
+          mediaType={editorProps.mediaType}
+          language={editorProps.language}
+          userName={editorProps.userName}
+          onCancel={closeEditor}
+        />
+      );
+    }
     switch (activePage) {
       case 'dashboard':
-        return (
-          <AdminDashboard 
-            onOpenImageEditor={openImageEditor}
-          />
-        );
+        return <AdminDashboard onOpenImageEditor={openEditor} />;
       case 'existing-posts':
         return <ExistingPosts />;
       case 'users':
         return <Users />;
-      // case 'image-editor':
-      //   return editorProps ? (
-      //     <ImageEditor
-      //       media={editorProps.media}
-      //       category={editorProps.category}
-      //       region={editorProps.region}
-      //       language={editorProps.language}
-      //       userName={editorProps.userName}
-      //       onSave={editorProps.onSave}
-      //       onCancel={closeImageEditor}
-      //     />
-      //   ) : (
-      //     <div className="flex items-center justify-center h-screen">
-      //       <p>No image selected for editing</p>
-      //     </div>
-      //   );
       case 'image-editor':
-        return <NewImageEditor onOpenImageEditor={openImageEditor} />;
+        return <NewImageEditor onOpenEditor={openEditor} />;
       case 'video-editor':
-        return <VideoEditor onOpenImageEditor={openImageEditor} />;
+        return <VideoEditor onOpenEditor={openEditor} />;
+      case 'category-manager':
+        return <CategoryManager />;
       default:
-        return <AdminDashboard onOpenImageEditor={openImageEditor} />;
+        return <AdminDashboard onOpenImageEditor={openEditor} />;
     }
   };
 

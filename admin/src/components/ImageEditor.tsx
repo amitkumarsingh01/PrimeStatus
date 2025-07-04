@@ -1,28 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Save, X, Type, Move, Circle, Square, Palette, Eye, EyeOff, MapPin, Phone, Tag, MapPin as MapPinIcon } from 'lucide-react';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, uploadMediaFile } from '../firebase';
+import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 
 interface ImageEditorProps {
   media: string;
-  category: string;
-  region: string;
+  frameSize: { width: number; height: number };
+  mediaType: 'image' | 'video';
   language: 'english' | 'kannada';
   userName: string;
-  onSave: (postData: any) => void;
-  onCancel: () => void;
+  onSave?: (postData: any) => void;
+  onCancel?: () => void;
 }
-
-const CATEGORIES = [
-  'Morning',
-  'Motivational',
-  'Love',
-  'Festival',
-  'Success',
-  'Inspiration',
-  'Life',
-  'Friendship'
-];
 
 const REGIONS = [
   'Hindu',
@@ -34,10 +23,89 @@ const REGIONS = [
   'Other'
 ];
 
-export default function ImageEditor({ media, category, region, language, userName, onSave, onCancel }: ImageEditorProps) {
+const ENGLISH_FONTS = [
+  'Poppins-Bold',
+  'Poppins-BoldItalic',
+  'Poppins-Medium',
+  'Poppins-Regular',
+  'Poppins-SemiBold',
+  'Poppins-SemiBoldItalic',
+];
+const KANNADA_FONT_GROUPS = [
+  {
+    label: 'Anek Kannada Fonts',
+    fonts: [
+      'AnekKannada-Bold',
+      'AnekKannada-ExtraBold',
+      'AnekKannada-ExtraLight',
+      'AnekKannada-Medium',
+      'AnekKannada-Regular',
+      'AnekKannada-SemiBold',
+    ],
+  },
+  {
+    label: 'Kannada & Regional Fonts',
+    fonts: [
+      'Gubbi',
+      'akshar',
+      'Kedage-i',
+      'Tunga',
+      'Baloo_Tamma',
+    ],
+  },
+  {
+    label: 'Kar Series (Kannada Authors/Poets)',
+    fonts: [
+      'Kar-Chandrashekhara-Kambara',
+      'Kar-KS-Narasimhaswamy',
+      'Kar-Gopalakrishna-Adiga',
+      'Kar-Da-Raa-Bendre',
+      'Kar-Vi-Kru-Gokak',
+      'Kar-UR-Ananthamurthy',
+      'Kar-Shivarama-Karantha',
+      'Kar-Puthina',
+      'Kar-Puchamthe',
+      'Kar-Maasthi',
+      'Kar-Kuvempu',
+      'Kar-Girish-Karnad',
+    ],
+  },
+  {
+    label: 'Other Kannada Fonts',
+    fonts: [
+      'Lohit_Kannada',
+      'Kedage',
+      'Kedage_Bold',
+      'Malige',
+    ],
+  },
+];
+
+const getFontOptions = (lang: 'english' | 'kannada') => {
+  if (lang === 'english') return ENGLISH_FONTS;
+  // Flatten all Kannada fonts for value, but group for display
+  return KANNADA_FONT_GROUPS.flatMap(g => g.fonts);
+};
+const getFontGroups = (lang: 'english' | 'kannada') => {
+  if (lang === 'english') return null;
+  return KANNADA_FONT_GROUPS;
+};
+
+function getFontFamily(font: string) {
+  // English fonts (Poppins)
+  if (font.startsWith('Poppins')) return `'${font}', Poppins, Arial, sans-serif`;
+  // Anek Kannada (Google Fonts)
+  if (font.startsWith('AnekKannada')) return `'${font}', 'Anek Kannada', Arial, sans-serif`;
+  // Other Kannada fonts: user must add @font-face or CDN
+  // Example: 'Gubbi', 'akshar', etc.
+  return `'${font}', Arial, sans-serif`;
+}
+
+export default function ImageEditor({ media, frameSize, mediaType, language, userName, onSave, onCancel }: ImageEditorProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(category ? [category] : []);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>(region ? [region] : []);
+  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string }[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [textSettings, setTextSettings] = useState({
     text: userName,
     x: 50,
@@ -83,6 +151,23 @@ export default function ImageEditor({ media, category, region, language, userNam
   const [isDraggingPhone, setIsDraggingPhone] = useState(false);
   const [isDraggingProfile, setIsDraggingProfile] = useState(false);
 
+  useEffect(() => {
+    // Fetch categories from Firestore
+    const fetchCategories = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'categories'));
+        setCategories(querySnapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          nameEn: docSnap.data().nameEn || '',
+          nameKn: docSnap.data().nameKn || '',
+        })));
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const handleMouseDown = (type: 'text' | 'address' | 'phone' | 'profile') => {
     if (type === 'text') setIsDraggingText(true);
     if (type === 'address' && addressSettings.enabled) setIsDraggingAddress(true);
@@ -118,11 +203,11 @@ export default function ImageEditor({ media, category, region, language, userNam
     setIsDraggingProfile(false);
   };
 
-  const handleCategoryToggle = (cat: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(cat) 
-        ? prev.filter(c => c !== cat)
-        : [...prev, cat]
+  const handleCategoryToggle = (catId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(catId)
+        ? prev.filter(c => c !== catId)
+        : [...prev, catId]
     );
   };
 
@@ -144,10 +229,19 @@ export default function ImageEditor({ media, category, region, language, userNam
       return;
     }
 
+    let mainImageUrl = media;
+    if (mediaType === 'image' && media.startsWith('data:')) {
+      // Upload base64 image to Firebase Storage
+      const fileName = `admin_images/${userName}_${Date.now()}.png`;
+      mainImageUrl = await uploadMediaFile(dataURLtoFile(media, fileName), fileName);
+    }
+
     const postData = {
-      mainImage: media,
+      mainImage: mainImageUrl,
       categories: selectedCategories,
       regions: selectedRegions,
+      frameSize,
+      mediaType,
       language,
       textSettings,
       addressSettings,
@@ -165,37 +259,51 @@ export default function ImageEditor({ media, category, region, language, userNam
     try {
       await addDoc(collection(db, 'admin_posts'), postData);
       alert('Post saved to Firestore!');
-      onSave(postData);
+      onSave?.(postData);
     } catch (e) {
       alert('Error saving post: ' + e);
     }
   };
 
-  const isVideo = media.startsWith('data:video/') || media.startsWith('http');
+  // Helper to convert base64 to File
+  function dataURLtoFile(dataurl: string, filename: string) {
+    const arr = dataurl.split(','), match = arr[0].match(/:(.*?);/);
+    const mime = match ? match[1] : 'image/png';
+    const bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+    return new File([u8arr], filename, { type: mime });
+  }
+
+  // Calculate scaled frame size to fit within max bounds but keep aspect ratio
+  const MAX_WIDTH = 400;
+  const MAX_HEIGHT = 700;
+  let scale = Math.min(MAX_WIDTH / frameSize.width, MAX_HEIGHT / frameSize.height);
+  const scaledWidth = Math.round(frameSize.width * scale);
+  const scaledHeight = Math.round(frameSize.height * scale);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white">Media Editor</h1>
-              <p className="text-white/60 text-sm">
+              <h1 className="text-2xl font-bold text-black">Media Editor</h1>
+              <p className="text-gray-600 text-sm">
                 Language: {language === 'kannada' ? 'ಕನ್ನಡ' : 'English'}
               </p>
             </div>
             <div className="flex space-x-3">
               <button
                 onClick={onCancel}
-                className="px-6 py-2 bg-red-500/20 border border-red-500/50 text-red-400 rounded-xl hover:bg-red-500/30 transition-all duration-200 flex items-center space-x-2"
+                className="px-6 py-2 bg-red-100 border border-red-300 text-red-700 rounded-xl hover:bg-red-200 transition-all duration-200 flex items-center space-x-2"
               >
                 <X className="h-4 w-4" />
                 <span>Cancel</span>
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-2 bg-gradient-to-r from-orange-600 to-blue-600 text-white rounded-xl hover:from-orange-700 hover:to-blue-700 transition-all duration-200 flex items-center space-x-2 shadow-lg"
+                className="px-6 py-2 bg-gradient-to-r from-orange-400 to-blue-400 text-black rounded-xl hover:from-orange-500 hover:to-blue-500 transition-all duration-200 flex items-center space-x-2 shadow-lg"
               >
                 <Save className="h-4 w-4" />
                 <span>Save Post</span>
@@ -212,23 +320,29 @@ export default function ImageEditor({ media, category, region, language, userNam
           {/* Left Panel - Categories & Regions */}
           <div className="col-span-3 space-y-4 overflow-y-auto">
             {/* Categories */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <Tag className="h-5 w-5 mr-2 text-orange-400" />
                 Categories
               </h3>
               <div className="space-y-2">
-                {CATEGORIES.map(cat => (
-                  <label key={cat} className="flex items-center space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(cat)}
-                      onChange={() => handleCategoryToggle(cat)}
-                      className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                    />
-                    <span className="text-sm text-white/80 group-hover:text-white transition-colors">{cat}</span>
-                  </label>
-                ))}
+                {categories.length === 0 ? (
+                  <div className="text-gray-400 text-sm">No categories found. Add some in Category Manager.</div>
+                ) : (
+                  categories.map(cat => (
+                    <label key={cat.id} className="flex items-center space-x-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(cat.id)}
+                        onChange={() => handleCategoryToggle(cat.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-black transition-colors">
+                        {language === 'kannada' ? cat.nameKn : cat.nameEn}
+                      </span>
+                    </label>
+                  ))
+                )}
               </div>
               {selectedCategories.length === 0 && (
                 <p className="text-red-400 text-xs mt-3 bg-red-500/10 p-2 rounded-lg">
@@ -238,15 +352,15 @@ export default function ImageEditor({ media, category, region, language, userNam
               {selectedCategories.length > 0 && (
                 <div className="mt-3 p-2 bg-orange-500/10 rounded-lg">
                   <p className="text-xs text-orange-300">
-                    Selected: {selectedCategories.join(', ')}
+                    Selected: {categories.filter(cat => selectedCategories.includes(cat.id)).map(cat => language === 'kannada' ? cat.nameKn : cat.nameEn).join(', ')}
                   </p>
                 </div>
               )}
             </div>
 
             {/* Regions */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <MapPinIcon className="h-5 w-5 mr-2 text-blue-400" />
                 Regions
               </h3>
@@ -259,7 +373,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                       onChange={() => handleRegionToggle(reg)}
                       className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-white/80 group-hover:text-white transition-colors">{reg}</span>
+                    <span className="text-sm text-gray-700 group-hover:text-black transition-colors">{reg}</span>
                   </label>
                 ))}
               </div>
@@ -280,37 +394,44 @@ export default function ImageEditor({ media, category, region, language, userNam
 
           {/* Center Panel - Canvas */}
           <div className="col-span-6 flex flex-col">
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 shadow-xl flex-1 flex flex-col">
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 shadow-xl flex-1 flex flex-col">
               <div className="text-center mb-4">
-                <p className="text-sm text-white/60">Canvas Size: 1080x1920 (9:16 Portrait)</p>
+                <p className="text-sm text-gray-600">Canvas Size: {frameSize.width}x{frameSize.height} ({frameSize.width}:{frameSize.height} Portrait)</p>
               </div>
               <div className="flex-1 flex items-center justify-center">
                 <div
                   ref={canvasRef}
                   className="relative bg-gray-900 rounded-xl overflow-hidden cursor-crosshair shadow-2xl border-2 border-white/20"
-                  style={{ 
-                    aspectRatio: '9/16',
-                    maxWidth: '350px',
-                    maxHeight: '620px',
-                    width: '100%'
+                  style={{
+                    width: `${scaledWidth}px`,
+                    height: `${scaledHeight}px`,
+                    aspectRatio: `${frameSize.width} / ${frameSize.height}`,
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#222',
                   }}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 >
-                  {isVideo ? (
+                  {mediaType === 'video' ? (
                     <video
                       src={media}
                       className="w-full h-full object-contain"
                       controls
                       muted
                       loop
+                      style={{ background: '#111' }}
                     />
                   ) : (
                     <img
                       src={media}
                       alt="Uploaded content"
                       className="w-full h-full object-contain"
+                      style={{ background: '#111' }}
                     />
                   )}
                   
@@ -321,7 +442,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                       left: `${textSettings.x}%`,
                       top: `${textSettings.y}%`,
                       transform: 'translate(-50%, -50%)',
-                      fontFamily: textSettings.font,
+                      fontFamily: getFontFamily(textSettings.font),
                       fontSize: `${textSettings.fontSize}px`,
                       color: textSettings.color,
                       fontWeight: 'bold',
@@ -341,7 +462,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                         left: `${addressSettings.x}%`,
                         top: `${addressSettings.y}%`,
                         transform: 'translate(-50%, -50%)',
-                        fontFamily: addressSettings.font,
+                        fontFamily: getFontFamily(addressSettings.font),
                         fontSize: `${addressSettings.fontSize}px`,
                         color: addressSettings.color,
                         fontWeight: 'bold',
@@ -362,7 +483,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                         left: `${phoneSettings.x}%`,
                         top: `${phoneSettings.y}%`,
                         transform: 'translate(-50%, -50%)',
-                        fontFamily: phoneSettings.font,
+                        fontFamily: getFontFamily(phoneSettings.font),
                         fontSize: `${phoneSettings.fontSize}px`,
                         color: phoneSettings.color,
                         fontWeight: 'bold',
@@ -390,7 +511,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                       }}
                       onMouseDown={() => handleMouseDown('profile')}
                     >
-                      <div className="text-white/70 text-xs text-center">Profile Photo</div>
+                      <div className="text-gray-700 text-xs text-center">Profile Photo</div>
                     </div>
                   )}
                 </div>
@@ -401,24 +522,24 @@ export default function ImageEditor({ media, category, region, language, userNam
           {/* Right Panel - Controls */}
           <div className="col-span-3 space-y-4 overflow-y-auto">
             {/* Username Controls */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <Type className="h-5 w-5 mr-2 text-green-400" />
                 Username
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Text</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Text</label>
                   <input
                     type="text"
                     value={textSettings.text}
                     onChange={(e) => setTextSettings(prev => ({ ...prev, text: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="Enter username"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Size: {textSettings.fontSize}px</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Size: {textSettings.fontSize}px</label>
                   <input
                     type="range"
                     min="12"
@@ -428,24 +549,44 @@ export default function ImageEditor({ media, category, region, language, userNam
                     className="w-full accent-orange-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Font</label>
+                  <select
+                    value={textSettings.font}
+                    onChange={e => setTextSettings(prev => ({ ...prev, font: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  >
+                    {language === 'english'
+                      ? ENGLISH_FONTS.map(font => (
+                          <option key={font} value={font}>{font}</option>
+                        ))
+                      : KANNADA_FONT_GROUPS.map(group => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.fonts.map(font => (
+                              <option key={font} value={font}>{font}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                  </select>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">Text Color</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
                     <input
                       type="color"
                       value={textSettings.color}
-                      onChange={(e) => setTextSettings(prev => ({ ...prev, color: e.target.value }))}
-                      className="w-full h-10 bg-white/20 border border-white/30 rounded-lg"
+                      onChange={e => setTextSettings(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-full h-10 bg-white border border-gray-300 rounded-lg"
                     />
                   </div>
                   {textSettings.hasBackground && (
                     <div>
-                      <label className="block text-sm font-medium text-white/80 mb-2">Background</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
                       <input
                         type="color"
                         value={textSettings.backgroundColor}
-                        onChange={(e) => setTextSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
-                        className="w-full h-10 bg-white/20 border border-white/30 rounded-lg"
+                        onChange={e => setTextSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                        className="w-full h-10 bg-white border border-gray-300 rounded-lg"
                       />
                     </div>
                   )}
@@ -458,14 +599,14 @@ export default function ImageEditor({ media, category, region, language, userNam
                     onChange={(e) => setTextSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
                     className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                   />
-                  <label htmlFor="textBackground" className="text-sm text-white/80">Enable Background</label>
+                  <label htmlFor="textBackground" className="text-sm text-gray-700">Enable Background</label>
                 </div>
               </div>
             </div>
 
             {/* Address Controls */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <MapPin className="h-5 w-5 mr-2 text-orange-400" />
                 Address
               </h3>
@@ -478,7 +619,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                     onChange={(e) => setAddressSettings(prev => ({ ...prev, enabled: e.target.checked }))}
                     className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                   />
-                  <label htmlFor="enableAddress" className="text-sm text-white/80 flex items-center">
+                  <label htmlFor="enableAddress" className="text-sm text-gray-700 flex items-center">
                     {addressSettings.enabled ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
                     Enable Address
                   </label>
@@ -490,7 +631,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                       type="text"
                       value={addressSettings.text}
                       onChange={(e) => setAddressSettings(prev => ({ ...prev, text: e.target.value }))}
-                      className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="Enter address"
                     />
                     <input
@@ -501,14 +642,56 @@ export default function ImageEditor({ media, category, region, language, userNam
                       onChange={(e) => setAddressSettings(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
                       className="w-full accent-orange-500"
                     />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font</label>
+                      <select
+                        value={addressSettings.font}
+                        onChange={e => setAddressSettings(prev => ({ ...prev, font: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      >
+                        {language === 'english'
+                          ? ENGLISH_FONTS.map(font => (
+                              <option key={font} value={font}>{font}</option>
+                            ))
+                          : KANNADA_FONT_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.fonts.map(font => (
+                                  <option key={font} value={font}>{font}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                        <input
+                          type="color"
+                          value={addressSettings.color}
+                          onChange={e => setAddressSettings(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      {addressSettings.hasBackground && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                          <input
+                            type="color"
+                            value={addressSettings.backgroundColor}
+                            onChange={e => setAddressSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                            className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
             </div>
 
             {/* Phone Controls */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <Phone className="h-5 w-5 mr-2 text-cyan-400" />
                 Phone
               </h3>
@@ -521,7 +704,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                     onChange={(e) => setPhoneSettings(prev => ({ ...prev, enabled: e.target.checked }))}
                     className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
                   />
-                  <label htmlFor="enablePhone" className="text-sm text-white/80 flex items-center">
+                  <label htmlFor="enablePhone" className="text-sm text-gray-700 flex items-center">
                     {phoneSettings.enabled ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
                     Enable Phone
                   </label>
@@ -533,7 +716,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                       type="text"
                       value={phoneSettings.text}
                       onChange={(e) => setPhoneSettings(prev => ({ ...prev, text: e.target.value }))}
-                      className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="Enter phone number"
                     />
                     <input
@@ -544,14 +727,56 @@ export default function ImageEditor({ media, category, region, language, userNam
                       onChange={(e) => setPhoneSettings(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
                       className="w-full accent-cyan-500"
                     />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font</label>
+                      <select
+                        value={phoneSettings.font}
+                        onChange={e => setPhoneSettings(prev => ({ ...prev, font: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                      >
+                        {language === 'english'
+                          ? ENGLISH_FONTS.map(font => (
+                              <option key={font} value={font}>{font}</option>
+                            ))
+                          : KANNADA_FONT_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.fonts.map(font => (
+                                  <option key={font} value={font}>{font}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                        <input
+                          type="color"
+                          value={phoneSettings.color}
+                          onChange={e => setPhoneSettings(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      {phoneSettings.hasBackground && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                          <input
+                            type="color"
+                            value={phoneSettings.backgroundColor}
+                            onChange={e => setPhoneSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                            className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
             </div>
 
             {/* Profile Controls */}
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <Move className="h-5 w-5 mr-2 text-pink-400" />
                 Profile
               </h3>
@@ -564,7 +789,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                     onChange={(e) => setProfileSettings(prev => ({ ...prev, enabled: e.target.checked }))}
                     className="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500"
                   />
-                  <label htmlFor="enableProfile" className="text-sm text-white/80 flex items-center">
+                  <label htmlFor="enableProfile" className="text-sm text-gray-700 flex items-center">
                     {profileSettings.enabled ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
                     Enable Profile
                   </label>
@@ -578,7 +803,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                         className={`flex-1 flex items-center justify-center space-x-1 px-3 py-2 rounded-lg transition-all ${
                           profileSettings.shape === 'circle' 
                             ? 'bg-pink-500 text-white' 
-                            : 'bg-white/20 text-white/80 hover:bg-white/30'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
                         <Circle className="h-4 w-4" />
@@ -589,7 +814,7 @@ export default function ImageEditor({ media, category, region, language, userNam
                         className={`flex-1 flex items-center justify-center space-x-1 px-3 py-2 rounded-lg transition-all ${
                           profileSettings.shape === 'square' 
                             ? 'bg-pink-500 text-white' 
-                            : 'bg-white/20 text-white/80 hover:bg-white/30'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
                         <Square className="h-4 w-4" />
@@ -597,11 +822,11 @@ export default function ImageEditor({ media, category, region, language, userNam
                       </button>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-white/80 mb-2">Size: {profileSettings.size}px</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Size: {profileSettings.size}px</label>
                       <input
                         type="range"
                         min="40"
-                        max="120"
+                        max="250"
                         value={profileSettings.size}
                         onChange={(e) => setProfileSettings(prev => ({ ...prev, size: parseInt(e.target.value) }))}
                         className="w-full accent-pink-500"

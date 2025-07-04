@@ -7,18 +7,16 @@ import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
 interface AdminDashboardProps {
-  onOpenImageEditor: (props: {
+  onOpenImageEditor?: (props: {
     media: string;
-    category: string;
-    region: string;
+    frameSize: { width: number; height: number };
+    mediaType: 'image' | 'video';
     language: 'english' | 'kannada';
     userName: string;
-    onSave: (postData: any) => void;
-    onCancel: () => void;
   }) => void;
 }
 
-export default function AdminDashboard({ onOpenImageEditor }: AdminDashboardProps) {
+export default function AdminDashboard({ onOpenImageEditor = () => {} }: AdminDashboardProps) {
   const { state, addPost } = useApp();
   const [showExisting, setShowExisting] = useState(false);
   const [language, setLanguage] = useState<'english' | 'kannada'>('english');
@@ -115,12 +113,10 @@ export default function AdminDashboard({ onOpenImageEditor }: AdminDashboardProp
       }
       onOpenImageEditor({
         media: mediaUrl,
-        category: '',
-        region: '',
+        frameSize: { width: 1080, height: 1920 },
+        mediaType: file.type.startsWith('video/') ? 'video' : 'image',
         language,
         userName: state.currentUser?.name || '',
-        onSave: handlePostSave,
-        onCancel: () => {},
       });
     }
   };

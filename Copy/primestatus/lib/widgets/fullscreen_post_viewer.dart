@@ -102,6 +102,31 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               );
             },
           ),
+          // Back button
+          Positioned(
+            top: 40,
+            left: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  padding: EdgeInsets.all(12),
+                ),
+              ),
+            ),
+          ),
           // Loading overlay for processing
           if (_isProcessingShare || _isProcessingDownload)
             Container(
@@ -347,10 +372,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
 Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
   try {
-    // Use the same widget as on-screen for screenshot
+    final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final Widget imageWithOverlays = Container(
-      width: 1080,
-      height: 1920,
+      width: frameSize['width'].toDouble(),
+      height: frameSize['height'].toDouble(),
       child: AdminPostFullScreenCard(
         post: post,
         userUsageType: widget.userUsageType,
@@ -362,6 +387,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         onShare: () {}, // dummy
         onDownload: () {}, // dummy
         onEdit: () {}, // dummy
+        forceFrameSize: frameSize,
       ),
     );
 
@@ -378,31 +404,8 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
       );
       if (capturedBytes == null) return null;
 
-      // --- CROP TO 1:1.777 (top margin 1/4, bottom margin 3/4 of extra height) ---
-      final img.Image? original = img.decodeImage(capturedBytes);
-      if (original == null) return null;
-      int srcWidth = original.width;
-      int srcHeight = original.height;
-      double aspectRatio = 1 / 1.777;
-      int cropWidth = srcWidth;
-      int cropHeight = (srcWidth / aspectRatio).round();
-      if (cropHeight > srcHeight) {
-        cropHeight = srcHeight;
-        cropWidth = (srcHeight * aspectRatio).round();
-      }
-      int extraHeight = srcHeight - cropHeight;
-      int offsetX = 0;
-      int offsetY = (extraHeight * 1 / 5).round();
-      final img.Image cropped = img.copyCrop(
-        original,
-        x: offsetX,
-        y: offsetY,
-        width: cropWidth,
-        height: cropHeight,
-      );
-      final Uint8List croppedBytes = Uint8List.fromList(img.encodePng(cropped));
-      return croppedBytes;
-      // --- END CROP ---
+      // No cropping needed, just return the captured bytes
+      return capturedBytes;
     } catch (e) {
       print('Screenshot capture failed: $e');
       return null;
@@ -1017,6 +1020,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onDownload;
   final VoidCallback onEdit;
+  final Map<String, dynamic>? forceFrameSize;
   
   const AdminPostFullScreenCard({
     Key? key, 
@@ -1030,6 +1034,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
     required this.onShare,
     required this.onDownload,
     required this.onEdit,
+    this.forceFrameSize,
   }) : super(key: key);
 
   @override
@@ -1039,157 +1044,183 @@ class AdminPostFullScreenCard extends StatelessWidget {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final frameSize = forceFrameSize ?? post['frameSize'] ?? {'width': 1080, 'height': 1920};
 
     return Stack(
       children: [
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.width * 1.777, // 16:9 aspect ratio for display
-              child: Stack(
-                children: [
-                  // Background image
-                  Positioned.fill(
-                    child: _buildMainImage(imageUrl, fit: BoxFit.contain),
-                  ),
-                  
-                  // Username text overlay
-                  if (textSettings.isNotEmpty)
-                    Positioned(
-                      left: (textSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                      top: (textSettings['y'] ?? 90) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                      child: Transform.translate(
-                        offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: textSettings['hasBackground'] == true
-                              ? BoxDecoration(
-                                  color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
-                                  borderRadius: BorderRadius.circular(8),
-                                )
-                              : null,
-                          child: Text(
-                            userName,
-                            style: TextStyle(
-                              fontFamily: textSettings['font'] ?? 'Arial',
-                              fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
-                              color: _parseColor(textSettings['color'] ?? '#ffffff'),
-                              fontWeight: FontWeight.bold,
-                            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final double width = constraints.maxWidth;
+                final double aspectRatio = frameSize['width'] / frameSize['height'];
+                final double height = width / aspectRatio;
+
+                final double textX = (textSettings['x'] ?? 50) / 100 * width;
+                final double textY = (textSettings['y'] ?? 90) / 100 * height;
+                final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+                final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+                final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+                final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+                final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
+                final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
+                final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+
+                return SizedBox(
+                  width: width,
+                  height: height,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: width,
+                        height: height,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
                           ),
                         ),
                       ),
-                    ),
-                  
-                  // Address text overlay (for business users)
-                  if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
-                    Positioned(
-                      left: (addressSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                      top: (addressSettings['y'] ?? 80) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                      child: Transform.translate(
-                        offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: addressSettings['hasBackground'] == true
-                              ? BoxDecoration(
-                                  color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
-                                  borderRadius: BorderRadius.circular(8),
-                                )
-                              : null,
-                          child: Text(
-                            userAddress,
-                            style: TextStyle(
-                              fontFamily: addressSettings['font'] ?? 'Arial',
-                              fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
-                              color: _parseColor(addressSettings['color'] ?? '#ffffff'),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  
-                  // Phone number text overlay (for business users)
-                  if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
-                    Positioned(
-                      left: (phoneSettings['x'] ?? 50) / 100 * MediaQuery.of(context).size.width,
-                      top: (phoneSettings['y'] ?? 85) / 100 * (MediaQuery.of(context).size.width * 1.777),
-                      child: Transform.translate(
-                        offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: phoneSettings['hasBackground'] == true
-                              ? BoxDecoration(
-                                  color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                                  borderRadius: BorderRadius.circular(8),
-                                )
-                              : null,
-                          child: Text(
-                            userPhoneNumber,
-                            style: TextStyle(
-                              fontFamily: phoneSettings['font'] ?? 'Arial',
-                              fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
-                              color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  
-                  // Profile photo overlay (with background removal)
-                  if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
-                    Positioned(
-                      left: (profileSettings['x'] ?? 20) / 100 * MediaQuery.of(context).size.width - (profileSettings['size'] ?? 80) / 2,
-                      top: (profileSettings['y'] ?? 20) / 100 * (MediaQuery.of(context).size.width * 1.777) - (profileSettings['size'] ?? 80) / 2,
-                      child: Container(
-                        width: (profileSettings['size'] ?? 80).toDouble(),
-                        height: (profileSettings['size'] ?? 80).toDouble(),
-                        decoration: BoxDecoration(
-                          color: profileSettings['hasBackground'] == true
-                              ? Colors.white.withOpacity(0.9)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(
-                            profileSettings['shape'] == 'circle'
-                                ? (profileSettings['size'] ?? 80) / 2
-                                : 8,
-                          ),
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                      Positioned.fill(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            profileSettings['shape'] == 'circle'
-                                ? (profileSettings['size'] ?? 80) / 2
-                                : 8,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
                           ),
-                          child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
+                          child: _buildMainImage(imageUrl, fit: BoxFit.contain),
                         ),
                       ),
-                    ),
-                ],
-              ),
+                      if (textSettings.isNotEmpty)
+                        Positioned(
+                          left: textX,
+                          top: textY,
+                          child: Transform.translate(
+                            offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: textSettings['hasBackground'] == true
+                                  ? BoxDecoration(
+                                      color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                                      borderRadius: BorderRadius.circular(8),
+                                    )
+                                  : null,
+                              child: Text(
+                                userName,
+                                style: TextStyle(
+                                  fontFamily: textSettings['font'] ?? 'Arial',
+                                  fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                                  color: _parseColor(textSettings['color'] ?? '#ffffff'),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+                        Positioned(
+                          left: addressX,
+                          top: addressY,
+                          child: Transform.translate(
+                            offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: addressSettings['hasBackground'] == true
+                                  ? BoxDecoration(
+                                      color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+                                      borderRadius: BorderRadius.circular(8),
+                                    )
+                                  : null,
+                              child: Text(
+                                userAddress,
+                                style: TextStyle(
+                                  fontFamily: addressSettings['font'] ?? 'Arial',
+                                  fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                                  color: _parseColor(addressSettings['color'] ?? '#ffffff'),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+                        Positioned(
+                          left: phoneX,
+                          top: phoneY,
+                          child: Transform.translate(
+                            offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: phoneSettings['hasBackground'] == true
+                                  ? BoxDecoration(
+                                      color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+                                      borderRadius: BorderRadius.circular(8),
+                                    )
+                                  : null,
+                              child: Text(
+                                userPhoneNumber,
+                                style: TextStyle(
+                                  fontFamily: phoneSettings['font'] ?? 'Arial',
+                                  fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                                  color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+                        Positioned(
+                          left: profileX - profileSize / 2,
+                          top: profileY - profileSize / 2,
+                          child: Container(
+                            width: profileSize,
+                            height: profileSize,
+                            decoration: BoxDecoration(
+                              color: profileSettings['hasBackground'] == true
+                                  ? Colors.white.withOpacity(0.9)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(
+                                profileSettings['shape'] == 'circle'
+                                    ? profileSize / 2
+                                    : 8,
+                              ),
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                profileSettings['shape'] == 'circle'
+                                    ? profileSize / 2
+                                    : 8,
+                              ),
+                              child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
-            SizedBox(height: 50), // Add spacing between image and buttons
+            const SizedBox(height: 50),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 0),
               child: Row(
                 children: [
-                  // Share Button - 45%
                   Expanded(
                     flex: 45,
                     child: ElevatedButton.icon(
                       onPressed: onShare,
-                      icon: Icon(Icons.share, color: Colors.white),
-                      label: Text('Whatsapp', style: TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.share, color: Colors.white),
+                      label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green[600],
                         shape: RoundedRectangleBorder(
@@ -1198,14 +1229,13 @@ class AdminPostFullScreenCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
-                  // Download Button - 45%
+                  const SizedBox(width: 8),
                   Expanded(
                     flex: 45,
                     child: ElevatedButton.icon(
                       onPressed: onDownload,
-                      icon: Icon(Icons.download, color: Colors.white),
-                      label: Text('Download', style: TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.download, color: Colors.white),
+                      label: const Text('Download', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[600],
                         shape: RoundedRectangleBorder(
@@ -1214,8 +1244,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
-                  // Change Profile Photo Button - 10%
+                  const SizedBox(width: 8),
                   Expanded(
                     flex: 10,
                     child: ElevatedButton(
@@ -1225,9 +1254,9 @@ class AdminPostFullScreenCard extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(8),
                       ),
-                      child: Icon(Icons.edit, color: Colors.white),
+                      child: const Icon(Icons.edit, color: Colors.white),
                     ),
                   ),
                 ],
@@ -1235,7 +1264,6 @@ class AdminPostFullScreenCard extends StatelessWidget {
             ),
           ],
         ),
-        // Back button
         Positioned(
           top: 8,
           left: 8,
@@ -1244,8 +1272,8 @@ class AdminPostFullScreenCard extends StatelessWidget {
               Navigator.pop(context);
             },
             child: Container(
-              padding: EdgeInsets.all(14),
-              child: Icon(Icons.arrow_back, color: Colors.white, size: 32),
+              padding: const EdgeInsets.all(14),
+              child: const Icon(Icons.arrow_back, color: Colors.white, size: 32),
             ),
           ),
         ),

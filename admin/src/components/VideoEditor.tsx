@@ -7,23 +7,32 @@ import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
 interface VideoEditorProps {
-  onOpenImageEditor: (props: {
+  onOpenEditor: (props: {
     media: string;
-    category: string;
-    region: string;
+    frameSize: { width: number; height: number };
+    mediaType: 'video';
     language: 'english' | 'kannada';
     userName: string;
-    onSave: (postData: any) => void;
-    onCancel: () => void;
   }) => void;
 }
 
-export default function VideoEditor({ onOpenImageEditor }: VideoEditorProps) {
+const FRAME_SIZES = [
+  { label: 'Square (1080x1080)', width: 1080, height: 1080 },
+  { label: 'Portrait (1350x1080)', width: 1080, height: 1350 },
+  { label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 },
+];
+
+export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
   const { state, addPost } = useApp();
   const [showExisting, setShowExisting] = useState(false);
   const [language, setLanguage] = useState<'english' | 'kannada'>('english');
   const [existingPosts, setExistingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<string | null>(null);
+  const [frameSize, setFrameSize] = useState({ width: 1080, height: 1920 });
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch existing posts
   const fetchExistingPosts = async () => {
@@ -107,21 +116,31 @@ export default function VideoEditor({ onOpenImageEditor }: VideoEditorProps) {
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      let mediaUrl = '';
-      if (file.type.startsWith('video/')) {
-        mediaUrl = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
-      } else {
-        mediaUrl = await readFileAsDataURL(file);
+      if (!file.type.startsWith('video/') && file.type !== 'image/gif') {
+        setUploadError('Only video or GIF files are allowed.');
+        return;
       }
-      onOpenImageEditor({
-        media: mediaUrl,
-        category: '',
-        region: '',
+      setUploadError(null);
+      setIsUploading(true);
+      let mediaUrl = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
+      setIsUploading(false);
+      setShowFrameSelector(true);
+      setPendingMedia(mediaUrl);
+    }
+  };
+
+  const handleFrameSelect = (size: typeof FRAME_SIZES[0]) => {
+    setFrameSize(size);
+    setShowFrameSelector(false);
+    if (pendingMedia) {
+      onOpenEditor({
+        media: pendingMedia,
+        frameSize: size,
+        mediaType: 'video',
         language,
         userName: state.currentUser?.name || '',
-        onSave: handlePostSave,
-        onCancel: () => {},
       });
+      setPendingMedia(null);
     }
   };
 
@@ -156,8 +175,6 @@ export default function VideoEditor({ onOpenImageEditor }: VideoEditorProps) {
   const isVideo = (mediaUrl: string) => {
     return mediaUrl.startsWith('data:video/') || mediaUrl.startsWith('http') && mediaUrl.includes('video');
   };
-
-
 
   if (showExisting) {
     return (
@@ -406,6 +423,32 @@ export default function VideoEditor({ onOpenImageEditor }: VideoEditorProps) {
           </div>
         </div>
       </div>
+
+      {showFrameSelector && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-xs w-full text-center">
+            <h2 className="text-xl font-bold mb-4">Select Frame Size</h2>
+            {isUploading || !pendingMedia ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-4"></div>
+                <p className="text-gray-600">Uploading video...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {FRAME_SIZES.map(size => (
+                  <button
+                    key={size.label}
+                    onClick={() => handleFrameSelect(size)}
+                    className="w-full py-2 px-4 rounded-lg border border-gray-300 hover:bg-gray-100 text-gray-800 font-medium mb-2"
+                  >
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

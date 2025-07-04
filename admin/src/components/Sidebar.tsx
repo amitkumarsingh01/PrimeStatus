@@ -1,22 +1,16 @@
 import React from 'react';
-import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon } from 'lucide-react';
+import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon, Tag } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 interface SidebarProps {
-  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor';
-  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor') => void;
+  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager';
+  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager') => void;
 }
 
 export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
   const { logout } = useApp();
 
   const menuItems = [
-    {
-      id: 'dashboard' as const,
-      label: 'Dashboard',
-      icon: Settings,
-      description: 'Create and manage posts'
-    },
     {
       id: 'existing-posts' as const,
       label: 'Existing Posts',
@@ -40,6 +34,12 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
       label: 'Video Editor',
       icon: VideoIcon,
       description: 'Edit videos and create posts'
+    },
+    {
+      id: 'category-manager' as const,
+      label: 'Manage Categories',
+      icon: Tag,
+      description: 'Add or remove categories'
     }
   ];
 
@@ -48,9 +48,10 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+          <img src="/assets/logo.png" alt="Logo" className="h-20 w-20" />
+          {/* <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
             <Settings className="h-5 w-5 text-white" />
-          </div>
+          </div> */}
           <div>
             <h1 className="text-lg font-bold text-gray-800">Admin Panel</h1>
             <p className="text-xs text-gray-500">Prime Status Management</p>

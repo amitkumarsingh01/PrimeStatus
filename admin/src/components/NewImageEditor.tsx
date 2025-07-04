@@ -7,23 +7,25 @@ import { db } from '../firebase';
 import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
 interface NewImageEditorProps {
-  onOpenImageEditor: (props: {
+  onOpenEditor: (props: {
     media: string;
-    category: string;
-    region: string;
+    frameSize: { width: number; height: number };
+    mediaType: 'image';
     language: 'english' | 'kannada';
     userName: string;
-    onSave: (postData: any) => void;
-    onCancel: () => void;
   }) => void;
 }
 
-export default function NewImageEditor({ onOpenImageEditor }: NewImageEditorProps) {
+export default function NewImageEditor({ onOpenEditor }: NewImageEditorProps) {
   const { state, addPost } = useApp();
   const [showExisting, setShowExisting] = useState(false);
   const [language, setLanguage] = useState<'english' | 'kannada'>('english');
   const [existingPosts, setExistingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [frameSize, setFrameSize] = useState({ label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 });
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingMedia, setPendingMedia] = useState<string | null>(null);
 
   // Fetch existing posts
   const fetchExistingPosts = async () => {
@@ -107,21 +109,29 @@ export default function NewImageEditor({ onOpenImageEditor }: NewImageEditorProp
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      let mediaUrl = '';
-      if (file.type.startsWith('video/')) {
-        mediaUrl = await uploadMediaFile(file, `admin_videos/${file.name}_${Date.now()}`);
-      } else {
-        mediaUrl = await readFileAsDataURL(file);
+      if (!file.type.startsWith('image/')) {
+        setUploadError('Only image files are allowed.');
+        return;
       }
-      onOpenImageEditor({
-        media: mediaUrl,
-        category: '',
-        region: '',
+      setUploadError(null);
+      let mediaUrl = await readFileAsDataURL(file);
+      setShowFrameSelector(true);
+      setPendingMedia(mediaUrl);
+    }
+  };
+
+  const handleFrameSelect = (size: typeof FRAME_SIZES[0]) => {
+    setFrameSize(size);
+    setShowFrameSelector(false);
+    if (pendingMedia) {
+      onOpenEditor({
+        media: pendingMedia,
+        frameSize: size,
+        mediaType: 'image',
         language,
         userName: state.currentUser?.name || '',
-        onSave: handlePostSave,
-        onCancel: () => {},
       });
+      setPendingMedia(null);
     }
   };
 
@@ -157,7 +167,23 @@ export default function NewImageEditor({ onOpenImageEditor }: NewImageEditorProp
     return mediaUrl.startsWith('data:video/') || mediaUrl.startsWith('http') && mediaUrl.includes('video');
   };
 
+  const FONT_OPTIONS = [
+    'Arial',
+    'Roboto',
+    'Montserrat',
+    'Lato',
+    'Times New Roman',
+    'Georgia',
+    'Courier New',
+    'Verdana',
+    'Tahoma',
+  ];
 
+  const FRAME_SIZES = [
+    { label: 'Square (1080x1080)', width: 1080, height: 1080 },
+    { label: 'Portrait (1350x1080)', width: 1080, height: 1350 },
+    { label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 },
+  ];
 
   if (showExisting) {
     return (
@@ -307,13 +333,31 @@ export default function NewImageEditor({ onOpenImageEditor }: NewImageEditorProp
 
   return (
     <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
+      {uploadError && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg text-center">{uploadError}</div>
+      )}
+      {showFrameSelector && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-xs w-full text-center">
+            <h2 className="text-xl font-bold mb-4">Select Frame Size</h2>
+            <div className="space-y-3">
+              {FRAME_SIZES.map(size => (
+                <button
+                  key={size.label}
+                  onClick={() => handleFrameSelect(size)}
+                  className="w-full py-2 px-4 rounded-lg border border-gray-300 hover:bg-gray-100 text-gray-800 font-medium mb-2"
+                >
+                  {size.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-white/20">
           <div className="text-center mb-8">
             <img src="/assets/logo.png" alt="Logo" className="h-24 w-24 mx-auto mb-4" />
-            {/* <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
-              <Settings className="h-8 w-8 text-white" />
-            </div> */}
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Image Editor</h1>
             <p className="text-gray-600">Create and manage your posts</p>
           </div>

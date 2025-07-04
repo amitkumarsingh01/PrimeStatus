@@ -9,6 +9,7 @@ import 'quote_editor_screen.dart';
 import 'package:primestatus/services/user_service.dart';
 import 'package:primestatus/services/quote_service.dart';
 import 'package:primestatus/services/background_removal_service.dart';
+import 'package:primestatus/services/category_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -49,12 +50,34 @@ class HomeScreenState extends State<HomeScreen> {
   final UserService _userService = UserService();
   final QuoteService _quoteService = QuoteService();
   final BackgroundRemovalService _bgRemovalService = BackgroundRemovalService();
+  final CategoryService _categoryService = CategoryService();
   User? _currentUser;
 
   // Multi-category selection state
   Set<String> _selectedCategories = {'All'};
   // Add search query state for categories
   String _categorySearchQuery = '';
+  // Firebase categories state
+  List<Map<String, dynamic>> _firebaseCategories = [];
+  bool _isLoadingCategories = true;
+  
+  // Helper method to get category name based on user language
+  String _getCategoryName(Map<String, dynamic> category) {
+    // Default to English if no language is set
+    if (userLanguage.isEmpty) {
+      return category['nameEn'] as String? ?? 'Unknown';
+    }
+    
+    if (userLanguage.toLowerCase() == 'kannada') {
+      final kannadaName = category['nameKn'] as String?;
+      if (kannadaName != null && kannadaName.isNotEmpty) {
+        return kannadaName;
+      }
+      // Fallback to English if Kannada name is empty or null
+      return category['nameEn'] as String? ?? 'Unknown';
+    }
+    return category['nameEn'] as String? ?? 'Unknown';
+  }
 
   @override
   void initState() {
@@ -62,12 +85,41 @@ class HomeScreenState extends State<HomeScreen> {
     _quoteController = TextEditingController();
     _setQuoteOfTheDay();
     _checkAuthState();
+    _fetchCategories();
   }
 
   void _setQuoteOfTheDay() {
     final allQuotes = QuoteData.quotes.values.expand((list) => list).toList();
     final random = Random();
     quoteOfTheDay = allQuotes[random.nextInt(allQuotes.length)];
+  }
+
+  Future<void> _fetchCategories() async {
+    try {
+      setState(() {
+        _isLoadingCategories = true;
+      });
+      
+      final categories = await _categoryService.getCategories();
+      setState(() {
+        _firebaseCategories = categories;
+        _isLoadingCategories = false;
+      });
+    } catch (e) {
+      print('Error fetching categories: $e');
+      setState(() {
+        _isLoadingCategories = false;
+      });
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load categories. Using default categories.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 
   void _checkAuthState() {
@@ -199,10 +251,23 @@ class HomeScreenState extends State<HomeScreen> {
       // Refresh user data to update UI
       await _fetchUserDetails();
       
+      // Refresh categories if language changed to update UI
+      if (language != null) {
+        // Trigger UI rebuild with new language
+        setState(() {});
+      }
+      
       // Show success message for usage type change
       if (usageType != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Usage type changed to $usageType')),
+        );
+      }
+      
+      // Show success message for language change
+      if (language != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Language changed to $language')),
         );
       }
     } catch (e) {
@@ -668,21 +733,24 @@ Widget _buildHomeTab() {
         ),
       ),
     ),
-        body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuoteOfTheDay(),
-            SizedBox(height: 24),
-            _buildQuickActions(),
-            SizedBox(height: 24),
-            _buildFeaturedCategories(),
-            // SizedBox(height: 24),
-            // _buildAdminPostFeed(),
-          ],
+        body: RefreshIndicator(
+          onRefresh: _fetchCategories,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildQuoteOfTheDay(),
+                SizedBox(height: 24),
+                _buildQuickActions(),
+                SizedBox(height: 24),
+                _buildFeaturedCategories(),
+                // SizedBox(height: 24),
+                // _buildAdminPostFeed(),
+              ],
+            ),
+          ),
         ),
-      ),
     );
   }
 
@@ -823,6 +891,29 @@ Widget _buildHomeTab() {
   }
 
   Widget _buildFeaturedCategories() {
+    if (_isLoadingCategories) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Categories',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 12),
+          Container(
+            height: 100,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -840,9 +931,10 @@ Widget _buildHomeTab() {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: 4),
-            itemCount: QuoteData.categories.length,
+            itemCount: _firebaseCategories.length,
             itemBuilder: (context, index) {
-              final category = QuoteData.categories[index];
+              final category = _firebaseCategories[index];
+              final categoryName = _getCategoryName(category);
               return Container(
                 width: MediaQuery.of(context).size.width / 5.5, // Show 5 categories at a time
                 margin: EdgeInsets.only(right: 12),
@@ -867,14 +959,14 @@ Widget _buildHomeTab() {
                         ],
                       ),
                       child: Icon(
-                        _getCategoryIcon(category),
+                        _getCategoryIcon(categoryName),
                         color: Colors.white,
                         size: 20,
                       ),
                     ),
                     SizedBox(height: 6),
                     Text(
-                      category,
+                      categoryName,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1109,39 +1201,42 @@ Widget _buildHomeTab() {
           ),
         ),
       ),
-      body: ListView.builder(
-        // padding: EdgeInsets.all(16),
-        itemCount: QuoteData.categories
-            .where((category) =>
-                _categorySearchQuery.isEmpty ||
-                category.toLowerCase().contains(_categorySearchQuery.toLowerCase()))
-            .toList()
-            .length,
-        itemBuilder: (context, index) {
-          final filteredCategories = QuoteData.categories
-              .where((category) =>
-                  _categorySearchQuery.isEmpty ||
-                  category.toLowerCase().contains(_categorySearchQuery.toLowerCase()))
-              .toList();
-          final category = filteredCategories[index];
-          return Card(
-            margin: EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.deepOrange.shade100,
-                child: Icon(Icons.format_quote, color: Colors.deepOrange),
-              ),
-              title: Text(
-                category,
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text('${QuoteData.quotes[category]?.length ?? 0} quotes'),
-              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+      body: _isLoadingCategories
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              // padding: EdgeInsets.all(16),
+              itemCount: _firebaseCategories
+                  .where((category) =>
+                      _categorySearchQuery.isEmpty ||
+                      _getCategoryName(category).toLowerCase().contains(_categorySearchQuery.toLowerCase()))
+                  .toList()
+                  .length,
+              itemBuilder: (context, index) {
+                final filteredCategories = _firebaseCategories
+                    .where((category) =>
+                        _categorySearchQuery.isEmpty ||
+                        _getCategoryName(category).toLowerCase().contains(_categorySearchQuery.toLowerCase()))
+                    .toList();
+                final category = filteredCategories[index];
+                final categoryName = _getCategoryName(category);
+                return Card(
+                  margin: EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.deepOrange.shade100,
+                      child: Icon(Icons.format_quote, color: Colors.deepOrange),
+                    ),
+                    title: Text(
+                      categoryName,
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text('${QuoteData.quotes[categoryName]?.length ?? 0} quotes'),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -1597,50 +1692,77 @@ Widget _buildAdminFeedTab() {
               children: [
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 6,
-                    children: QuoteData.categories.map((category) {
-                      final isSelected = _selectedCategories.contains(category);
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (category == 'All') {
-                              _selectedCategories = {'All'};
-                            } else {
-                              if (_selectedCategories.contains('All')) {
-                                _selectedCategories = {category};
-                              } else if (_selectedCategories.contains(category)) {
-                                _selectedCategories.remove(category);
-                                if (_selectedCategories.isEmpty) {
+                  child: _isLoadingCategories
+                      ? Center(child: CircularProgressIndicator(color: Colors.white))
+                      : Wrap(
+                          spacing: 4,
+                          runSpacing: 6,
+                          children: [
+                            // Always show "All" option
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
                                   _selectedCategories = {'All'};
-                                }
-                              } else {
-                                _selectedCategories.add(category);
-                              }
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xffd74d02) : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(width: 0.5, color: const Color.fromARGB(255, 255, 119, 34)),
-                          ),
-                          child: Text(
-                            category,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : Colors.black,
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _selectedCategories.contains('All') ? const Color(0xffd74d02) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(width: 0.5, color: const Color.fromARGB(255, 255, 119, 34)),
+                                ),
+                                child: Text(
+                                  'All',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _selectedCategories.contains('All') ? Colors.white : Colors.black,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
-                            textAlign: TextAlign.center,
-                          ),
+                            // Show Firebase categories
+                            ..._firebaseCategories.map((category) {
+                              final categoryName = _getCategoryName(category);
+                              final isSelected = _selectedCategories.contains(categoryName);
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (_selectedCategories.contains('All')) {
+                                      _selectedCategories = {categoryName};
+                                    } else if (_selectedCategories.contains(categoryName)) {
+                                      _selectedCategories.remove(categoryName);
+                                      if (_selectedCategories.isEmpty) {
+                                        _selectedCategories = {'All'};
+                                      }
+                                    } else {
+                                      _selectedCategories.add(categoryName);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? const Color(0xffd74d02) : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(width: 0.5, color: const Color.fromARGB(255, 255, 119, 34)),
+                                  ),
+                                  child: Text(
+                                    categoryName,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? Colors.white : Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
                         ),
-                      );
-                    }).toList(),
-                  ),
                 ),
               ],
             ),
@@ -2211,16 +2333,23 @@ Widget _buildAdminFeedTab() {
         title: Text('Select Category'),
         content: Container(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: QuoteData.categories.length,
-            itemBuilder: (context, index) {
-              final category = QuoteData.categories[index];
-              return ListTile(
-                title: Text(category),
-              );
-            },
-          ),
+          child: _isLoadingCategories
+              ? Center(child: CircularProgressIndicator())
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _firebaseCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = _firebaseCategories[index];
+                    final categoryName = _getCategoryName(category);
+                    return ListTile(
+                      title: Text(categoryName),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showCategoryQuotes(categoryName);
+                      },
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -2716,15 +2845,42 @@ Widget _buildAdminFeedTab() {
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Morning':
-      case 'Motivational':
-      case 'Love':
-      case 'Festival':
-      case 'Success':
-      case 'Inspiration':
-      case 'Life':
-      case 'Friendship':
+    switch (category.toLowerCase()) {
+      case 'morning':
+      case 'good morning':
+      case 'ಮುಂಜಾನೆ':
+      case 'ಶುಭೋದಯ':
+        return Icons.wb_sunny;
+      case 'motivational':
+      case 'ಪ್ರೇರಕ':
+        return Icons.trending_up;
+      case 'love':
+      case 'ಪ್ರೀತಿ':
+        return Icons.favorite;
+      case 'festival':
+      case 'ಹಬ್ಬ':
+        return Icons.celebration;
+      case 'success':
+      case 'ಯಶಸ್ಸು':
+        return Icons.star;
+      case 'inspiration':
+      case 'ಸ್ಫೂರ್ತಿ':
+        return Icons.lightbulb;
+      case 'life':
+      case 'ಜೀವನ':
+        return Icons.psychology;
+      case 'friendship':
+      case 'ಸ್ನೇಹ':
+        return Icons.people;
+      case 'good night':
+      case 'ಶುಭ ರಾತ್ರಿ':
+        return Icons.nightlight;
+      case 'happy sunday':
+      case 'ಶುಭ ಭಾನುವಾರ':
+        return Icons.weekend;
+      case 'political':
+      case 'ರಾಜಕೀಯ':
+        return Icons.flag;
       default:
         return Icons.format_quote;
     }
@@ -2733,6 +2889,11 @@ Widget _buildAdminFeedTab() {
   // Public method to refresh user data (can be called from other widgets)
   Future<void> refreshUserData() async {
     await _fetchUserDetails();
+  }
+
+  // Public method to refresh categories (can be called from other widgets)
+  Future<void> refreshCategories() async {
+    await _fetchCategories();
   }
 
   void _showDeletePhotoDialog(String photoUrl, int index) {

@@ -11,6 +11,7 @@ interface ExistingPostsProps {
 export default function ExistingPosts({ onBack }: ExistingPostsProps) {
   const [existingPosts, setExistingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [frameFilter, setFrameFilter] = useState<'all' | '1080x1080' | '1080x1350' | '1080x1920'>('all');
 
   useEffect(() => {
     fetchExistingPosts();
@@ -81,6 +82,18 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
     return mediaUrl.startsWith('data:video/') || (mediaUrl.startsWith('http') && mediaUrl.includes('video'));
   };
 
+  // Frame filter logic
+  const filteredPosts = frameFilter === 'all'
+    ? existingPosts
+    : existingPosts.filter(post => {
+        const size = post.frameSize || post["frameSize"];
+        if (!size || typeof size.width !== 'number' || typeof size.height !== 'number') return false;
+        if (frameFilter === '1080x1080') return size.width === 1080 && size.height === 1080;
+        if (frameFilter === '1080x1350') return size.width === 1080 && size.height === 1350;
+        if (frameFilter === '1080x1920') return size.width === 1080 && size.height === 1920;
+        return true;
+      });
+
   return (
     <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
       <div className="max-w-7xl mx-auto">
@@ -101,12 +114,41 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
             )}
           </div>
 
+          {/* Frame Filter */}
+          {/* <div className="mb-6 flex flex-wrap gap-3 items-center">
+            <span className="font-medium text-gray-700 mr-2">Filter by Frame:</span>
+            <button
+              className={`px-4 py-1 rounded-lg border ${frameFilter === 'all' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'} transition`}
+              onClick={() => setFrameFilter('all')}
+            >
+              All
+            </button>
+            <button
+              className={`px-4 py-1 rounded-lg border ${frameFilter === '1080x1080' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'} transition`}
+              onClick={() => setFrameFilter('1080x1080')}
+            >
+              1080x1080
+            </button>
+            <button
+              className={`px-4 py-1 rounded-lg border ${frameFilter === '1080x1350' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'} transition`}
+              onClick={() => setFrameFilter('1080x1350')}
+            >
+              1080x1350
+            </button>
+            <button
+              className={`px-4 py-1 rounded-lg border ${frameFilter === '1080x1920' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'} transition`}
+              onClick={() => setFrameFilter('1080x1920')}
+            >
+              1080x1920
+            </button>
+          </div> */}
+
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#d74d02' }}></div>
               <p className="text-gray-600">Loading posts...</p>
             </div>
-          ) : existingPosts.length === 0 ? (
+          ) : filteredPosts.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <Settings className="h-16 w-16 mx-auto" />
@@ -116,7 +158,7 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {existingPosts.map(post => (
+              {filteredPosts.map(post => (
                 <div
                   key={post.id}
                   className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all duration-300"
@@ -211,6 +253,8 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
                     <div className="text-xs text-gray-400">
                       <p>Language: {post.language === 'kannada' ? 'ಕನ್ನಡ' : 'English'}</p>
                       <p>Created: {formatDate(post.createdAt)}</p>
+                      {/* Debug: Show frameSize info */}
+                      <p className="mt-1 text-[10px] text-orange-600">Frame: {post.frameSize && typeof post.frameSize.width === 'number' && typeof post.frameSize.height === 'number' ? `${post.frameSize.width}x${post.frameSize.height}` : <span className="text-red-500">No frameSize</span>}</p>
                     </div>
                   </div>
                 </div>

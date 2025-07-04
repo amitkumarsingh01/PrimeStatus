@@ -238,6 +238,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
     final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
     final String userUsageType = (context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '');
@@ -255,17 +256,13 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           LayoutBuilder(
             builder: (context, constraints) {
               final double width = constraints.maxWidth;
-              // Set height to 1.777 * width (16:9 aspect ratio)
-              final double height = width * 1.777;
-
-              // Calculate overlay positions in pixels
+              final double aspectRatio = frameSize['width'] / frameSize['height'];
+              final double height = width / aspectRatio;
               final double textX = (textSettings['x'] ?? 50) / 100 * width;
               final double textY = (textSettings['y'] ?? 90) / 100 * height;
               final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
               final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
               final double profileSize = (profileSettings['size'] ?? 80).toDouble();
-              
-              // Address and phone positions (if enabled)
               final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
@@ -770,6 +767,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       final profileSettings = post['profileSettings'] ?? {};
       final addressSettings = post['addressSettings'] ?? {};
       final phoneSettings = post['phoneSettings'] ?? {};
+      final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
       
       final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
       final String userName = homeScreenState?.userName ?? 'User';
@@ -778,10 +776,10 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       final String userAddress = homeScreenState?.userAddress ?? '';
       final String userPhoneNumber = homeScreenState?.userPhoneNumber ?? '';
 
-      // Create a widget with the image and overlays
+      // Create a widget with the image and overlays using actual frame size
       final Widget imageWithOverlays = Container(
-        width: 1080, // Fixed width for consistent sharing
-        height: 1920, // 9:16 aspect ratio
+        width: frameSize['width'].toDouble(),
+        height: frameSize['height'].toDouble(),
         child: Stack(
           children: [
             // Background image
@@ -792,8 +790,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             // Username text overlay
             if (textSettings.isNotEmpty)
               Positioned(
-                left: (textSettings['x'] ?? 50) / 100 * 1080,
-                top: (textSettings['y'] ?? 90) / 100 * 1920,
+                left: (textSettings['x'] ?? 50) / 100 * frameSize['width'],
+                top: (textSettings['y'] ?? 90) / 100 * frameSize['height'],
                 child: Transform.translate(
                   offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
                   child: Container(
@@ -820,8 +818,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             // Address text overlay (for business users)
             if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
               Positioned(
-                left: (addressSettings['x'] ?? 50) / 100 * 1080,
-                top: (addressSettings['y'] ?? 80) / 100 * 1920,
+                left: (addressSettings['x'] ?? 50) / 100 * frameSize['width'],
+                top: (addressSettings['y'] ?? 80) / 100 * frameSize['height'],
                 child: Transform.translate(
                   offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
                   child: Container(
@@ -848,8 +846,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             // Phone number text overlay (for business users)
             if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
               Positioned(
-                left: (phoneSettings['x'] ?? 50) / 100 * 1080,
-                top: (phoneSettings['y'] ?? 85) / 100 * 1920,
+                left: (phoneSettings['x'] ?? 50) / 100 * frameSize['width'],
+                top: (phoneSettings['y'] ?? 85) / 100 * frameSize['height'],
                 child: Transform.translate(
                   offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
                   child: Container(
@@ -876,8 +874,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             // Profile photo overlay (with background removal)
             if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
               Positioned(
-                left: (profileSettings['x'] ?? 20) / 100 * 1080 - (profileSettings['size'] ?? 80) / 2,
-                top: (profileSettings['y'] ?? 20) / 100 * 1920 - (profileSettings['size'] ?? 80) / 2,
+                left: (profileSettings['x'] ?? 20) / 100 * frameSize['width'] - (profileSettings['size'] ?? 80) / 2,
+                top: (profileSettings['y'] ?? 20) / 100 * frameSize['height'] - (profileSettings['size'] ?? 80) / 2,
                 child: Container(
                   width: (profileSettings['size'] ?? 80).toDouble(),
                   height: (profileSettings['size'] ?? 80).toDouble(),
@@ -2006,6 +2004,7 @@ class AdminPostFeedWidgetHelpers {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
     final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
     final String userUsageType = (context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '');
@@ -2027,6 +2026,7 @@ class AdminPostFeedWidgetHelpers {
       userAddress,
       userPhoneNumber,
       userCity,
+      frameSize,
     );
   }
 
@@ -2045,6 +2045,7 @@ class AdminPostFeedWidgetHelpers {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
 
     return _buildPostCardStaticInternal(
       context, 
@@ -2060,6 +2061,7 @@ class AdminPostFeedWidgetHelpers {
       userAddress,
       userPhoneNumber,
       userCity,
+      frameSize,
     );
   }
 
@@ -2077,6 +2079,7 @@ class AdminPostFeedWidgetHelpers {
     String userAddress,
     String userPhoneNumber,
     String userCity,
+    Map<String, dynamic> frameSize,
   ) {
 
     return Column(
@@ -2084,7 +2087,8 @@ class AdminPostFeedWidgetHelpers {
         LayoutBuilder(
           builder: (context, constraints) {
             final double width = constraints.maxWidth;
-            final double height = width * 1.777;
+            final double aspectRatio = frameSize['width'] / frameSize['height'];
+            final double height = width / aspectRatio;
             final double textX = (textSettings['x'] ?? 50) / 100 * width;
             final double textY = (textSettings['y'] ?? 90) / 100 * height;
             final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
