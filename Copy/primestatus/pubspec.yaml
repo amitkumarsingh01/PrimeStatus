@@ -49,7 +49,6 @@ dependencies:
   image: ^4.1.3
   
   # Video Processing
-  ffmpeg_kit_flutter: ^6.0.3
   video_thumbnail: ^0.5.3
   
   # Utilities

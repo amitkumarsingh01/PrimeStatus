@@ -18,6 +18,52 @@ import 'package:image/image.dart' as img;
 import 'package:video_player/video_player.dart';
 import '../services/video_processing_service.dart';
 
+// Global video controller manager for fullscreen
+class FullscreenVideoControllerManager {
+  static final FullscreenVideoControllerManager _instance = FullscreenVideoControllerManager._internal();
+  factory FullscreenVideoControllerManager() => _instance;
+  FullscreenVideoControllerManager._internal();
+
+  final Map<String, VideoPlayerController> _controllers = {};
+  VideoPlayerController? _currentController;
+
+  void registerController(String key, VideoPlayerController controller) {
+    _controllers[key] = controller;
+  }
+
+  void unregisterController(String key) {
+    _controllers.remove(key);
+  }
+
+  void setCurrentController(String key) {
+    // Pause all other controllers
+    for (var entry in _controllers.entries) {
+      if (entry.key != key && entry.value.value.isInitialized && entry.value.value.isPlaying) {
+        entry.value.pause();
+      }
+    }
+    
+    // Set current controller
+    _currentController = _controllers[key];
+  }
+
+  void pauseAllControllers() {
+    for (var controller in _controllers.values) {
+      if (controller.value.isInitialized && controller.value.isPlaying) {
+        controller.pause();
+      }
+    }
+  }
+
+  void disposeAllControllers() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+    _currentController = null;
+  }
+}
+
 class FullscreenPostViewer extends StatefulWidget {
   final List<Map<String, dynamic>> posts;
   final int initialIndex;
@@ -62,24 +108,44 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     _pageController = PageController(initialPage: widget.initialIndex);
     _activeProfilePhotoUrl = widget.userProfilePhotoUrl;
     _fetchUserProfilePhotos();
+    
+    // Add page change listener to pause videos when switching posts
+    _pageController.addListener(() {
+      if (_pageController.page != null) {
+        // Pause all videos when page changes
+        FullscreenVideoControllerManager().pauseAllControllers();
+      }
+    });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    // Clean up all video controllers when leaving fullscreen
+    FullscreenVideoControllerManager().disposeAllControllers();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    return WillPopScope(
+      onWillPop: () async {
+        // Resume feed videos when going back
+        VideoControllerManager().setFullscreenMode(false);
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
         children: [
           PageView.builder(
             controller: _pageController,
             scrollDirection: Axis.vertical,
             itemCount: widget.posts.length,
+            onPageChanged: (index) {
+              // Pause all videos when switching posts
+              FullscreenVideoControllerManager().pauseAllControllers();
+            },
             itemBuilder: (context, index) {
               final post = widget.posts[index];
               return Center(
@@ -114,6 +180,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               ),
               child: IconButton(
                 onPressed: () {
+                  // Resume feed videos when going back
+                  VideoControllerManager().setFullscreenMode(false);
                   Navigator.pop(context);
                 },
                 icon: Icon(
@@ -145,7 +213,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
                       Text(
-                        _isProcessingShare ? 'Processing video for sharing...' : 'Processing image for download...',
+                        _isProcessingShare ? 'Processing post for sharing...' : 'Processing post for download...',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
                       SizedBox(height: 8),
@@ -160,8 +228,9 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Share functionality
   void _showShareOptions(Map<String, dynamic> post) {
@@ -695,9 +764,12 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
   try {
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
+    final int cropWidth = frameSize['width'] ?? 1080;
+    final int cropHeight = frameSize['height'] ?? 1920;
+
     final Widget imageWithOverlays = Container(
-      width: frameSize['width'].toDouble(),
-      height: frameSize['height'].toDouble(),
+      width: cropWidth.toDouble(),
+      height: cropHeight.toDouble(),
       child: AdminPostFullScreenCard(
         post: post,
         userUsageType: widget.userUsageType,
@@ -713,27 +785,42 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
       ),
     );
 
-    // Capture the widget with increased delay and better settings
-    try {
-      final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
-        Material(
-          color: Colors.transparent,
-          child: imageWithOverlays,
-        ),
-        delay: Duration(milliseconds: 1000), // Increased delay
-        pixelRatio: 2.0,
-        context: context,
-      );
-      if (capturedBytes == null) return null;
+    // Capture the widget
+    final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
+      Material(
+        color: Colors.transparent,
+        child: imageWithOverlays,
+      ),
+      delay: Duration(milliseconds: 1000),
+      pixelRatio: 2.0,
+      context: context,
+    );
+    if (capturedBytes == null) return null;
 
+    // Decode the image
+    final img.Image? capturedImage = img.decodeImage(capturedBytes);
+    if (capturedImage == null) return null;
+
+    // If the captured image is taller than the frame, crop with 2:5 top:bottom ratio
+    if (capturedImage.height > cropHeight) {
+      final int totalToRemove = capturedImage.height - cropHeight;
+      final int removedTop = (totalToRemove * 0 / 5).round();
+      final int cropStartY = removedTop.clamp(0, capturedImage.height - cropHeight);
+      final img.Image cropped = img.copyCrop(
+        capturedImage,
+        x: 0,
+        y: cropStartY,
+        width: cropWidth,
+        height: cropHeight,
+      );
+      final Uint8List croppedBytes = Uint8List.fromList(img.encodePng(cropped));
+      return croppedBytes;
+    } else {
       // No cropping needed, just return the captured bytes
       return capturedBytes;
-    } catch (e) {
-      print('Screenshot capture failed: $e');
-      return null;
     }
   } catch (e) {
-    print('Error capturing image: $e');
+    print('Error capturing/cropping image: $e');
     return null;
   }
 }
@@ -1635,19 +1722,19 @@ class AdminPostFullScreenCard extends StatelessWidget {
             ),
           ],
         ),
-        Positioned(
-          top: 8,
-          left: 8,
-          child: InkWell(
-            onTap: () {
-              Navigator.pop(context);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 32),
-            ),
-          ),
-        ),
+        // Positioned(
+        //   top: 8,
+        //   left: 8,
+        //   child: InkWell(
+        //     onTap: () {
+        //       Navigator.pop(context);
+        //     },
+        //     child: Container(
+        //       padding: const EdgeInsets.all(14),
+        //       child: const Icon(Icons.arrow_back, color: Colors.white, size: 32),
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }
@@ -1755,21 +1842,26 @@ class _Base64VideoPlayer extends StatefulWidget {
 class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
+  late String _controllerKey;
 
   @override
   void initState() {
     super.initState();
+    _controllerKey = 'fullscreen_base64_${DateTime.now().millisecondsSinceEpoch}_${widget.bytes.hashCode}';
     _controller = VideoPlayerController.networkUrl(Uri.parse('data:video/mp4;base64,${base64Encode(widget.bytes)}'));
+    FullscreenVideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
       _controller.setVolume(1.0);
       _controller.play();
+      FullscreenVideoControllerManager().setCurrentController(_controllerKey);
       setState(() {});
     });
   }
 
   @override
   void dispose() {
+    FullscreenVideoControllerManager().unregisterController(_controllerKey);
     _controller.dispose();
     super.dispose();
   }
@@ -1804,21 +1896,26 @@ class _NetworkVideoPlayer extends StatefulWidget {
 class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
+  late String _controllerKey;
 
   @override
   void initState() {
     super.initState();
+    _controllerKey = 'fullscreen_network_${DateTime.now().millisecondsSinceEpoch}_${widget.url.hashCode}';
     _controller = VideoPlayerController.network(widget.url);
+    FullscreenVideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
       _controller.setVolume(1.0);
       _controller.play();
+      FullscreenVideoControllerManager().setCurrentController(_controllerKey);
       setState(() {});
     });
   }
 
   @override
   void dispose() {
+    FullscreenVideoControllerManager().unregisterController(_controllerKey);
     _controller.dispose();
     super.dispose();
   }

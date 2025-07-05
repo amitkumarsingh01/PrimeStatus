@@ -260,7 +260,12 @@ class HomeScreenState extends State<HomeScreen> {
                             final tempDir = Directory.systemTemp;
                             final tempFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
                             await tempFile.writeAsBytes(bytes);
-                            Navigator.pop(context, tempFile);
+                            
+                            // Close the crop dialog first
+                            Navigator.pop(context);
+                            
+                            // Show processing popup
+                            _showProcessingPopup(tempFile);
                           } else {
                             Navigator.pop(context, null);
                           }
@@ -312,6 +317,120 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
     // This return is not used, as the dialog returns the file
+  }
+
+  // Show processing popup for cropping and background removal
+  void _showProcessingPopup(File croppedImageFile) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          // Start processing immediately
+          _processCroppedImage(croppedImageFile, setDialogState);
+          
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.hourglass_empty, color: Colors.deepOrange),
+                SizedBox(width: 8),
+                Text('Processing Image'),
+              ],
+            ),
+            content: Container(
+              width: double.maxFinite,
+              height: 200,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepOrange),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Cropping and removing background...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Please wait while we process your image',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Process the cropped image with background removal
+  Future<void> _processCroppedImage(File croppedImageFile, StateSetter setDialogState) async {
+    try {
+      setState(() {
+        _isProcessingPhoto = true;
+      });
+
+      // Upload original cropped image
+      String downloadUrl = await _userService.uploadProfilePhoto(croppedImageFile, _currentUser!.uid);
+      
+      // Remove background and upload processed image
+      String? processedUrl = await _bgRemovalService.removeBackground(croppedImageFile);
+      String? downloadUrlNoBg;
+      
+      if (processedUrl != null) {
+        // Download processed image and upload to Firebase Storage
+        final response = await http.get(Uri.parse(processedUrl));
+        if (response.statusCode == 200) {
+          final tempDir = Directory.systemTemp;
+          final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
+          await tempFile.writeAsBytes(response.bodyBytes);
+          downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
+          await tempFile.delete();
+        }
+      }
+      
+      // Add both to Firestore
+      await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
+      await _fetchUserProfilePhotos();
+      
+      // Close the processing dialog
+      Navigator.pop(context);
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profile photo added to gallery!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+    } catch (e) {
+      // Close the processing dialog
+      Navigator.pop(context);
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to process image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isProcessingPhoto = false;
+      });
+    }
   }
 
   // Search functionality methods
@@ -533,9 +652,6 @@ class HomeScreenState extends State<HomeScreen> {
       return;
     }
     try {
-      setState(() {
-        _isProcessingPhoto = true;
-      });
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
@@ -547,48 +663,13 @@ class HomeScreenState extends State<HomeScreen> {
         File imageFile = File(pickedFile.path);
         
         // Use the new crop_your_image dialog
-        File? croppedImageFile;
-        final croppedFile = await _showCropDialog(imageFile);
-        if (croppedFile != null) {
-          croppedImageFile = croppedFile;
-        } else {
-          // User cancelled cropping, use original image
-          croppedImageFile = imageFile;
-        }
-        
-        if (croppedImageFile != null) {
-          // Upload original
-          String downloadUrl = await _userService.uploadProfilePhoto(croppedImageFile, _currentUser!.uid);
-          // Remove background and upload processed image
-          String? processedUrl = await _bgRemovalService.removeBackground(croppedImageFile);
-          String? downloadUrlNoBg;
-          if (processedUrl != null) {
-            // Download processed image and upload to Firebase Storage
-            final response = await http.get(Uri.parse(processedUrl));
-            if (response.statusCode == 200) {
-              final tempDir = Directory.systemTemp;
-              final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
-              await tempFile.writeAsBytes(response.bodyBytes);
-              downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
-              await tempFile.delete();
-            }
-          }
-          // Add both to Firestore
-          await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
-          await _fetchUserProfilePhotos();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profile photo added to gallery!')),
-          );
-        }
+        await _showCropDialog(imageFile);
+        // The processing will be handled by the crop dialog and processing popup
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add profile photo: $e')),
+        SnackBar(content: Text('Failed to pick image: $e')),
       );
-    } finally {
-      setState(() {
-        _isProcessingPhoto = false;
-      });
     }
   }
 
@@ -600,9 +681,6 @@ class HomeScreenState extends State<HomeScreen> {
       return;
     }
     try {
-      setState(() {
-        _isProcessingPhoto = true;
-      });
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
@@ -614,46 +692,13 @@ class HomeScreenState extends State<HomeScreen> {
         File imageFile = File(pickedFile.path);
         
         // Use the new crop_your_image dialog
-        File? croppedImageFile;
-        final croppedFile = await _showCropDialog(imageFile);
-        if (croppedFile != null) {
-          croppedImageFile = croppedFile;
-        } else {
-          // User cancelled cropping, use original image
-          croppedImageFile = imageFile;
-        }
-        
-        if (croppedImageFile != null) {
-          // Upload original
-          String downloadUrl = await _userService.uploadProfilePhoto(croppedImageFile, _currentUser!.uid);
-          // Remove background and upload processed image
-          String? processedUrl = await _bgRemovalService.removeBackground(croppedImageFile);
-          String? downloadUrlNoBg;
-          if (processedUrl != null) {
-            final response = await http.get(Uri.parse(processedUrl));
-            if (response.statusCode == 200) {
-              final tempDir = Directory.systemTemp;
-              final tempFile = File('${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png');
-              await tempFile.writeAsBytes(response.bodyBytes);
-              downloadUrlNoBg = await _userService.uploadProfilePhoto(tempFile, _currentUser!.uid);
-              await tempFile.delete();
-            }
-          }
-          await _addProfilePhotoToGallery(downloadUrl, photoUrlNoBg: downloadUrlNoBg);
-          await _fetchUserProfilePhotos();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profile photo added to gallery!')),
-          );
-        }
+        await _showCropDialog(imageFile);
+        // The processing will be handled by the crop dialog and processing popup
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add profile photo: $e')),
+        SnackBar(content: Text('Failed to take photo: $e')),
       );
-    } finally {
-      setState(() {
-        _isProcessingPhoto = false;
-      });
     }
   }
 
@@ -3288,7 +3333,7 @@ Widget _buildAdminFeedTab() {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Contact Us'),
-        content: Text('For any queries, email us at support@primestatus.com or call +91-9876543210.'),
+        content: Text('For any queries, email us at support@primestatus.com or call +91-9060801063.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -3303,9 +3348,86 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Privacy Policy'),
-        content: SingleChildScrollView(
-          child: Text('We value your privacy. All your data is securely stored and never shared with third parties. This is a sample privacy policy.'),
+        title: Text('📜 Privacy Policy – Prime Status'),
+        content: Container(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Effective Date: December 2024',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'At Prime Status, we respect your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data when you use our mobile application.',
+                  style: TextStyle(height: 1.4),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '1. Information We Collect',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• Personal Information: Name, email address, phone number, profile photo (optional).'),
+                Text('• Device Information: Device type, operating system, app version, IP address.'),
+                Text('• Usage Data: Content shared, app activity, interactions, preferences.'),
+                SizedBox(height: 16),
+                Text(
+                  '2. How We Use Your Information',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• To personalize your experience.'),
+                Text('• To provide and improve our services.'),
+                Text('• To monitor usage patterns and app performance.'),
+                Text('• To send important updates and promotional messages (with your consent).'),
+                SizedBox(height: 16),
+                Text(
+                  '3. Sharing of Information',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('We do not sell your personal data. We may share it:'),
+                Text('• With service providers to facilitate app operations.'),
+                Text('• To comply with legal obligations.'),
+                Text('• With your consent or at your direction.'),
+                SizedBox(height: 16),
+                Text(
+                  '4. Data Security',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('We use industry-standard encryption and security practices to protect your data. However, no method of transmission over the Internet is 100% secure.'),
+                SizedBox(height: 16),
+                Text(
+                  '5. Your Rights',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('You can access, modify, or delete your data by contacting us at support@primestatus.com.'),
+                SizedBox(height: 16),
+                Text(
+                  '6. Children\'s Privacy',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('The app is not intended for children under 13. We do not knowingly collect data from children.'),
+                SizedBox(height: 16),
+                Text(
+                  '7. Changes to This Policy',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('We may update this Privacy Policy from time to time. Changes will be posted within the app.'),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -3321,9 +3443,74 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Terms and Conditions'),
-        content: SingleChildScrollView(
-          child: Text('By using this app, you agree to our terms and conditions. This is a placeholder for the actual terms.'),
+        title: Text('📄 Terms & Conditions – Prime Status'),
+        content: Container(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Effective Date: December 2024',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'These Terms govern your use of the Prime Status app. By using the app, you agree to these Terms.',
+                  style: TextStyle(height: 1.4),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '1. Use of the App',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• You must be at least 13 years old to use this app.'),
+                Text('• You agree not to upload any unlawful, offensive, or copyrighted content.'),
+                SizedBox(height: 16),
+                Text(
+                  '2. User Content',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• You are responsible for the content you upload or share.'),
+                Text('• Prime Status reserves the right to remove any content that violates our policies or applicable laws.'),
+                SizedBox(height: 16),
+                Text(
+                  '3. Intellectual Property',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• All app content, logos, and branding are owned by Prime Status or licensed to us.'),
+                Text('• You may not copy, reproduce, or distribute app content without permission.'),
+                SizedBox(height: 16),
+                Text(
+                  '4. Account Termination',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('We reserve the right to suspend or terminate your account if you violate these terms or misuse the app.'),
+                SizedBox(height: 16),
+                Text(
+                  '5. Limitation of Liability',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('Prime Status is not liable for any indirect or incidental damages arising from your use of the app.'),
+                SizedBox(height: 16),
+                Text(
+                  '6. Governing Law',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('These Terms are governed by the laws of India. Any disputes will be handled in the courts of Bangalore.'),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -3339,9 +3526,67 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Refund Policy'),
-        content: SingleChildScrollView(
-          child: Text('Refunds are processed within 7 business days. Please contact support for any refund-related queries. This is a sample refund policy.'),
+        title: Text('💰 Refund & Cancellation Policy – Prime Status'),
+        content: Container(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Effective Date: December 2024',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'We value your satisfaction. This policy outlines the refund and cancellation guidelines for our app.',
+                  style: TextStyle(height: 1.4),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '1. Subscription & In-App Purchases',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• All purchases made on Prime Status are non-refundable once completed, unless otherwise stated.'),
+                Text('• If a purchase was made in error, contact us within 24 hours at support@primestatus.com for review.'),
+                SizedBox(height: 16),
+                Text(
+                  '2. Cancellation of Subscription',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('• You may cancel a subscription at any time via your app store settings.'),
+                Text('• Cancelled subscriptions remain active until the end of the current billing cycle. No partial refunds are given.'),
+                SizedBox(height: 16),
+                Text(
+                  '3. Unauthorized Charges',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('If you notice unauthorized charges, report them immediately to your payment provider and notify us.'),
+                SizedBox(height: 16),
+                Text(
+                  '4. Refund Eligibility',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text('Refunds may only be granted in exceptional cases such as:'),
+                Text('• Technical issues preventing access to purchased content.'),
+                Text('• Duplicate payments.'),
+                Text('• Accidental purchase (reported within 24 hours).'),
+                SizedBox(height: 8),
+                Text(
+                  'We reserve the right to refuse refund requests that do not meet our criteria.',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(

@@ -17,6 +17,57 @@ import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
+import 'fullscreen_post_viewer.dart';
+
+// Global video controller manager
+class VideoControllerManager {
+  static final VideoControllerManager _instance = VideoControllerManager._internal();
+  factory VideoControllerManager() => _instance;
+  VideoControllerManager._internal();
+
+  final Map<String, VideoPlayerController> _controllers = {};
+  bool _isFullscreenMode = false;
+
+  void registerController(String key, VideoPlayerController controller) {
+    _controllers[key] = controller;
+  }
+
+  void unregisterController(String key) {
+    _controllers.remove(key);
+  }
+
+  void pauseAllControllers() {
+    for (var controller in _controllers.values) {
+      if (controller.value.isInitialized && controller.value.isPlaying) {
+        controller.pause();
+      }
+    }
+  }
+
+  void resumeAllControllers() {
+    if (!_isFullscreenMode) {
+      for (var controller in _controllers.values) {
+        if (controller.value.isInitialized && !controller.value.isPlaying) {
+          controller.play();
+        }
+      }
+    }
+  }
+
+  void setFullscreenMode(bool isFullscreen) {
+    _isFullscreenMode = isFullscreen;
+    if (isFullscreen) {
+      pauseAllControllers();
+    }
+  }
+
+  void disposeAllControllers() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+  }
+}
 
 class AdminPostFeedWidget extends StatefulWidget {
   final List<String> selectedCategories;
@@ -433,7 +484,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _showShareOptions(imageUrl, post),
+                    onPressed: () => _navigateToFullscreen(post, 'share'),
                     icon: const Icon(Icons.share, color: Colors.white),
                     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -449,7 +500,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _showSubscriptionDialog(),
+                    onPressed: () => _navigateToFullscreen(post, 'download'),
                     icon: const Icon(Icons.download, color: Colors.white),
                     label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -465,7 +516,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 10,
                   child: ElevatedButton(
-                    onPressed: () => _showProfilePhotoDialog(),
+                    onPressed: () => _navigateToFullscreen(post, 'edit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange[600],
                       shape: RoundedRectangleBorder(
@@ -1665,6 +1716,47 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     }
   }
 
+  // Navigate to fullscreen post viewer
+  void _navigateToFullscreen(Map<String, dynamic> post, String action) {
+    // Pause all video controllers before navigating
+    VideoControllerManager().setFullscreenMode(true);
+    
+    // Get current posts list and find the index of this post
+    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+    if (homeScreenState == null) return;
+    
+    // Get posts from the current StreamBuilder context
+    final postsSnapshot = _getFilteredPostsStream().first;
+    postsSnapshot.then((snapshot) {
+      final posts = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      if (posts.isEmpty) return;
+      
+      // Find the index of the current post
+      final postIndex = posts.indexWhere((p) => p['id'] == post['id'] || p['mainImage'] == post['mainImage']);
+      final index = postIndex >= 0 ? postIndex : 0;
+      
+      // Navigate to fullscreen viewer
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FullscreenPostViewer(
+            posts: posts,
+            initialIndex: index,
+            userUsageType: homeScreenState.userUsageType ?? '',
+            userName: homeScreenState.userName ?? 'User',
+            userProfilePhotoUrl: homeScreenState.userProfilePhotoUrl,
+            userAddress: homeScreenState.userAddress ?? '',
+            userPhoneNumber: homeScreenState.userPhoneNumber ?? '',
+            userCity: homeScreenState.userCity ?? '',
+          ),
+        ),
+      ).then((_) {
+        // Resume video controllers when returning from fullscreen
+        VideoControllerManager().setFullscreenMode(false);
+      });
+    });
+  }
+
   // Check if business user has complete information
   bool _hasCompleteBusinessInfo() {
     final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
@@ -1820,11 +1912,14 @@ class _Base64VideoPlayer extends StatefulWidget {
 class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
+  late String _controllerKey;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse('data:video/mp4;base64,${widget.bytes}'));
+    _controllerKey = 'base64_${DateTime.now().millisecondsSinceEpoch}_${widget.bytes.hashCode}';
+    _controller = VideoPlayerController.networkUrl(Uri.parse('data:video/mp4;base64,${base64Encode(widget.bytes)}'));
+    VideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
       _controller.setVolume(1.0); // Always sound on
@@ -1835,6 +1930,7 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
 
   @override
   void dispose() {
+    VideoControllerManager().unregisterController(_controllerKey);
     _controller.dispose();
     super.dispose();
   }
@@ -1869,11 +1965,14 @@ class _NetworkVideoPlayer extends StatefulWidget {
 class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
+  late String _controllerKey;
 
   @override
   void initState() {
     super.initState();
+    _controllerKey = 'network_${DateTime.now().millisecondsSinceEpoch}_${widget.url.hashCode}';
     _controller = VideoPlayerController.network(widget.url);
+    VideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
       _controller.setVolume(1.0); // Always sound on
@@ -1884,6 +1983,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
 
   @override
   void dispose() {
+    VideoControllerManager().unregisterController(_controllerKey);
     _controller.dispose();
     super.dispose();
   }

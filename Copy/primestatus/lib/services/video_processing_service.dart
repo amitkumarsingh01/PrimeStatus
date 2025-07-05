@@ -1,18 +1,18 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:screenshot/screenshot.dart';
 import 'package:flutter/material.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class VideoProcessingService {
   static final ScreenshotController _screenshotController = ScreenshotController();
 
-  /// Simple video processing with overlays
+  /// Simple video processing with overlays (simplified without FFmpeg)
   static Future<String?> processVideoWithOverlays({
     required String videoUrl,
     required Map<String, dynamic> post,
@@ -26,16 +26,10 @@ class VideoProcessingService {
     try {
       print('Starting video processing for: $videoUrl');
       
-      // Step 1: Download video to local storage
-      final String? localVideoPath = await _downloadVideo(videoUrl);
-      if (localVideoPath == null) {
-        print('Failed to download video');
-        return null;
-      }
-      print('Video downloaded to: $localVideoPath');
-
-      // Step 2: Create overlay image
-      final String? overlayImagePath = await _createSimpleOverlay(
+      // For now, we'll create a thumbnail with overlay instead of full video processing
+      // since FFmpeg is not available
+      final String? processedImagePath = await createVideoThumbnailWithOverlay(
+        videoUrl: videoUrl,
         post: post,
         userUsageType: userUsageType,
         userName: userName,
@@ -44,26 +38,12 @@ class VideoProcessingService {
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
       );
-      if (overlayImagePath == null) {
-        print('Failed to create overlay');
-        return null;
-      }
-      print('Overlay created at: $overlayImagePath');
 
-      // Step 3: Process video with FFmpeg
-      final String? processedVideoPath = await _processVideoWithFFmpeg(
-        inputVideoPath: localVideoPath,
-        overlayImagePath: overlayImagePath,
-      );
-
-      // Clean up temporary files
-      await _cleanupTempFiles([localVideoPath, overlayImagePath]);
-
-      if (processedVideoPath != null) {
-        print('Video processed successfully: $processedVideoPath');
-        return processedVideoPath;
+      if (processedImagePath != null) {
+        print('Video thumbnail processed successfully: $processedImagePath');
+        return processedImagePath;
       } else {
-        print('FFmpeg processing failed');
+        print('Video processing failed');
         return null;
       }
     } catch (e) {
@@ -210,48 +190,29 @@ class VideoProcessingService {
                 ),
               ),
             // Profile photo overlay
-            if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+            if (profileSettings['enabled'] == true && userProfilePhotoUrl != null)
               Positioned(
-                left: (profileSettings['x'] ?? 20) / 100 * frameSize['width'] - (profileSettings['size'] ?? 80) / 2,
-                top: (profileSettings['y'] ?? 20) / 100 * frameSize['height'] - (profileSettings['size'] ?? 80) / 2,
+                left: (profileSettings['x'] ?? 50) / 100 * frameSize['width'],
+                top: (profileSettings['y'] ?? 70) / 100 * frameSize['height'],
                 child: Container(
-                  width: (profileSettings['size'] ?? 80).toDouble(),
-                  height: (profileSettings['size'] ?? 80).toDouble(),
+                  width: (profileSettings['size'] ?? 60).toDouble(),
+                  height: (profileSettings['size'] ?? 60).toDouble(),
                   decoration: BoxDecoration(
-                    color: profileSettings['hasBackground'] == true
-                        ? Colors.white.withOpacity(0.9)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _parseColor(profileSettings['borderColor'] ?? '#ffffff'),
+                      width: (profileSettings['borderWidth'] ?? 3).toDouble(),
                     ),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
-                    ),
-                    child: Image.network(
-                      userProfilePhotoUrl!,
-                      fit: BoxFit.contain,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey[200],
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: userProfilePhotoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.person, color: Colors.grey),
+                      ),
+                      errorWidget: (context, error, stackTrace) {
                         return Container(
                           color: Colors.grey[200],
                           child: Icon(Icons.person, color: Colors.grey),
@@ -293,45 +254,6 @@ class VideoProcessingService {
     }
   }
 
-  /// Process video with FFmpeg
-  static Future<String?> _processVideoWithFFmpeg({
-    required String inputVideoPath,
-    required String overlayImagePath,
-  }) async {
-    try {
-      final Directory tempDir = await getTemporaryDirectory();
-      final String outputFileName = 'processed_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-      final String outputPath = '${tempDir.path}/$outputFileName';
-
-      print('Processing video with FFmpeg...');
-      print('Input: $inputVideoPath');
-      print('Overlay: $overlayImagePath');
-      print('Output: $outputPath');
-
-      // Simple FFmpeg command to overlay image on video
-      final String ffmpegCommand = '-i "$inputVideoPath" -i "$overlayImagePath" -filter_complex "[1:v]format=rgba,colorchannelmixer=aa=0.8[overlay];[0:v][overlay]overlay=0:0" -c:a copy "$outputPath"';
-
-      print('FFmpeg command: $ffmpegCommand');
-
-      final session = await FFmpegKit.execute(ffmpegCommand);
-      final returnCode = await session.getReturnCode();
-      final logs = await session.getLogsAsString();
-
-      print('FFmpeg logs: $logs');
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        print('FFmpeg processing successful');
-        return outputPath;
-      } else {
-        print('FFmpeg processing failed with return code: $returnCode');
-        return null;
-      }
-    } catch (e) {
-      print('Error in FFmpeg processing: $e');
-      return null;
-    }
-  }
-
   /// Clean up temporary files
   static Future<void> _cleanupTempFiles(List<String> filePaths) async {
     for (String path in filePaths) {
@@ -354,7 +276,7 @@ class VideoProcessingService {
     return Color(int.parse('0x$hexColor'));
   }
 
-  /// Alternative: Create thumbnail with overlay (faster option)
+  /// Create thumbnail with overlay (alternative to FFmpeg video processing)
   static Future<String?> createVideoThumbnailWithOverlay({
     required String videoUrl,
     required Map<String, dynamic> post,
@@ -380,11 +302,11 @@ class VideoProcessingService {
       );
       if (overlayImagePath == null) return null;
 
-      // Extract thumbnail from video
+      // Extract thumbnail from video using video_thumbnail package
       final String? thumbnailPath = await _extractVideoThumbnail(videoUrl);
       if (thumbnailPath == null) return null;
 
-      // Combine thumbnail with overlay
+      // Combine thumbnail with overlay using image package
       final String? combinedImagePath = await _combineImages(thumbnailPath, overlayImagePath);
 
       // Clean up
@@ -397,22 +319,25 @@ class VideoProcessingService {
     }
   }
 
-  /// Extract thumbnail from video
+  /// Extract thumbnail from video using video_thumbnail package
   static Future<String?> _extractVideoThumbnail(String videoUrl) async {
     try {
       final Directory tempDir = await getTemporaryDirectory();
       final String fileName = 'thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final String filePath = '${tempDir.path}/$fileName';
 
-      // Use FFmpeg to extract thumbnail
-      final String ffmpegCommand = '-i "$videoUrl" -ss 00:00:01 -vframes 1 -q:v 2 "$filePath"';
-      
-      final session = await FFmpegKit.execute(ffmpegCommand);
-      final returnCode = await session.getReturnCode();
+      // Use video_thumbnail package to extract thumbnail
+      final String? thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoUrl,
+        thumbnailPath: tempDir.path,
+        imageFormat: ImageFormat.JPEG,
+        quality: 75,
+        timeMs: 1000, // Extract at 1 second
+      );
 
-      if (ReturnCode.isSuccess(returnCode)) {
-        print('Thumbnail extracted: $filePath');
-        return filePath;
+      if (thumbnailPath != null) {
+        print('Thumbnail extracted: $thumbnailPath');
+        return thumbnailPath;
       } else {
         print('Failed to extract thumbnail');
         return null;
@@ -423,29 +348,51 @@ class VideoProcessingService {
     }
   }
 
-  /// Combine two images
+  /// Combine two images using image package (alternative to FFmpeg)
   static Future<String?> _combineImages(String thumbnailPath, String overlayPath) async {
     try {
       final Directory tempDir = await getTemporaryDirectory();
       final String fileName = 'combined_${DateTime.now().millisecondsSinceEpoch}.png';
       final String outputPath = '${tempDir.path}/$fileName';
 
-      // Use FFmpeg to overlay images
-      final String ffmpegCommand = '-i "$thumbnailPath" -i "$overlayPath" -filter_complex "[1:v]format=rgba,colorchannelmixer=aa=0.8[overlay];[0:v][overlay]overlay=0:0" "$outputPath"';
+      // Load images using image package
+      final File thumbnailFile = File(thumbnailPath);
+      final File overlayFile = File(overlayPath);
       
-      final session = await FFmpegKit.execute(ffmpegCommand);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        print('Images combined: $outputPath');
-        return outputPath;
-      } else {
-        print('Failed to combine images');
+      if (!await thumbnailFile.exists() || !await overlayFile.exists()) {
+        print('One or both image files do not exist');
         return null;
       }
+
+      final Uint8List thumbnailBytes = await thumbnailFile.readAsBytes();
+      final Uint8List overlayBytes = await overlayFile.readAsBytes();
+
+      final img.Image? thumbnail = img.decodeImage(thumbnailBytes);
+      final img.Image? overlay = img.decodeImage(overlayBytes);
+
+      if (thumbnail == null || overlay == null) {
+        print('Failed to decode images');
+        return null;
+      }
+
+      // Resize overlay to match thumbnail dimensions if needed
+      img.Image resizedOverlay = overlay;
+      if (overlay.width != thumbnail.width || overlay.height != thumbnail.height) {
+        resizedOverlay = img.copyResize(overlay, width: thumbnail.width, height: thumbnail.height);
+      }
+
+      // Composite overlay onto thumbnail with transparency
+      final img.Image combined = img.compositeImage(thumbnail, resizedOverlay, dstX: 0, dstY: 0);
+
+      // Save combined image
+      final File outputFile = File(outputPath);
+      await outputFile.writeAsBytes(img.encodePng(combined));
+
+      print('Images combined: $outputPath');
+      return outputPath;
     } catch (e) {
       print('Error combining images: $e');
       return null;
     }
   }
-} 
+}
