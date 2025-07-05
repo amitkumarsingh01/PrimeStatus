@@ -530,4 +530,21 @@ class SubscriptionService {
       return {};
     }
   }
+
+  Future<List<SubscriptionPlan>> getAllActivePlans() async {
+    try {
+      final QuerySnapshot snapshot = await _firestore
+          .collection('subscriptionPlans')
+          .where('isActive', isEqualTo: true)
+          .orderBy('price')
+          .get();
+
+      return snapshot.docs
+          .map((doc) => SubscriptionPlan.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error fetching all active subscription plans: $e');
+      return [];
+    }
+  }
 } 

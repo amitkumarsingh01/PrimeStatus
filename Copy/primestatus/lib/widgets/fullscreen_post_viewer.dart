@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:primestatus/screens/AllSubscription.dart';
 import 'admin_post_feed_widget.dart';
 import '../screens/onboarding/subscription_screen.dart';
 import '../screens/postsubscription.dart';
@@ -1879,9 +1880,14 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   Expanded(
                     flex: 15,
                     child: ElevatedButton.icon(
-                      onPressed: onPremium,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen()),
+                        );
+                      },
                       icon: const Icon(Icons.star, color: Colors.white),
-                      label: const Text('Premium', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      label: const Text('', style: TextStyle(color: Colors.white, fontSize: 12)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple[600],
                         shape: RoundedRectangleBorder(

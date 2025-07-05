@@ -48,7 +48,7 @@ class _PostSubscriptionScreenState extends State<PostSubscriptionScreen> {
 
   Future<void> _fetchPlans() async {
     setState(() { _loadingPlans = true; });
-    final plans = await SubscriptionService().getActivePlans(widget.userUsageType);
+    final plans = await SubscriptionService().getAllActivePlans();
     setState(() {
       _plans = plans;
       _loadingPlans = false;

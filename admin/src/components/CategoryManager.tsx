@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 export default function CategoryManager() {
   const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string }[]>([]);
@@ -8,6 +8,9 @@ export default function CategoryManager() {
   const [newCategoryKn, setNewCategoryKn] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNameEn, setEditNameEn] = useState('');
+  const [editNameKn, setEditNameKn] = useState('');
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -57,6 +60,37 @@ export default function CategoryManager() {
     }
   };
 
+  const handleEdit = async (id: string) => {
+    if (!editNameEn.trim() || !editNameKn.trim()) return;
+    setLoading(true);
+    try {
+      await updateDoc(doc(db, 'categories', id), { 
+        nameEn: editNameEn.trim(), 
+        nameKn: editNameKn.trim() 
+      });
+      setEditingId(null);
+      setEditNameEn('');
+      setEditNameKn('');
+      fetchCategories();
+    } catch (e) {
+      setError('Failed to update category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (category: { id: string; nameEn: string; nameKn: string }) => {
+    setEditingId(category.id);
+    setEditNameEn(category.nameEn);
+    setEditNameKn(category.nameKn);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditNameEn('');
+    setEditNameKn('');
+  };
+
   return (
     <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
       <div className="max-w-2xl mx-auto mt-10 bg-white/90 rounded-2xl shadow-xl p-8 border border-white/20">
@@ -91,17 +125,61 @@ export default function CategoryManager() {
           <ul className="divide-y divide-gray-200">
             {categories.map(cat => (
               <li key={cat.id} className="flex items-center justify-between py-3">
-                <div>
-                  <span className="font-medium text-gray-900">{cat.nameEn}</span>
-                  <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
-                </div>
-                <button
-                  onClick={() => handleDelete(cat.id)}
-                  className="px-4 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
-                  disabled={loading}
-                >
-                  Delete
-                </button>
+                {editingId === cat.id ? (
+                  <div className="flex-1 flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={editNameEn}
+                      onChange={e => setEditNameEn(e.target.value)}
+                      className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="English name"
+                    />
+                    <input
+                      type="text"
+                      value={editNameKn}
+                      onChange={e => setEditNameKn(e.target.value)}
+                      className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Kannada name"
+                    />
+                    <button
+                      onClick={() => handleEdit(cat.id)}
+                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-all"
+                      disabled={loading || !editNameEn.trim() || !editNameKn.trim()}
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <span className="font-medium text-gray-900">{cat.nameEn}</span>
+                      <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => startEdit(cat)}
+                        className="px-4 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
+                        disabled={loading}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cat.id)}
+                        className="px-4 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+                        disabled={loading}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
