@@ -218,12 +218,18 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                   padding: EdgeInsets.all(16),
                   itemCount: posts.length,
                   itemBuilder: (context, index) {
-                    final post = posts[index].data() as Map<String, dynamic>;
+                    final doc = posts[index];
+                    final post = doc.data() as Map<String, dynamic>;
+                    post['id'] = doc.id; // Attach the Firestore document ID!
                     return GestureDetector(
                       onTap: () {
                         if (widget.onPostTap != null) {
                           widget.onPostTap!(
-                            posts.map((doc) => doc.data() as Map<String, dynamic>).toList(),
+                            posts.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              data['id'] = doc.id; // Attach the ID for every post in the list!
+                              return data;
+                            }).toList(),
                             index,
                           );
                         }

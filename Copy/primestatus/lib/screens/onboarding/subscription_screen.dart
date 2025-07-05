@@ -1,7 +1,9 @@
 import 'package:primestatus/screens/home_screen.dart';
 import 'package:primestatus/services/onboarding_service.dart';
 import 'package:primestatus/services/user_service.dart';
+import 'package:primestatus/services/subscription_service.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({Key? key}) : super(key: key);
@@ -13,7 +15,32 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final OnboardingService _onboardingService = OnboardingService.instance;
   final UserService _userService = UserService();
+  final SubscriptionService _subscriptionService = SubscriptionService();
   bool _isLoading = false;
+  List<SubscriptionPlan> _plans = [];
+  bool _isLoadingPlans = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscriptionPlans();
+  }
+
+  Future<void> _loadSubscriptionPlans() async {
+    try {
+      final usageType = _onboardingService.usageType ?? 'Personal';
+      final plans = await _subscriptionService.getActivePlans(usageType);
+      setState(() {
+        _plans = plans;
+        _isLoadingPlans = false;
+      });
+    } catch (e) {
+      print('Error loading subscription plans: $e');
+      setState(() {
+        _isLoadingPlans = false;
+      });
+    }
+  }
 
   Future<void> _registerUser(String subscriptionType) async {
     setState(() {
@@ -27,7 +54,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         throw 'No authenticated user found. Please sign in with Google first.';
       }
 
-      // Create or update user with subscription
+      // If it's a free subscription, register directly
+      if (subscriptionType == 'free') {
+        await _registerFreeUser(currentUser);
+        return;
+      }
+
+      // For paid subscriptions, find the plan and create payment link
+      final plan = _plans.firstWhere(
+        (p) => p.id == subscriptionType,
+        orElse: () => throw 'Selected plan not found',
+      );
+
+      // Create payment link
+      final paymentResult = await _subscriptionService.createPaymentLink(
+        userId: currentUser.uid,
+        userName: _onboardingService.name ?? currentUser.displayName ?? 'User',
+        userEmail: currentUser.email ?? '',
+        userPhone: _onboardingService.phoneNumber ?? currentUser.phoneNumber ?? '',
+        plan: plan,
+      );
+
+      if (paymentResult != null && paymentResult['success'] == true) {
+        // Show payment link dialog
+        _showPaymentLinkDialog(paymentResult['paymentLink'], plan.title);
+      } else {
+        throw paymentResult?['error'] ?? 'Failed to create payment link';
+      }
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration failed: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _registerFreeUser(dynamic currentUser) async {
+    try {
+      // Create or update user with free subscription
       await _userService.updateUserData(currentUser.uid, {
         'name': _onboardingService.name ?? currentUser.displayName ?? 'User',
         'language': _onboardingService.language ?? 'English',
@@ -35,7 +103,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         'religion': _onboardingService.religion ?? 'Other',
         'state': _onboardingService.state ?? 'Other',
         'profilePhotoUrl': _onboardingService.profilePhotoUrl ?? currentUser.photoURL,
-        'subscription': subscriptionType,
+        'subscription': 'free',
         'subscriptionDate': DateTime.now().toIso8601String(),
         'phoneNumber': _onboardingService.phoneNumber ?? currentUser.phoneNumber ?? '',
         'address': _onboardingService.address ?? '',
@@ -55,17 +123,91 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         MaterialPageRoute(builder: (context) => HomeScreen()),
         (route) => false,
       );
+
+      _onboardingService.reset(); // Clear data after successful registration
     } catch (e) {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration failed: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _onboardingService.reset(); // Clear data after attempting registration
+      throw 'Failed to register free user: $e';
     }
+  }
+
+  void _showPaymentLinkDialog(String paymentLink, String planTitle) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Payment Required'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'To complete your subscription for "$planTitle", please click the button below to proceed with payment.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'You will be redirected to a secure payment page. After successful payment, your subscription will be activated.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _onboardingService.reset();
+            },
+            child: Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              // Launch payment link in browser
+              try {
+                final Uri url = Uri.parse(paymentLink);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  throw 'Could not launch payment link';
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error opening payment link: $e')),
+                );
+              }
+            },
+            icon: Icon(Icons.payment),
+            label: Text('Proceed to Payment'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -74,13 +216,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final isKannada = onboardingService.language == 'Kannada';
     final title = isKannada ? 'ಎಲ್ಲಾ ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ಅನ್ಲಾಕ್ ಮಾಡಿ' : 'Unlock All Features';
     final subtitle = isKannada ? 'ಎಲ್ಲಾ ಉಲ್ಲೇಖಗಳು ಮತ್ತು ಹಿನ್ನೆಲೆಗಳಿಗೆ ಅನಿಯಮಿತ ಪ್ರವೇಶ ಪಡೆಯಲು ಯೋಜನೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.' : 'Choose a plan to get unlimited access to all quotes and backgrounds.';
-    final monthly = isKannada ? 'ಮಾಸಿಕ ಯೋಜನೆ' : 'Monthly Plan';
-    final sixMonth = isKannada ? '6-ಮಾಸ ಯೋಜನೆ' : '6-Month Plan';
     final free = isKannada ? 'ಈಗ ಬಿಟ್ಟುಬಿಡಿ' : 'Skip for now';
-    final priceMonthly = isKannada ? '₹99' : '₹99';
-    final priceSixMonth = isKannada ? '₹299' : '₹299';
-    final durationMonthly = isKannada ? '/ಮಾಸ' : '/month';
-    final durationSixMonth = isKannada ? '/6 ತಿಂಗಳು' : '/6 months';
 
     return Scaffold(
       body: _isLoading
@@ -128,23 +264,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),
                           ),
                           SizedBox(height: 32),
-                          _buildPlanCard(
-                            icon: Icons.star,
-                            title: monthly,
-                            price: priceMonthly,
-                            duration: durationMonthly,
-                            color: Colors.orange,
-                            onTap: () => _registerUser('monthly'),
-                          ),
-                          SizedBox(height: 16),
-                          _buildPlanCard(
-                            icon: Icons.rocket_launch,
-                            title: sixMonth,
-                            price: priceSixMonth,
-                            duration: durationSixMonth,
-                            color: Colors.purple,
-                            onTap: () => _registerUser('6-month'),
-                          ),
+                          // Display dynamic plans from Firebase
+                          if (_isLoadingPlans)
+                            Center(child: CircularProgressIndicator())
+                          else if (_plans.isEmpty)
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              child: Text(
+                                isKannada ? 'ಯೋಜನೆಗಳು ಲಭ್ಯವಿಲ್ಲ' : 'No plans available',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            )
+                          else
+                            ..._plans.map((plan) => Column(
+                              children: [
+                                _buildPlanCard(
+                                  icon: plan.title.toLowerCase().contains('month') ? Icons.star : Icons.rocket_launch,
+                                  title: plan.title,
+                                  price: '₹${plan.price.toStringAsFixed(0)}',
+                                  duration: '/${plan.duration}',
+                                  color: plan.title.toLowerCase().contains('month') ? Colors.orange : Colors.purple,
+                                  onTap: () => _registerUser(plan.id),
+                                ),
+                                SizedBox(height: 16),
+                              ],
+                            )).toList(),
                           SizedBox(height: 32),
                           Container(
                             width: double.infinity,

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon, Tag } from 'lucide-react';
+import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon, Tag, CreditCard } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 interface SidebarProps {
-  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager';
-  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager') => void;
+  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment';
+  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment') => void;
 }
 
 export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
@@ -40,6 +40,12 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
       label: 'Manage Categories',
       icon: Tag,
       description: 'Add or remove categories'
+    },
+    {
+      id: 'payment' as const,
+      label: 'Subscription Plans',
+      icon: CreditCard,
+      description: 'Manage pricing and plans'
     }
   ];
 

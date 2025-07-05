@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_post_feed_widget.dart';
 import '../screens/onboarding/subscription_screen.dart';
+import '../screens/postsubscription.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
@@ -17,6 +18,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:image/image.dart' as img;
 import 'package:video_player/video_player.dart';
 import '../services/video_processing_service.dart';
+import '../services/subscription_service.dart';
 
 // Global video controller manager for fullscreen
 class FullscreenVideoControllerManager {
@@ -163,6 +165,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       onShare: () => _showShareOptions(post),
                       onDownload: () => _downloadImage(post),
                       onEdit: () => _showProfilePhotoDialog(),
+                      onPremium: () => _showPremiumOptions(post),
                     ),
                   ),
                 ),
@@ -233,7 +236,31 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 }
 
   // Share functionality
-  void _showShareOptions(Map<String, dynamic> post) {
+  void _showShareOptions(Map<String, dynamic> post) async {
+    // Check if user has active subscription
+    final currentUser = _userService.currentUser;
+    if (currentUser != null) {
+      final hasSubscription = await SubscriptionService().hasActiveSubscription(currentUser.uid);
+      if (!hasSubscription) {
+        // User is free, show subscription page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostSubscriptionScreen(
+              post: post,
+              userUsageType: widget.userUsageType,
+              userName: widget.userName,
+              userProfilePhotoUrl: widget.userProfilePhotoUrl,
+              userAddress: widget.userAddress,
+              userPhoneNumber: widget.userPhoneNumber,
+              userCity: widget.userCity,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
     
     // Check if it's a video
@@ -253,86 +280,103 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     try {
       print('Starting video share process for: $videoUrl');
       
-      // Show processing options dialog
-      final String? processingMethod = await _showVideoProcessingOptions();
-      if (processingMethod == null) {
-        setState(() {
-          _isProcessingShare = false;
-        });
-        return;
+      // Get current user ID from Firebase Auth
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
       }
 
-      String? processedFilePath;
-      
-      if (processingMethod == 'full_video') {
-        print('Processing full video with overlays...');
-        // Process full video with overlays
-        processedFilePath = await VideoProcessingService.processVideoWithOverlays(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
-      } else {
-        print('Creating thumbnail with overlay...');
-        // Create thumbnail with overlay
-        processedFilePath = await VideoProcessingService.createVideoThumbnailWithOverlay(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
+      // Get post ID from the post data
+      final String postId = post['id'] ?? '';
+      if (postId.isEmpty) {
+        throw Exception('Post ID not found');
       }
 
-      if (processedFilePath != null) {
-        print('File processed successfully: $processedFilePath');
-        
-        // Check if file exists
-        final file = File(processedFilePath);
-        if (!await file.exists()) {
-          throw Exception('Processed file does not exist');
-        }
-        
-        // Share the processed file
-        await Share.shareXFiles(
-          [XFile(processedFilePath)],
-          text: 'Check out this amazing video from Prime Status!',
-          subject: 'Shared from Prime Status',
-        );
+      print('=== SHARING VIDEO TO WHATSAPP ===');
+      print('User ID: ${currentUser.uid}');
+      print('Post ID: $postId');
+      print('User Usage Type: ${widget.userUsageType}');
 
-        // Clean up the processed file after a delay
-        Future.delayed(Duration(seconds: 10), () {
-          if (processedFilePath != null) {
-            final file = File(processedFilePath);
-            if (file.existsSync()) {
-              file.deleteSync();
-              print('Cleaned up shared file: $processedFilePath');
-            }
+      // Determine API endpoint based on user usage type
+      final String apiEndpoint = widget.userUsageType == 'Business' 
+          ? 'https://bgremoval.iaks.site/overlay_business'
+          : 'https://bgremoval.iaks.site/overlay_personal';
+
+      print('API Endpoint: $apiEndpoint');
+
+      // Prepare request body
+      final Map<String, dynamic> requestBody = {
+        'user_id': currentUser.uid,
+        'admin_post_id': postId,
+      };
+
+      print('Request Body: $requestBody');
+
+      // Make API call
+      final response = await http.post(
+        Uri.parse(apiEndpoint),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        
+        print('=== API RESPONSE DETAILS ===');
+        print('Success: ${responseData['success']}');
+        print('Overlay Type: ${responseData['overlay_type']}');
+        print('Download URL: ${responseData['download_url']}');
+        print('Frame Size: ${responseData['frame_size']}');
+        print('User Data Used: ${responseData['user_data_used']}');
+
+        if (responseData['success'] == true && responseData['download_url'] != null) {
+          final String downloadUrl = responseData['download_url'];
+          
+          // Download the processed image/video from the API
+          final imageResponse = await http.get(Uri.parse(downloadUrl));
+          if (imageResponse.statusCode == 200) {
+            // Save file to temporary location
+            final Directory tempDir = await getTemporaryDirectory();
+            final String fileName = 'whatsapp_video_share_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String filePath = '${tempDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(imageResponse.bodyBytes);
+
+            // Share the processed file
+            await Share.shareXFiles(
+              [XFile(filePath)],
+              text: 'Check out this amazing video from Prime Status!',
+              subject: 'Shared from Prime Status',
+            );
+
+            // Clean up the temporary file after a delay
+            Future.delayed(Duration(seconds: 10), () {
+              if (imageFile.existsSync()) {
+                imageFile.deleteSync();
+                print('Cleaned up shared file: $filePath');
+              }
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Video shared successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            throw Exception('Failed to download processed video from API');
           }
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Video shared successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        } else {
+          throw Exception('API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}');
+        }
       } else {
-        print('Failed to process video - processedFilePath is null');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to process video. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        throw Exception('API request failed with status: ${response.statusCode}');
       }
     } catch (e) {
       print('Error sharing video: $e');
@@ -439,44 +483,104 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     });
 
     try {
-      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
-      
-      if (imageBytes != null) {
-        // Save image to temporary file
-        final Directory tempDir = await getTemporaryDirectory();
-        final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
-        final String filePath = '${tempDir.path}/$fileName';
-        final File imageFile = File(filePath);
-        await imageFile.writeAsBytes(imageBytes);
+      // Get current user ID from Firebase Auth
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
 
-        // Share the image
-        await Share.shareXFiles(
-          [XFile(filePath)],
-          text: 'Check out this amazing design from Prime Status!',
-          subject: 'Shared from Prime Status',
-        );
+      // Get post ID from the post data
+      final String postId = post['id'] ?? '';
+      if (postId.isEmpty) {
+        throw Exception('Post ID not found');
+      }
 
-        // Clean up the temporary file after a delay
-        Future.delayed(Duration(seconds: 10), () {
-          if (imageFile.existsSync()) {
-            imageFile.deleteSync();
-          }
-        });
+      print('=== SHARING TO WHATSAPP ===');
+      print('User ID: ${currentUser.uid}');
+      print('Post ID: $postId');
+      print('User Usage Type: ${widget.userUsageType}');
+
+      // Determine API endpoint based on user usage type
+      final String apiEndpoint = widget.userUsageType == 'Business' 
+          ? 'https://bgremoval.iaks.site/overlay_business'
+          : 'https://bgremoval.iaks.site/overlay_personal';
+
+      print('API Endpoint: $apiEndpoint');
+
+      // Prepare request body
+      final Map<String, dynamic> requestBody = {
+        'user_id': currentUser.uid,
+        'admin_post_id': postId,
+      };
+
+      print('Request Body: $requestBody');
+
+      // Make API call
+      final response = await http.post(
+        Uri.parse(apiEndpoint),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
         
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image shared successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        print('=== API RESPONSE DETAILS ===');
+        print('Success: ${responseData['success']}');
+        print('Overlay Type: ${responseData['overlay_type']}');
+        print('Download URL: ${responseData['download_url']}');
+        print('Frame Size: ${responseData['frame_size']}');
+        print('User Data Used: ${responseData['user_data_used']}');
+
+        if (responseData['success'] == true && responseData['download_url'] != null) {
+          final String downloadUrl = responseData['download_url'];
+          
+          // Download the processed image from the API
+          final imageResponse = await http.get(Uri.parse(downloadUrl));
+          if (imageResponse.statusCode == 200) {
+            // Save image to temporary file
+            final Directory tempDir = await getTemporaryDirectory();
+            final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String filePath = '${tempDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(imageResponse.bodyBytes);
+
+            // Share the processed image
+            await Share.shareXFiles(
+              [XFile(filePath)],
+              text: 'Check out this amazing design from Prime Status!',
+              subject: 'Shared from Prime Status',
+            );
+
+            // Clean up the temporary file after a delay
+            Future.delayed(Duration(seconds: 10), () {
+              if (imageFile.existsSync()) {
+                imageFile.deleteSync();
+                print('Cleaned up shared file: $filePath');
+              }
+            });
+            
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image shared successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            throw Exception('Failed to download processed image from API');
+          }
+        } else {
+          throw Exception('API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}');
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to process image for sharing'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        throw Exception('API request failed with status: ${response.statusCode}');
       }
     } catch (e) {
       print('Error sharing image: $e');
@@ -541,6 +645,30 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
   // Download functionality
   Future<void> _downloadImage(Map<String, dynamic> post) async {
+    // Check if user has active subscription
+    final currentUser = _userService.currentUser;
+    if (currentUser != null) {
+      final hasSubscription = await SubscriptionService().hasActiveSubscription(currentUser.uid);
+      if (!hasSubscription) {
+        // User is free, show subscription page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostSubscriptionScreen(
+              post: post,
+              userUsageType: widget.userUsageType,
+              userName: widget.userName,
+              userProfilePhotoUrl: widget.userProfilePhotoUrl,
+              userAddress: widget.userAddress,
+              userPhoneNumber: widget.userPhoneNumber,
+              userCity: widget.userCity,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isProcessingDownload = true;
     });
@@ -552,82 +680,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       if (_isVideoUrl(imageUrl) || imageUrl.startsWith('data:video')) {
         await _downloadVideoWithOverlays(imageUrl, post);
       } else {
-        // Use the same cropping logic as sharing for images
-        final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
-        
-        if (imageBytes != null) {
-          // Request storage permission
-          var status = await Permission.storage.status;
-          if (!status.isGranted) {
-            status = await Permission.storage.request();
-          }
-          
-          if (status.isGranted) {
-            // Get the downloads directory
-            Directory? downloadsDir;
-            if (Platform.isAndroid) {
-              // Try multiple possible download directories
-              final List<String> possiblePaths = [
-                '/storage/emulated/0/Download',
-                '/storage/emulated/0/Downloads',
-                '/sdcard/Download',
-                '/sdcard/Downloads',
-              ];
-              
-              for (String path in possiblePaths) {
-                final dir = Directory(path);
-                if (dir.existsSync()) {
-                  downloadsDir = dir;
-                  break;
-                }
-              }
-              
-              // If no download directory found, use external storage
-              if (downloadsDir == null) {
-                downloadsDir = await getExternalStorageDirectory();
-              }
-            } else {
-              downloadsDir = await getApplicationDocumentsDirectory();
-            }
-            
-            if (downloadsDir != null) {
-              final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.png';
-              final String filePath = '${downloadsDir.path}/$fileName';
-              final File imageFile = File(filePath);
-              await imageFile.writeAsBytes(imageBytes);
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Image saved successfully!'),
-                  duration: Duration(seconds: 3),
-                  action: SnackBarAction(
-                    label: 'Share',
-                    onPressed: () async {
-                      // Share the downloaded file
-                      try {
-                        await Share.shareXFiles([XFile(filePath)]);
-                      } catch (e) {
-                        print('Error sharing file: $e');
-                      }
-                    },
-                  ),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not access downloads directory')),
-              );
-            }
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Storage permission required to download images')),
-            );
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to process image for download')),
-          );
-        }
+        // Direct download from URL
+        await _downloadImageFromUrl(imageUrl, post);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -637,6 +691,105 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       setState(() {
         _isProcessingDownload = false;
       });
+    }
+  }
+
+  // Direct download from URL
+  Future<void> _downloadImageFromUrl(String imageUrl, Map<String, dynamic> post) async {
+    try {
+      print('=== DOWNLOADING IMAGE FROM URL ===');
+      print('Image URL: $imageUrl');
+      
+      // Download the image from URL
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode == 200) {
+        // Request storage permission
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        
+        if (status.isGranted) {
+          // Get the downloads directory
+          Directory? downloadsDir;
+          if (Platform.isAndroid) {
+            // Try multiple possible download directories
+            final List<String> possiblePaths = [
+              '/storage/emulated/0/Download',
+              '/storage/emulated/0/Downloads',
+              '/sdcard/Download',
+              '/sdcard/Downloads',
+            ];
+            
+            for (String path in possiblePaths) {
+              final dir = Directory(path);
+              if (dir.existsSync()) {
+                downloadsDir = dir;
+                break;
+              }
+            }
+            
+            // If no download directory found, use external storage
+            if (downloadsDir == null) {
+              downloadsDir = await getExternalStorageDirectory();
+            }
+          } else {
+            downloadsDir = await getApplicationDocumentsDirectory();
+          }
+          
+          if (downloadsDir != null) {
+            // Determine file extension from URL or content type
+            String fileExtension = 'jpg';
+            if (imageUrl.contains('.png')) {
+              fileExtension = 'png';
+            } else if (imageUrl.contains('.gif')) {
+              fileExtension = 'gif';
+            } else if (imageUrl.contains('.webp')) {
+              fileExtension = 'webp';
+            }
+            
+            final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+            final String filePath = '${downloadsDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(response.bodyBytes);
+            
+            print('Image saved to: $filePath');
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image saved to gallery successfully!'),
+                duration: Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'Share',
+                  onPressed: () async {
+                    // Share the downloaded file
+                    try {
+                      await Share.shareXFiles([XFile(filePath)]);
+                    } catch (e) {
+                      print('Error sharing file: $e');
+                    }
+                  },
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not access downloads directory')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Storage permission required to download images')),
+          );
+        }
+      } else {
+        throw Exception('Failed to download image: HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error downloading image from URL: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: $e')),
+      );
     }
   }
 
@@ -781,6 +934,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         onShare: () {}, // dummy
         onDownload: () {}, // dummy
         onEdit: () {}, // dummy
+        onPremium: () {}, // dummy
         forceFrameSize: frameSize,
       ),
     );
@@ -920,7 +1074,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
     return Image.network(
       photoUrl,
-      fit: BoxFit.contain,
+      fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(
@@ -1464,6 +1618,24 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
       );
     }
   }
+
+  // Premium functionality
+  void _showPremiumOptions(Map<String, dynamic> post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostSubscriptionScreen(
+          post: post,
+          userUsageType: widget.userUsageType,
+          userName: widget.userName,
+          userProfilePhotoUrl: widget.userProfilePhotoUrl,
+          userAddress: widget.userAddress,
+          userPhoneNumber: widget.userPhoneNumber,
+          userCity: widget.userCity,
+        ),
+      ),
+    );
+  }
 }
 
 class AdminPostFullScreenCard extends StatelessWidget {
@@ -1477,6 +1649,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onDownload;
   final VoidCallback onEdit;
+  final VoidCallback onPremium;
   final Map<String, dynamic>? forceFrameSize;
   
   const AdminPostFullScreenCard({
@@ -1491,6 +1664,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
     required this.onShare,
     required this.onDownload,
     required this.onEdit,
+    required this.onPremium,
     this.forceFrameSize,
   }) : super(key: key);
 
@@ -1673,7 +1847,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    flex: 45,
+                    flex: 35,
                     child: ElevatedButton.icon(
                       onPressed: onShare,
                       icon: const Icon(Icons.share, color: Colors.white),
@@ -1688,7 +1862,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    flex: 45,
+                    flex: 35,
                     child: ElevatedButton.icon(
                       onPressed: onDownload,
                       icon: const Icon(Icons.download, color: Colors.white),
@@ -1703,7 +1877,22 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    flex: 10,
+                    flex: 15,
+                    child: ElevatedButton.icon(
+                      onPressed: onPremium,
+                      icon: const Icon(Icons.star, color: Colors.white),
+                      label: const Text('Premium', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 15,
                     child: ElevatedButton(
                       onPressed: onEdit,
                       style: ElevatedButton.styleFrom(
@@ -1803,7 +1992,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
     return Image.network(
       photoUrl,
-      fit: BoxFit.contain,
+      fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(

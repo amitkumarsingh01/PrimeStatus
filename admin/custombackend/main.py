@@ -16,6 +16,8 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
+import tempfile
 
 load_dotenv()
 
@@ -120,9 +122,10 @@ def get_font(font_name, font_size):
 def create_overlay_image(admin_post, user_data):
     """Create overlay image by merging user data with admin post template"""
     try:
-        # Get frame dimensions first
-        frame_width = admin_post['frameSize']['width']
-        frame_height = admin_post['frameSize']['height']
+        # Get frame dimensions with fallback
+        frame_size = admin_post.get('frameSize', {'width': 1080, 'height': 1920})
+        frame_width = frame_size.get('width', 1080)
+        frame_height = frame_size.get('height', 1920)
         
         # Download the main image
         main_image = download_image(admin_post['mainImage'])
@@ -146,14 +149,34 @@ def create_overlay_image(admin_post, user_data):
         new_height = int(img_height * scale)
         
         # Resize the main image to fit within the frame
-        main_image_resized = main_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # main_image_resized = main_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # main_image_resized = main_image.resize((frame_width, frame_height), Image.Resampling.LANCZOS)
+        # overlay_image.paste(main_image_resized, (0, 0))
+
         
-        # Calculate position to center the image
+        # # Calculate position to center the image
+        # x_offset = (frame_width - new_width) // 2
+        # y_offset = (frame_height - new_height) // 2
+        
+        # # Paste the resized main image centered in the frame
+        # overlay_image.paste(main_image_resized, (x_offset, y_offset))
+
+        # Resize main image proportionally to fit inside frame
+        img_width, img_height = main_image.size
+        scale = min(frame_width / img_width, frame_height / img_height)
+        new_width = int(img_width * scale)
+        new_height = int(img_height * scale)
+
+        # Resize main image maintaining aspect ratio
+        main_image_resized = main_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # Center the image in the frame
         x_offset = (frame_width - new_width) // 2
         y_offset = (frame_height - new_height) // 2
-        
-        # Paste the resized main image centered in the frame
+
         overlay_image.paste(main_image_resized, (x_offset, y_offset))
+
         
         # Create drawing context for overlays
         draw = ImageDraw.Draw(overlay_image)
@@ -163,54 +186,58 @@ def create_overlay_image(admin_post, user_data):
             try:
                 profile_img = download_image(user_data['profilePhotoUrl'])
                 
-                # Convert to RGB if necessary
-                if profile_img.mode not in ['RGB', 'RGBA']:
+                # Keep original image as-is, no conversion
+                if profile_img.mode not in ['RGBA']:
                     profile_img = profile_img.convert('RGBA')
                 
                 # Calculate profile picture position and size based on frame dimensions
-                profile_size = int(admin_post['profileSettings']['size'])  # Direct pixel size
-                profile_x = int((admin_post['profileSettings']['x'] / 100) * frame_width)
-                profile_y = int((admin_post['profileSettings']['y'] / 100) * frame_height)
+                original_size = int(admin_post['profileSettings']['size'])
+                profile_size = int(original_size * 2)  # 2x larger
                 
-                # Resize profile image to exact size
-                profile_img = profile_img.resize((profile_size, profile_size), Image.Resampling.LANCZOS)
+                # Convert percentage positions to pixel positions (like Flutter app)
+                profile_x_percent = admin_post['profileSettings']['x'] / 100
+                profile_y_percent = admin_post['profileSettings']['y'] / 100
+                
+                # Calculate center position (Flutter app uses center-based positioning)
+                profile_x = int(profile_x_percent * frame_width - profile_size / 2)
+                profile_y = int(profile_y_percent * frame_height - profile_size / 2)
+                
+                # Resize profile image to cover the frame (center crop)
+                img_w, img_h = profile_img.size
+                aspect_img = img_w / img_h
+                aspect_frame = profile_size / profile_size  # always 1
+                
+                # Determine scale and crop box
+                if aspect_img > aspect_frame:
+                    # Image is wider than frame: crop width
+                    new_height = profile_size
+                    new_width = int(profile_size * aspect_img)
+                else:
+                    # Image is taller than frame: crop height
+                    new_width = profile_size
+                    new_height = int(profile_size / aspect_img)
+                
+                # Resize first
+                profile_img = profile_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                
+                # Center crop
+                left = (new_width - profile_size) // 2
+                top = (new_height - profile_size) // 2
+                right = left + profile_size
+                bottom = top + profile_size
+                profile_img = profile_img.crop((left, top, right, bottom))
                 
                 # Create circular mask if shape is circle
                 if admin_post['profileSettings']['shape'] == 'circle':
-                    # Create a circular mask
                     mask = Image.new('L', (profile_size, profile_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse([0, 0, profile_size, profile_size], fill=255)
-                    
-                    # Apply mask to profile image
                     output = Image.new('RGBA', (profile_size, profile_size), (0, 0, 0, 0))
-                    output.paste(profile_img, (0, 0))
-                    output.putalpha(mask)
+                    output.paste(profile_img, (0, 0), mask)
                     profile_img = output
                 
-                # Add background if enabled
-                if admin_post['profileSettings'].get('hasBackground', False):
-                    bg_color = admin_post['profileSettings'].get('backgroundColor', '#000000')
-                    padding = 10
-                    
-                    if admin_post['profileSettings']['shape'] == 'circle':
-                        # Circular background
-                        draw.ellipse([
-                            profile_x - padding, profile_y - padding,
-                            profile_x + profile_size + padding, profile_y + profile_size + padding
-                        ], fill=bg_color)
-                    else:
-                        # Rectangular background
-                        draw.rectangle([
-                            profile_x - padding, profile_y - padding,
-                            profile_x + profile_size + padding, profile_y + profile_size + padding
-                        ], fill=bg_color)
-                
-                # Paste profile image
-                if profile_img.mode == 'RGBA':
-                    overlay_image.paste(profile_img, (profile_x, profile_y), profile_img)
-                else:
-                    overlay_image.paste(profile_img, (profile_x, profile_y))
+                # Paste profile image directly - completely raw, no background
+                overlay_image.paste(profile_img, (profile_x, profile_y), profile_img)
                     
             except Exception as e:
                 print(f"Error adding profile picture: {e}")
@@ -218,30 +245,43 @@ def create_overlay_image(admin_post, user_data):
         # Add name text
         if admin_post.get('textSettings') and user_data.get('name'):
             text_settings = admin_post['textSettings']
-            font_size = text_settings.get('fontSize', 24)  # Direct pixel size
+            original_font_size = text_settings.get('fontSize', 24)
+            font_size = int(original_font_size * 2)  # 1.5x larger
             font = get_font(text_settings.get('font', 'Arial'), font_size)
             
-            # Calculate text position based on frame dimensions
-            text_x = int((text_settings['x'] / 100) * frame_width)
-            text_y = int((text_settings['y'] / 100) * frame_height)
+            # Calculate text position based on frame dimensions (like Flutter app)
+            text_x_percent = text_settings['x'] / 100
+            text_y_percent = text_settings['y'] / 100
+            
+            # Convert to pixel positions
+            text_x = int(text_x_percent * frame_width)
+            text_y = int(text_y_percent * frame_height)
             
             # Get text dimensions for background
             text_bbox = draw.textbbox((0, 0), user_data['name'], font=font)
             text_width = text_bbox[2] - text_bbox[0]
             text_height = text_bbox[3] - text_bbox[1]
             
+            # Apply Flutter-style positioning (center-based with offset)
+            # Flutter uses: Transform.translate(offset: Offset(-0.5 * fontSize * (text.length / 2), -20))
+            text_offset_x = int(-0.5 * font_size * (len(user_data['name']) / 2))
+            text_offset_y = -20
+            
+            final_text_x = text_x + text_offset_x
+            final_text_y = text_y + text_offset_y
+            
             # Add background if enabled
             if text_settings.get('hasBackground', False):
                 bg_color = text_settings.get('backgroundColor', '#000000')
-                padding = 10
+                padding = 8
                 draw.rectangle([
-                    text_x - padding, text_y - padding,
-                    text_x + text_width + padding, text_y + text_height + padding
+                    final_text_x - padding, final_text_y - padding,
+                    final_text_x + text_width + padding, final_text_y + text_height + padding
                 ], fill=bg_color)
             
             # Add text
             text_color = text_settings.get('color', '#ffffff')
-            draw.text((text_x, text_y), user_data['name'], fill=text_color, font=font)
+            draw.text((final_text_x, final_text_y), user_data['name'], fill=text_color, font=font)
         
         # Add phone number for business users
         if (user_data.get('usageType') == 'Business' and 
@@ -249,30 +289,42 @@ def create_overlay_image(admin_post, user_data):
             user_data.get('phoneNumber')):
             
             phone_settings = admin_post['phoneSettings']
-            font_size = phone_settings.get('fontSize', 24)  # Direct pixel size
+            original_font_size = phone_settings.get('fontSize', 24)
+            font_size = int(original_font_size * 2)  # 1.5x larger
             font = get_font(phone_settings.get('font', 'Arial'), font_size)
             
-            # Calculate phone text position
-            phone_x = int((phone_settings['x'] / 100) * frame_width)
-            phone_y = int((phone_settings['y'] / 100) * frame_height)
+            # Calculate phone text position (like Flutter app)
+            phone_x_percent = phone_settings['x'] / 100
+            phone_y_percent = phone_settings['y'] / 100
+            
+            # Convert to pixel positions
+            phone_x = int(phone_x_percent * frame_width)
+            phone_y = int(phone_y_percent * frame_height)
             
             # Get phone text dimensions
             phone_bbox = draw.textbbox((0, 0), user_data['phoneNumber'], font=font)
             phone_width = phone_bbox[2] - phone_bbox[0]
             phone_height = phone_bbox[3] - phone_bbox[1]
             
+            # Apply Flutter-style positioning (center-based with offset)
+            phone_offset_x = int(-0.5 * font_size * (len(user_data['phoneNumber']) / 2))
+            phone_offset_y = -20
+            
+            final_phone_x = phone_x + phone_offset_x
+            final_phone_y = phone_y + phone_offset_y
+            
             # Add background if enabled
             if phone_settings.get('hasBackground', False):
                 bg_color = phone_settings.get('backgroundColor', '#000000')
                 padding = 8
                 draw.rectangle([
-                    phone_x - padding, phone_y - padding,
-                    phone_x + phone_width + padding, phone_y + phone_height + padding
+                    final_phone_x - padding, final_phone_y - padding,
+                    final_phone_x + phone_width + padding, final_phone_y + phone_height + padding
                 ], fill=bg_color)
             
             # Add phone text
             phone_color = phone_settings.get('color', '#ffffff')
-            draw.text((phone_x, phone_y), user_data['phoneNumber'], fill=phone_color, font=font)
+            draw.text((final_phone_x, final_phone_y), user_data['phoneNumber'], fill=phone_color, font=font)
         
         # Add address for business users
         if (user_data.get('usageType') == 'Business' and 
@@ -280,12 +332,17 @@ def create_overlay_image(admin_post, user_data):
             user_data.get('address')):
             
             address_settings = admin_post['addressSettings']
-            font_size = address_settings.get('fontSize', 24)  # Direct pixel size
+            original_font_size = address_settings.get('fontSize', 24)
+            font_size = int(original_font_size * 2)  # 1.5x larger
             font = get_font(address_settings.get('font', 'Arial'), font_size)
             
-            # Calculate address text position
-            address_x = int((address_settings['x'] / 100) * frame_width)
-            address_y = int((address_settings['y'] / 100) * frame_height)
+            # Calculate address text position (like Flutter app)
+            address_x_percent = address_settings['x'] / 100
+            address_y_percent = address_settings['y'] / 100
+            
+            # Convert to pixel positions
+            address_x = int(address_x_percent * frame_width)
+            address_y = int(address_y_percent * frame_height)
             
             # Handle long addresses by wrapping text
             address_text = user_data['address']
@@ -313,10 +370,17 @@ def create_overlay_image(admin_post, user_data):
             if current_line:
                 lines.append(' '.join(current_line))
             
+            # Apply Flutter-style positioning (center-based with offset)
+            address_offset_x = int(-0.5 * font_size * (len(lines[0]) / 2)) if lines else 0
+            address_offset_y = -20
+            
+            final_address_x = address_x + address_offset_x
+            final_address_y = address_y + address_offset_y
+            
             # Draw each line
             line_height = font_size + 5
             for i, line in enumerate(lines):
-                line_y = address_y + (i * line_height)
+                line_y = final_address_y + (i * line_height)
                 
                 # Get line dimensions for background
                 line_bbox = draw.textbbox((0, 0), line, font=font)
@@ -328,50 +392,120 @@ def create_overlay_image(admin_post, user_data):
                     bg_color = address_settings.get('backgroundColor', '#000000')
                     padding = 8
                     draw.rectangle([
-                        address_x - padding, line_y - padding,
-                        address_x + line_width + padding, line_y + line_text_height + padding
+                        final_address_x - padding, line_y - padding,
+                        final_address_x + line_width + padding, line_y + line_text_height + padding
                     ], fill=bg_color)
                 
                 # Add address text
                 address_color = address_settings.get('color', '#ffffff')
-                draw.text((address_x, line_y), line, fill=address_color, font=font)
+                draw.text((final_address_x, line_y), line, fill=address_color, font=font)
         
         return overlay_image
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating overlay: {str(e)}")
 
-def upload_to_firebase(image, user_id, admin_post_id):
-    """Upload image to Firebase Storage and return download URL"""
+def upload_to_firebase(image, user_id, admin_post_id, is_video=False, video_path=None):
+    """Upload image or video to Firebase Storage and return download URL"""
     try:
-        # Convert PIL Image to bytes
-        img_byte_arr = BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        # Generate unique filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"overlay_posts/{user_id}_{admin_post_id}_{timestamp}_{uuid.uuid4().hex[:8]}.png"
-        
-        # Debug information
-        print(f"Bucket name: {bucket.name}")
-        print(f"Uploading file: {filename}")
-        
-        # Upload to Firebase Storage
-        blob = bucket.blob(filename)
-        blob.upload_from_file(img_byte_arr, content_type='image/png')
-        
-        # Generate download URL with token (similar to your existing URLs)
-        blob.make_public()
-        
-        # Get a signed URL that matches your existing pattern
-        download_url = f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/{filename.replace('/', '%2F')}?alt=media"
-        
-        return download_url
+        if is_video and video_path:
+            # Upload video file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"overlay_posts/{user_id}_{admin_post_id}_{timestamp}_{uuid.uuid4().hex[:8]}.mp4"
+            
+            # Debug information
+            print(f"Bucket name: {bucket.name}")
+            print(f"Uploading video file: {filename}")
+            
+            # Upload video to Firebase Storage
+            blob = bucket.blob(filename)
+            blob.upload_from_filename(video_path, content_type='video/mp4')
+            
+            # Generate download URL
+            blob.make_public()
+            download_url = f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/{filename.replace('/', '%2F')}?alt=media"
+            
+            return download_url
+        else:
+            # Upload image (existing logic)
+            img_byte_arr = BytesIO()
+            image.save(img_byte_arr, format='PNG')
+            img_byte_arr.seek(0)
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"overlay_posts/{user_id}_{admin_post_id}_{timestamp}_{uuid.uuid4().hex[:8]}.png"
+            
+            # Debug information
+            print(f"Bucket name: {bucket.name}")
+            print(f"Uploading file: {filename}")
+            
+            # Upload to Firebase Storage
+            blob = bucket.blob(filename)
+            blob.upload_from_file(img_byte_arr, content_type='image/png')
+            
+            # Generate download URL with token (similar to your existing URLs)
+            blob.make_public()
+            
+            # Get a signed URL that matches your existing pattern
+            download_url = f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/{filename.replace('/', '%2F')}?alt=media"
+            
+            return download_url
         
     except Exception as e:
         print(f"Detailed error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error uploading image: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+def create_video_overlay(admin_post, user_data):
+    """Create video overlay by merging user data with admin post template"""
+    try:
+        # Get frame dimensions with fallback
+        frame_size = admin_post.get('frameSize', {'width': 1080, 'height': 1920})
+        frame_width = frame_size.get('width', 1080)
+        frame_height = frame_size.get('height', 1920)
+        
+        # Download the main video
+        video_url = admin_post['mainImage']
+        response = requests.get(video_url)
+        response.raise_for_status()
+        
+        # Save video to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_video:
+            temp_video.write(response.content)
+            temp_video_path = temp_video.name
+        
+        # Load video
+        video_clip = VideoFileClip(temp_video_path)
+        
+        # Create overlay image (same as image overlay)
+        overlay_image = create_overlay_image(admin_post, user_data)
+        
+        # Save overlay to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_overlay:
+            overlay_image.save(temp_overlay.name, format='PNG')
+            overlay_path = temp_overlay.name
+        
+        # Create image clip from overlay
+        overlay_clip = ImageClip(overlay_path).set_duration(video_clip.duration)
+        
+        # Composite video with overlay
+        final_video = CompositeVideoClip([video_clip, overlay_clip])
+        
+        # Save final video to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_final:
+            final_video.write_videofile(temp_final.name, codec='libx264', audio_codec='aac', verbose=False, logger=None)
+            final_video_path = temp_final.name
+        
+        # Clean up temporary files
+        video_clip.close()
+        final_video.close()
+        os.unlink(temp_video_path)
+        os.unlink(overlay_path)
+        
+        return final_video_path
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating video overlay: {str(e)}")
 
 @app.get("/admin_posts/{post_id}")
 def get_admin_post(post_id: str):
@@ -421,11 +555,24 @@ def create_personal_overlay(request: OverlayRequest):
             'usageType': 'Personal'
         }
         
-        # Create overlay image
-        overlay_image = create_overlay_image(admin_post, filtered_user_data)
+        # Check if it's a video
+        is_video = admin_post.get('mediaType') == 'video' or admin_post['mainImage'].lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))
         
-        # Upload to Firebase and get download URL
-        download_url = upload_to_firebase(overlay_image, request.user_id, request.admin_post_id)
+        if is_video:
+            # Create video overlay
+            video_path = create_video_overlay(admin_post, filtered_user_data)
+            
+            # Upload video to Firebase and get download URL
+            download_url = upload_to_firebase(None, request.user_id, request.admin_post_id, is_video=True, video_path=video_path)
+            
+            # Clean up temporary video file
+            os.unlink(video_path)
+        else:
+            # Create image overlay
+            overlay_image = create_overlay_image(admin_post, filtered_user_data)
+            
+            # Upload to Firebase and get download URL
+            download_url = upload_to_firebase(overlay_image, request.user_id, request.admin_post_id)
         
         return {
             "success": True,
@@ -469,11 +616,24 @@ def create_business_overlay(request: OverlayRequest):
         # For business overlay, we include all available data
         user_data['usageType'] = 'Business'
         
-        # Create overlay image
-        overlay_image = create_overlay_image(admin_post, user_data)
+        # Check if it's a video
+        is_video = admin_post.get('mediaType') == 'video' or admin_post['mainImage'].lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))
         
-        # Upload to Firebase and get download URL
-        download_url = upload_to_firebase(overlay_image, request.user_id, request.admin_post_id)
+        if is_video:
+            # Create video overlay
+            video_path = create_video_overlay(admin_post, user_data)
+            
+            # Upload video to Firebase and get download URL
+            download_url = upload_to_firebase(None, request.user_id, request.admin_post_id, is_video=True, video_path=video_path)
+            
+            # Clean up temporary video file
+            os.unlink(video_path)
+        else:
+            # Create image overlay
+            overlay_image = create_overlay_image(admin_post, user_data)
+            
+            # Upload to Firebase and get download URL
+            download_url = upload_to_firebase(overlay_image, request.user_id, request.admin_post_id)
         
         return {
             "success": True,
