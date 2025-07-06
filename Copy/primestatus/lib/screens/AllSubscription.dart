@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/payment_service.dart';
 
 class SubscriptionPlan {
   final String id;
@@ -38,30 +40,26 @@ class SubscriptionPlan {
 }
 
 class SubscriptionPlansScreen extends StatefulWidget {
+  final String userUsageType;
+  final String userName;
+  final String userEmail;
+  final String userPhone;
+  
+  const SubscriptionPlansScreen({
+    Key? key,
+    required this.userUsageType,
+    required this.userName,
+    required this.userEmail,
+    required this.userPhone,
+  }) : super(key: key);
+
   @override
   _SubscriptionPlansScreenState createState() => _SubscriptionPlansScreenState();
 }
 
-class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String selectedUsageType = 'Personal';
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      setState(() {
-        selectedUsageType = _tabController.index == 0 ? 'Personal' : 'Business';
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
+  String get selectedUsageType => widget.userUsageType;
+  bool _isProcessingPayment = false;
 
   String formatDuration(int days) {
     if (days == 30) return 'month';
@@ -72,6 +70,143 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
     if (days < 30) return '$days days';
     if (days < 365) return '${(days / 30).round()} months';
     return '${(days / 365).round()} years';
+  }
+
+  Future<void> _initiatePayment(SubscriptionPlan plan) async {
+    setState(() {
+      _isProcessingPayment = true;
+    });
+
+    try {
+      await PaymentService.initiatePayment(
+        planId: plan.id,
+        planTitle: plan.title,
+        amount: plan.price,
+        duration: plan.duration,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userEmail: widget.userEmail,
+        userPhone: widget.userPhone,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment gateway opened in browser. Please complete the payment and return to the app.'),
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Verify Payment',
+            onPressed: () => _showPaymentVerificationDialog(),
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment initiation failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+    }
+  }
+
+  void _showPaymentVerificationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Verify Payment'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'If you have completed the payment, please enter the payment details to verify:',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Payment ID (from Razorpay)',
+                hintText: 'pay_xxxxxxxxxxxxx',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                // Store payment ID for verification
+              },
+            ),
+            SizedBox(height: 8),
+            Text(
+              'You can find the Payment ID in the confirmation email from Razorpay or in the payment page URL.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _verifyPaymentManually();
+            },
+            child: Text('Verify Payment'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _verifyPaymentManually() async {
+    // This is a simplified version. In a real app, you'd get the payment ID from the dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Payment Verification'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Verifying payment...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // For demo purposes, you can implement a way to get the payment ID
+      // For now, we'll just show a message
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please contact support with your payment ID for manual verification.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment verification failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -129,7 +264,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Choose the perfect plan for your needs',
+                      'Choose the perfect plan for your ${selectedUsageType.toLowerCase()} needs',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -139,9 +274,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                 ),
               ),
 
-              // Tab Bar
+              // Usage Type Indicator
               Container(
                 margin: EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -153,55 +289,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                     ),
                   ],
                 ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      colors: [Colors.orange, Colors.purple],
-                    ),
-                  ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: Colors.transparent,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey[600],
-                  labelStyle: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.blue[400],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Personal'),
-                        ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: selectedUsageType == 'Personal' ? Colors.blue[400] : Colors.green[400],
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.green[400],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Business'),
-                        ],
+                    SizedBox(width: 12),
+                    Text(
+                      selectedUsageType,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.grey[800],
                       ),
                     ),
                   ],
@@ -269,7 +374,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'No $selectedUsageType plans found',
+                              'No ${selectedUsageType} plans found',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -423,14 +528,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                                       Container(
                                         width: double.infinity,
                                         child: ElevatedButton(
-                                          onPressed: plan.isActive ? () {
-                                            // Handle subscription selection
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('Selected: ${plan.title}'),
-                                                backgroundColor: Colors.green,
-                                              ),
-                                            );
+                                          onPressed: plan.isActive && !_isProcessingPayment ? () {
+                                            _initiatePayment(plan);
                                           } : null,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: plan.isActive ? null : Colors.grey[300],
@@ -454,13 +553,35 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
                                             ) : null,
                                             padding: EdgeInsets.symmetric(vertical: 16),
                                             child: Center(
-                                              child: Text(
-                                                plan.isActive ? 'Select Plan' : 'Unavailable',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
+                                              child: _isProcessingPayment
+                                                  ? Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 16,
+                                                          height: 16,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          'Processing...',
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    )
+                                                  : Text(
+                                                      plan.isActive ? 'Select Plan' : 'Unavailable',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
                                             ),
                                           ),
                                         ),
@@ -512,7 +633,12 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: SubscriptionPlansScreen(),
+      home: SubscriptionPlansScreen(
+        userUsageType: 'Personal',
+        userName: 'Test User',
+        userEmail: 'test@example.com',
+        userPhone: '9876543210',
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

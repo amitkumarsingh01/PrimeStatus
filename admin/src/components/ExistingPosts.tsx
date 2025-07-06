@@ -13,6 +13,13 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
   const [loading, setLoading] = useState(false);
   const [frameFilter, setFrameFilter] = useState<'all' | '1080x1080' | '1080x1350' | '1080x1920'>('all');
 
+  // Key Changes Made:
+  // 1. Added frameSize extraction from Firebase data
+  // 2. Made aspect ratio dynamic based on actual frame size instead of hardcoded 9/16
+  // 3. Added visual indicators (border colors and badges) for different frame sizes
+  // 4. Added frame size summary and filtering functionality
+  // 5. Added debugging information to track frame size detection
+
   useEffect(() => {
     fetchExistingPosts();
     // eslint-disable-next-line
@@ -26,6 +33,9 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
       const fetchedPosts: Post[] = [];
       querySnapshot.forEach((docSnapshot) => {
         const data = docSnapshot.data();
+        console.log('Raw Firebase data for post:', docSnapshot.id, data);
+        console.log('FrameSize from Firebase:', data.frameSize);
+        
         fetchedPosts.push({
           id: docSnapshot.id,
           userId: data.createdBy || 'admin',
@@ -35,6 +45,7 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
           category: Array.isArray(data.categories) ? data.categories.join(', ') : data.category || '',
           region: Array.isArray(data.regions) ? data.regions.join(', ') : data.region || '',
           language: data.language,
+          frameSize: data.frameSize || null,
           textSettings: data.textSettings,
           addressSettings: data.addressSettings || {
             text: '', x: 50, y: 80, font: 'Arial', fontSize: 18, color: '#ffffff', hasBackground: true, backgroundColor: '#000000', enabled: false,
@@ -46,6 +57,7 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
           createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         });
       });
+      console.log('Processed posts with frameSize:', fetchedPosts.map(p => ({ id: p.id, frameSize: p.frameSize })));
       setExistingPosts(fetchedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -82,11 +94,38 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
     return mediaUrl.startsWith('data:video/') || (mediaUrl.startsWith('http') && mediaUrl.includes('video'));
   };
 
+  // Helper function to get aspect ratio from frame size
+  const getAspectRatio = (frameSize: { width: number; height: number } | null | undefined) => {
+    if (!frameSize || typeof frameSize.width !== 'number' || typeof frameSize.height !== 'number') {
+      console.log('No valid frameSize, using fallback 9/16');
+      return '9/16'; // fallback for posts without frameSize
+    }
+    const aspectRatio = `${frameSize.width} / ${frameSize.height}`;
+    console.log(`Calculated aspect ratio for ${frameSize.width}x${frameSize.height}: ${aspectRatio}`);
+    return aspectRatio;
+  };
+
+  // Helper function to get border color based on frame size
+  const getFrameBorderColor = (frameSize: { width: number; height: number } | null | undefined) => {
+    if (!frameSize || typeof frameSize.width !== 'number' || typeof frameSize.height !== 'number') {
+      return 'border-gray-200'; // fallback
+    }
+    if (frameSize.width === 1080 && frameSize.height === 1080) {
+      return 'border-green-400'; // Square
+    } else if (frameSize.width === 1080 && frameSize.height === 1350) {
+      return 'border-blue-400'; // Portrait 4:5
+    } else if (frameSize.width === 1080 && frameSize.height === 1920) {
+      return 'border-purple-400'; // Portrait 9:16
+    }
+    return 'border-orange-400'; // Other sizes
+  };
+
   // Frame filter logic
   const filteredPosts = frameFilter === 'all'
     ? existingPosts
     : existingPosts.filter(post => {
-        const size = post.frameSize || post["frameSize"];
+        const size = post.frameSize;
+        console.log(`Filtering post ${post.id}:`, { frameFilter, size, hasSize: !!size, width: size?.width, height: size?.height });
         if (!size || typeof size.width !== 'number' || typeof size.height !== 'number') return false;
         if (frameFilter === '1080x1080') return size.width === 1080 && size.height === 1080;
         if (frameFilter === '1080x1350') return size.width === 1080 && size.height === 1350;
@@ -115,7 +154,7 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
           </div>
 
           {/* Frame Filter */}
-          {/* <div className="mb-6 flex flex-wrap gap-3 items-center">
+          <div className="mb-6 flex flex-wrap gap-3 items-center">
             <span className="font-medium text-gray-700 mr-2">Filter by Frame:</span>
             <button
               className={`px-4 py-1 rounded-lg border ${frameFilter === 'all' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'} transition`}
@@ -141,7 +180,37 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
             >
               1080x1920
             </button>
-          </div> */}
+          </div>
+
+          {/* Frame Size Summary */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium text-gray-700">
+                {frameFilter === 'all' 
+                  ? `All Posts (${existingPosts.length})` 
+                  : `Filtered Posts (${filteredPosts.length} of ${existingPosts.length})`
+                }
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded"></div>
+                <span>Square (1080x1080): {existingPosts.filter(p => p.frameSize?.width === 1080 && p.frameSize?.height === 1080).length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                <span>Portrait 4:5 (1080x1350): {existingPosts.filter(p => p.frameSize?.width === 1080 && p.frameSize?.height === 1350).length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-400 rounded"></div>
+                <span>Portrait 9:16 (1080x1920): {existingPosts.filter(p => p.frameSize?.width === 1080 && p.frameSize?.height === 1920).length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-400 rounded"></div>
+                <span>Other: {existingPosts.filter(p => !p.frameSize || (p.frameSize.width !== 1080 || (p.frameSize.height !== 1080 && p.frameSize.height !== 1350 && p.frameSize.height !== 1920))).length}</span>
+              </div>
+            </div>
+          </div>
 
           {loading ? (
             <div className="text-center py-12">
@@ -161,10 +230,37 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
               {filteredPosts.map(post => (
                 <div
                   key={post.id}
-                  className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all duration-300"
+                  className={`bg-white rounded-lg shadow-lg overflow-hidden border ${getFrameBorderColor(post.frameSize)} hover:shadow-xl transition-all duration-300`}
                 >
                   <div className="relative">
-                    <div className="w-full bg-gray-100 flex items-center justify-center" style={{ aspectRatio: '9/16' }}>
+                    {/* Frame size badge */}
+                    {post.frameSize && typeof post.frameSize.width === 'number' && typeof post.frameSize.height === 'number' && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                          post.frameSize.width === 1080 && post.frameSize.height === 1080
+                            ? 'bg-green-500 text-white'
+                            : post.frameSize.width === 1080 && post.frameSize.height === 1350
+                            ? 'bg-blue-500 text-white'
+                            : post.frameSize.width === 1080 && post.frameSize.height === 1920
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-orange-500 text-white'
+                        }`}>
+                          {post.frameSize.width === 1080 && post.frameSize.height === 1080
+                            ? 'Square'
+                            : post.frameSize.width === 1080 && post.frameSize.height === 1350
+                            ? '4:5'
+                            : post.frameSize.width === 1080 && post.frameSize.height === 1920
+                            ? '9:16'
+                            : 'Custom'}
+                        </span>
+                      </div>
+                    )}
+                    <div 
+                      className="w-full bg-gray-100 flex items-center justify-center" 
+                      style={{ 
+                        aspectRatio: getAspectRatio(post.frameSize)
+                      }}
+                    >
                       {isVideo(post.mainImage) ? (
                         <video
                           src={post.mainImage}
@@ -254,7 +350,14 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
                       <p>Language: {post.language === 'kannada' ? 'ಕನ್ನಡ' : 'English'}</p>
                       <p>Created: {formatDate(post.createdAt)}</p>
                       {/* Debug: Show frameSize info */}
-                      <p className="mt-1 text-[10px] text-orange-600">Frame: {post.frameSize && typeof post.frameSize.width === 'number' && typeof post.frameSize.height === 'number' ? `${post.frameSize.width}x${post.frameSize.height}` : <span className="text-red-500">No frameSize</span>}</p>
+                      <p className="mt-1 text-[10px] text-orange-600">
+                        Frame: {post.frameSize && typeof post.frameSize.width === 'number' && typeof post.frameSize.height === 'number' 
+                          ? `${post.frameSize.width}x${post.frameSize.height}` 
+                          : <span className="text-red-500">No frameSize</span>}
+                      </p>
+                      <p className="mt-1 text-[10px] text-blue-600">
+                        Aspect: {getAspectRatio(post.frameSize)}
+                      </p>
                     </div>
                   </div>
                 </div>

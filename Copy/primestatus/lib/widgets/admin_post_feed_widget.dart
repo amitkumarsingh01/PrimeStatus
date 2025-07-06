@@ -18,6 +18,8 @@ import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'fullscreen_post_viewer.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'dart:async';
 
 // Global video controller manager
 class VideoControllerManager {
@@ -93,6 +95,19 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   bool _isLoading = false;
   bool _isProcessingShare = false;
   Map<String, String?> _processedProfilePhotos = {};
+  
+  // Cache for processed images to avoid reprocessing
+  final Map<String, Uint8List> _imageCache = {};
+  
+  // Debounce timer for search/filter operations
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _imageCache.clear();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +189,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(
-                  child: CircularProgressIndicator(),
+                  child: CircularProgressIndicator(color: Colors.blue),
                 );
               }
 
@@ -217,6 +232,9 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 child: ListView.builder(
                   padding: EdgeInsets.all(16),
                   itemCount: posts.length,
+                  // Add performance optimizations
+                  addAutomaticKeepAlives: false,
+                  addRepaintBoundaries: false,
                   itemBuilder: (context, index) {
                     final doc = posts[index];
                     final post = doc.data() as Map<String, dynamic>;
@@ -256,7 +274,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
+                    CircularProgressIndicator(color: Colors.blue),
                     SizedBox(height: 16),
                     Text(
                       'Removing background...',
@@ -564,6 +582,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         return Image.memory(
           bytes,
           fit: fit,
+          cacheWidth: 1080, // Optimize memory usage
+          cacheHeight: 1920,
         );
       } catch (e) {
         return Container(
@@ -575,14 +595,19 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         fit: fit,
+        memCacheWidth: 1080, // Optimize memory usage
+        memCacheHeight: 1920,
+        maxWidthDiskCache: 1080,
+        maxHeightDiskCache: 1920,
         placeholder: (context, url) => Container(
           color: Colors.grey[200],
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: CircularProgressIndicator(color: Colors.blue)),
         ),
         errorWidget: (context, url, error) => Container(
           color: Colors.grey[200],
           child: Icon(Icons.error, color: Colors.grey),
         ),
+        cacheManager: DefaultCacheManager(),
       );
     } else {
       return Container(
@@ -820,6 +845,12 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
   Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
     try {
+      // Check cache first
+      final String cacheKey = '${imageUrl}_${post['id']}_${_getUserDataHash()}';
+      if (_imageCache.containsKey(cacheKey)) {
+        return _imageCache[cacheKey];
+      }
+
       final textSettings = post['textSettings'] ?? {};
       final profileSettings = post['profileSettings'] ?? {};
       final addressSettings = post['addressSettings'] ?? {};
@@ -970,11 +1001,18 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
       // Try to capture the widget as an image
       try {
-        return await _screenshotController.captureFromWidget(
+        final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
           imageWithOverlays,
           delay: Duration(milliseconds: 100),
           pixelRatio: 2.0, // Higher quality
         );
+        
+        // Cache the result
+        if (capturedBytes != null) {
+          _imageCache[cacheKey] = capturedBytes;
+        }
+        
+        return capturedBytes;
       } catch (e) {
         print('Screenshot capture failed, trying fallback: $e');
         // Fallback: share the original image URL
@@ -984,6 +1022,18 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       print('Error capturing image: $e');
       return null;
     }
+  }
+
+  // Helper method to generate a hash for user data to use as cache key
+  String _getUserDataHash() {
+    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+    final String userName = homeScreenState?.userName ?? 'User';
+    final String? userProfilePhotoUrl = homeScreenState?.userProfilePhotoUrl;
+    final String userUsageType = homeScreenState?.userUsageType ?? '';
+    final String userAddress = homeScreenState?.userAddress ?? '';
+    final String userPhoneNumber = homeScreenState?.userPhoneNumber ?? '';
+    
+    return '${userName}_${userProfilePhotoUrl}_${userUsageType}_${userAddress}_${userPhoneNumber}'.hashCode.toString();
   }
 
   // Fallback method for sharing when screenshot fails
@@ -1265,14 +1315,19 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
+                            memCacheWidth: 150, // Optimize for gallery thumbnails
+                            memCacheHeight: 150,
+                            maxWidthDiskCache: 150,
+                            maxHeightDiskCache: 150,
                             placeholder: (context, url) => Container(
                               color: Colors.grey.shade200,
-                              child: Center(child: CircularProgressIndicator()),
+                              child: Center(child: CircularProgressIndicator(color: Colors.blue)),
                             ),
                             errorWidget: (context, url, error) => Container(
                               color: Colors.grey.shade200,
                               child: Icon(Icons.person, size: 30, color: Colors.grey),
                             ),
+                            cacheManager: DefaultCacheManager(),
                           ),
                           if (isActive && homeScreenState?.userProfilePhotoUrl == photoUrl)
                             Positioned(
@@ -1338,14 +1393,19 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
+                            memCacheWidth: 150, // Optimize for gallery thumbnails
+                            memCacheHeight: 150,
+                            maxWidthDiskCache: 150,
+                            maxHeightDiskCache: 150,
                             placeholder: (context, url) => Container(
                               color: Colors.grey.shade200,
-                              child: Center(child: CircularProgressIndicator()),
+                              child: Center(child: CircularProgressIndicator(color: Colors.blue)),
                             ),
                             errorWidget: (context, url, error) => Container(
                               color: Colors.grey.shade200,
                               child: Icon(Icons.person, size: 30, color: Colors.grey),
                             ),
+                            cacheManager: DefaultCacheManager(),
                           ),
                           if (isActive && homeScreenState?.userProfilePhotoUrl == photoUrlNoBg)
                             Positioned(
@@ -1858,11 +1918,16 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         return CachedNetworkImage(
           imageUrl: processedUrl,
           fit: BoxFit.cover,
+          memCacheWidth: 200, // Optimize for profile photos
+          memCacheHeight: 200,
+          maxWidthDiskCache: 200,
+          maxHeightDiskCache: 200,
           placeholder: (context, url) => Container(
             color: Colors.grey[200],
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: CircularProgressIndicator(color: Colors.blue)),
           ),
           errorWidget: (context, url, error) => _buildOriginalProfilePhoto(photoUrl),
+          cacheManager: DefaultCacheManager(),
         );
       }
     }
@@ -1878,14 +1943,19 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: BoxFit.cover,
+      memCacheWidth: 200, // Optimize for profile photos
+      memCacheHeight: 200,
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200,
       placeholder: (context, url) => Container(
         color: Colors.grey[200],
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: Colors.blue)),
       ),
       errorWidget: (context, url, error) => Container(
         color: Colors.grey[200],
         child: Icon(Icons.person, color: Colors.grey),
       ),
+      cacheManager: DefaultCacheManager(),
     );
   }
 
@@ -1952,7 +2022,7 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
             child: VideoPlayer(_controller),
           );
         } else {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.blue));
         }
       },
     );
@@ -2005,7 +2075,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
             child: VideoPlayer(_controller),
           );
         } else {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.blue));
         }
       },
     );
@@ -2034,6 +2104,8 @@ class AdminPostFeedWidgetHelpers {
         return Image.memory(
           bytes,
           fit: fit,
+          cacheWidth: 1080, // Optimize memory usage
+          cacheHeight: 1920,
         );
       } catch (e) {
         return Container(
@@ -2045,14 +2117,19 @@ class AdminPostFeedWidgetHelpers {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         fit: fit,
+        memCacheWidth: 1080, // Optimize memory usage
+        memCacheHeight: 1920,
+        maxWidthDiskCache: 1080,
+        maxHeightDiskCache: 1920,
         placeholder: (context, url) => Container(
           color: Colors.grey[200],
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: CircularProgressIndicator(color: Colors.blue)),
         ),
         errorWidget: (context, url, error) => Container(
           color: Colors.grey[200],
           child: Icon(Icons.error, color: Colors.grey),
         ),
+        cacheManager: DefaultCacheManager(),
       );
     } else {
       return Container(
@@ -2077,14 +2154,19 @@ class AdminPostFeedWidgetHelpers {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: BoxFit.cover,
+      memCacheWidth: 200, // Optimize for profile photos
+      memCacheHeight: 200,
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200,
       placeholder: (context, url) => Container(
         color: Colors.grey[200],
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: Colors.blue)),
       ),
       errorWidget: (context, url, error) => Container(
         color: Colors.grey[200],
         child: Icon(Icons.person, color: Colors.grey),
       ),
+      cacheManager: DefaultCacheManager(),
     );
   }
 

@@ -1959,7 +1959,7 @@ Widget _buildAdminFeedTab() {
       body: Column(
         children: [
           Container(
-            height: 85,
+            height: 120,
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(

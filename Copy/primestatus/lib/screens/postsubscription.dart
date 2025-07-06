@@ -18,6 +18,7 @@ class PostSubscriptionScreen extends StatefulWidget {
   final String userAddress;
   final String userPhoneNumber;
   final String userCity;
+  final String userEmail;
 
   const PostSubscriptionScreen({
     Key? key,
@@ -28,6 +29,7 @@ class PostSubscriptionScreen extends StatefulWidget {
     required this.userAddress,
     required this.userPhoneNumber,
     required this.userCity,
+    required this.userEmail,
   }) : super(key: key);
 
   @override
@@ -282,6 +284,7 @@ class _PostSubscriptionScreenState extends State<PostSubscriptionScreen> {
                                     onDownload: () {},
                                     onEdit: () {},
                                     onPremium: () {},
+                                    userEmail: widget.userEmail,
                                   ),
                                 ),
                                 SizedBox(height: 12),

@@ -14,6 +14,7 @@ export interface Post {
   category: string;
   region: string;
   language: 'english' | 'kannada';
+  frameSize?: { width: number; height: number };
   textSettings: {
     text: string;
     x: number;

@@ -20,6 +20,8 @@ import 'package:image/image.dart' as img;
 import 'package:video_player/video_player.dart';
 import '../services/video_processing_service.dart';
 import '../services/subscription_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 // Global video controller manager for fullscreen
 class FullscreenVideoControllerManager {
@@ -163,6 +165,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                       userAddress: widget.userAddress,
                       userPhoneNumber: widget.userPhoneNumber,
                       userCity: widget.userCity,
+                      userEmail: _userService.currentUser?.email ?? '',
                       onShare: () => _showShareOptions(post),
                       onDownload: () => _downloadImage(post),
                       onEdit: () => _showProfilePhotoDialog(),
@@ -208,22 +211,22 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
                 child: Container(
                   padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.black,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
+                      CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 16),
                       Text(
                         _isProcessingShare ? 'Processing post for sharing...' : 'Processing post for download...',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Please wait while we process your image',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
                       ),
                     ],
                   ),
@@ -255,6 +258,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               userAddress: widget.userAddress,
               userPhoneNumber: widget.userPhoneNumber,
               userCity: widget.userCity,
+              userEmail: _userService.currentUser?.email ?? '',
             ),
           ),
         );
@@ -663,6 +667,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               userAddress: widget.userAddress,
               userPhoneNumber: widget.userPhoneNumber,
               userCity: widget.userCity,
+              userEmail: _userService.currentUser?.email ?? '',
             ),
           ),
         );
@@ -932,6 +937,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         userAddress: widget.userAddress,
         userPhoneNumber: widget.userPhoneNumber,
         userCity: widget.userCity,
+        userEmail: _userService.currentUser?.email ?? '',
         onShare: () {}, // dummy
         onDownload: () {}, // dummy
         onEdit: () {}, // dummy
@@ -1021,8 +1027,8 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         return _Base64VideoPlayer(bytes: bytes);
       } catch (e) {
         return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.error, color: Colors.grey),
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
         );
       }
     } else if (_isVideoUrl(imageUrl)) {
@@ -1034,35 +1040,37 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         return Image.memory(
           bytes,
           fit: fit,
+          cacheWidth: 1080, // Optimize memory usage
+          cacheHeight: 1920,
         );
       } catch (e) {
         return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.error, color: Colors.grey),
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
         );
       }
     } else if (imageUrl.isNotEmpty) {
-      return Image.network(
-        imageUrl,
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
         fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            color: Colors.grey[200],
-            child: Center(child: CircularProgressIndicator()),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            color: Colors.grey[200],
-            child: Icon(Icons.error, color: Colors.grey),
-          );
-        },
+        memCacheWidth: 1080, // Optimize memory usage
+        memCacheHeight: 1920,
+        maxWidthDiskCache: 1080,
+        maxHeightDiskCache: 1920,
+        placeholder: (context, url) => Container(
+          color: Colors.black,
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
+        ),
+        cacheManager: DefaultCacheManager(),
       );
     } else {
       return Container(
-        color: Colors.grey[200],
-        child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
+        color: Colors.black,
+        child: Center(child: Icon(Icons.image, size: 48, color: Colors.white)),
       );
     }
   }
@@ -1073,22 +1081,22 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
   }
 
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
-    return Image.network(
-      photoUrl,
+    return CachedNetworkImage(
+      imageUrl: photoUrl,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: Colors.grey[200],
-          child: Center(child: CircularProgressIndicator()),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.person, color: Colors.grey),
-        );
-      },
+      memCacheWidth: 200, // Optimize for profile photos
+      memCacheHeight: 200,
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200,
+      placeholder: (context, url) => Container(
+        color: Colors.black,
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.black,
+        child: Icon(Icons.person, color: Colors.white),
+      ),
+      cacheManager: DefaultCacheManager(),
     );
   }
 
@@ -1411,7 +1419,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
 
   Widget _buildProfilePhotoGallery() {
     if (_isLoadingProfilePhotos) {
-      return Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: Colors.white));
     }
     if (_userProfilePhotos.isEmpty) {
       return Center(
@@ -1434,6 +1442,8 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         mainAxisSpacing: 8,
       ),
       itemCount: _userProfilePhotos.length,
+      addAutomaticKeepAlives: false, // Optimize memory usage
+      addRepaintBoundaries: false, // Optimize performance
       itemBuilder: (context, index) {
         final photoDoc = _userProfilePhotos[index];
         final photoUrl = photoDoc['photoUrl'] as String?;
@@ -1457,22 +1467,24 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
                       borderRadius: BorderRadius.circular(8),
                       child: Stack(
                         children: [
-                          Image.network(
-                            photoUrl,
+                          CachedNetworkImage(
+                            imageUrl: photoUrl,
                             fit: BoxFit.contain,
                             width: double.infinity,
                             height: double.infinity,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: Colors.grey.shade200,
-                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            memCacheWidth: 150, // Optimize for gallery thumbnails
+                            memCacheHeight: 150,
+                            maxWidthDiskCache: 150,
+                            maxHeightDiskCache: 150,
+                            placeholder: (context, url) => Container(
+                              color: Colors.black,
+                              child: Center(child: CircularProgressIndicator(color: Colors.white)),
                             ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.black,
+                              child: Icon(Icons.person, size: 30, color: Colors.white),
+                            ),
+                            cacheManager: DefaultCacheManager(),
                           ),
                           if (isActive && _activeProfilePhotoUrl == photoUrl)
                             Positioned(
@@ -1509,22 +1521,24 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
                       borderRadius: BorderRadius.circular(8),
                       child: Stack(
                         children: [
-                          Image.network(
-                            photoUrlNoBg,
+                          CachedNetworkImage(
+                            imageUrl: photoUrlNoBg,
                             fit: BoxFit.contain,
                             width: double.infinity,
                             height: double.infinity,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: Colors.grey.shade200,
-                              child: Icon(Icons.person, size: 30, color: Colors.grey),
+                            memCacheWidth: 150, // Optimize for gallery thumbnails
+                            memCacheHeight: 150,
+                            maxWidthDiskCache: 150,
+                            maxHeightDiskCache: 150,
+                            placeholder: (context, url) => Container(
+                              color: Colors.black,
+                              child: Center(child: CircularProgressIndicator(color: Colors.white)),
                             ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.black,
+                              child: Icon(Icons.person, size: 30, color: Colors.white),
+                            ),
+                            cacheManager: DefaultCacheManager(),
                           ),
                           if (isActive && _activeProfilePhotoUrl == photoUrlNoBg)
                             Positioned(
@@ -1633,6 +1647,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
           userAddress: widget.userAddress,
           userPhoneNumber: widget.userPhoneNumber,
           userCity: widget.userCity,
+          userEmail: _userService.currentUser?.email ?? '',
         ),
       ),
     );
@@ -1647,6 +1662,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
   final String userAddress;
   final String userPhoneNumber;
   final String userCity;
+  final String userEmail;
   final VoidCallback onShare;
   final VoidCallback onDownload;
   final VoidCallback onEdit;
@@ -1662,6 +1678,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
     required this.userAddress,
     required this.userPhoneNumber,
     required this.userCity,
+    required this.userEmail,
     required this.onShare,
     required this.onDownload,
     required this.onEdit,
@@ -1708,7 +1725,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                         width: width,
                         height: height,
                         decoration: const BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.black,
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(16),
                             topRight: Radius.circular(16),
@@ -1883,7 +1900,12 @@ class AdminPostFullScreenCard extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen()),
+                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen(
+                            userUsageType: userUsageType,
+                            userName: userName,
+                            userEmail: userEmail,
+                            userPhone: userPhoneNumber,
+                          )),
                         );
                       },
                       icon: const Icon(Icons.star, color: Colors.white),
@@ -1911,25 +1933,11 @@ class AdminPostFullScreenCard extends StatelessWidget {
                       child: const Icon(Icons.edit, color: Colors.white),
                     ),
                   ),
-
                 ],
               ),
             ),
           ],
         ),
-        // Positioned(
-        //   top: 8,
-        //   left: 8,
-        //   child: InkWell(
-        //     onTap: () {
-        //       Navigator.pop(context);
-        //     },
-        //     child: Container(
-        //       padding: const EdgeInsets.all(14),
-        //       child: const Icon(Icons.arrow_back, color: Colors.white, size: 32),
-        //     ),
-        //   ),
-        // ),
       ],
     );
   }
@@ -1944,8 +1952,8 @@ class AdminPostFullScreenCard extends StatelessWidget {
         return _Base64VideoPlayer(bytes: bytes);
       } catch (e) {
         return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.error, color: Colors.grey),
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
         );
       }
     } else if (_isVideoUrl(imageUrl)) {
@@ -1957,35 +1965,37 @@ class AdminPostFullScreenCard extends StatelessWidget {
         return Image.memory(
           bytes,
           fit: fit,
+          cacheWidth: 1080, // Optimize memory usage
+          cacheHeight: 1920,
         );
       } catch (e) {
         return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.error, color: Colors.grey),
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
         );
       }
     } else if (imageUrl.isNotEmpty) {
-      return Image.network(
-        imageUrl,
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
         fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            color: Colors.grey[200],
-            child: Center(child: CircularProgressIndicator()),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            color: Colors.grey[200],
-            child: Icon(Icons.error, color: Colors.grey),
-          );
-        },
+        memCacheWidth: 1080, // Optimize memory usage
+        memCacheHeight: 1920,
+        maxWidthDiskCache: 1080,
+        maxHeightDiskCache: 1920,
+        placeholder: (context, url) => Container(
+          color: Colors.black,
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.black,
+          child: Icon(Icons.error, color: Colors.white),
+        ),
+        cacheManager: DefaultCacheManager(),
       );
     } else {
       return Container(
-        color: Colors.grey[200],
-        child: Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
+        color: Colors.black,
+        child: Center(child: Icon(Icons.image, size: 48, color: Colors.white)),
       );
     }
   }
@@ -1996,22 +2006,22 @@ class AdminPostFullScreenCard extends StatelessWidget {
   }
 
   Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
-    return Image.network(
-      photoUrl,
+    return CachedNetworkImage(
+      imageUrl: photoUrl,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: Colors.grey[200],
-          child: Center(child: CircularProgressIndicator()),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.grey[200],
-          child: Icon(Icons.person, color: Colors.grey),
-        );
-      },
+      memCacheWidth: 200, // Optimize for profile photos
+      memCacheHeight: 200,
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200,
+      placeholder: (context, url) => Container(
+        color: Colors.black,
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.black,
+        child: Icon(Icons.person, color: Colors.white),
+      ),
+      cacheManager: DefaultCacheManager(),
     );
   }
 
@@ -2021,8 +2031,6 @@ class AdminPostFullScreenCard extends StatelessWidget {
     if (hexColor.length == 6) hexColor = 'FF$hexColor';
     return Color(int.parse('0x$hexColor'));
   }
-
-
 }
 
 // Base64 video player widget
@@ -2072,7 +2080,10 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
             child: VideoPlayer(_controller),
           );
         } else {
-          return Center(child: CircularProgressIndicator());
+          return Container(
+            color: Colors.black,
+            child: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
         }
       },
     );
@@ -2126,7 +2137,10 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
             child: VideoPlayer(_controller),
           );
         } else {
-          return Center(child: CircularProgressIndicator());
+          return Container(
+            color: Colors.black,
+            child: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
         }
       },
     );
