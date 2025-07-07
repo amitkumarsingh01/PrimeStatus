@@ -20,6 +20,10 @@ import 'dart:ui' as ui;
 import 'fullscreen_post_viewer.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import '../services/subscription_service.dart';
+import '../screens/postsubscription.dart';
 
 // Global video controller manager
 class VideoControllerManager {
@@ -116,149 +120,153 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final isBusinessUser = userUsageType == 'Business';
     final hasCompleteBusinessInfo = _hasCompleteBusinessInfo();
     
-    return Column(
+    return Stack(
       children: [
-        // Business Information Status (for Business users)
-        if (isBusinessUser && 1<0)
-          Container(
-            margin: EdgeInsets.all(16),
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: hasCompleteBusinessInfo ? Colors.green.shade50 : Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: hasCompleteBusinessInfo ? Colors.green.shade200 : Colors.orange.shade200,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasCompleteBusinessInfo ? Icons.check_circle : Icons.info,
-                  color: hasCompleteBusinessInfo ? Colors.green.shade700 : Colors.orange.shade700,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Business Profile',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: hasCompleteBusinessInfo ? Colors.green.shade700 : Colors.orange.shade700,
-                        ),
-                      ),
-                      Text(
-                        hasCompleteBusinessInfo 
-                          ? 'Your business information will be displayed on posts'
-                          : 'Complete your profile to display business information on posts',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasCompleteBusinessInfo ? Colors.green.shade600 : Colors.orange.shade600,
-                        ),
-                      ),
-                    ],
+        Column(
+          children: [
+            // Business Information Status (for Business users)
+            if (isBusinessUser && 1<0)
+              Container(
+                margin: EdgeInsets.all(16),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: hasCompleteBusinessInfo ? Colors.green.shade50 : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: hasCompleteBusinessInfo ? Colors.green.shade200 : Colors.orange.shade200,
                   ),
                 ),
-                if (!hasCompleteBusinessInfo)
-                  TextButton(
-                    onPressed: _showBusinessInfoDialog,
-                    child: Text(
-                      'Update',
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontWeight: FontWeight.w500,
+                child: Row(
+                  children: [
+                    Icon(
+                      hasCompleteBusinessInfo ? Icons.check_circle : Icons.info,
+                      color: hasCompleteBusinessInfo ? Colors.green.shade700 : Colors.orange.shade700,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Business Profile',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: hasCompleteBusinessInfo ? Colors.green.shade700 : Colors.orange.shade700,
+                            ),
+                          ),
+                          Text(
+                            hasCompleteBusinessInfo 
+                              ? 'Your business information will be displayed on posts'
+                              : 'Complete your profile to display business information on posts',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: hasCompleteBusinessInfo ? Colors.green.shade600 : Colors.orange.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        
-        // Posts feed
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _getFilteredPostsStream(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text('Error: ${snapshot.error}'),
-                );
-              }
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(color: Colors.blue),
-                );
-              }
-
-              final posts = snapshot.data?.docs ?? [];
-
-              if (posts.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.feed_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No posts available',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
+                    if (!hasCompleteBusinessInfo)
+                      TextButton(
+                        onPressed: _showBusinessInfoDialog,
+                        child: Text(
+                          'Update',
+                          style: TextStyle(
+                            color: Colors.orange.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Check back later for new content',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () async {
-                  setState(() {});
-                },
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: posts.length,
-                  // Add performance optimizations
-                  addAutomaticKeepAlives: false,
-                  addRepaintBoundaries: false,
-                  itemBuilder: (context, index) {
-                    final doc = posts[index];
-                    final post = doc.data() as Map<String, dynamic>;
-                    post['id'] = doc.id; // Attach the Firestore document ID!
-                    return GestureDetector(
-                      onTap: () {
-                        if (widget.onPostTap != null) {
-                          widget.onPostTap!(
-                            posts.map((doc) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              data['id'] = doc.id; // Attach the ID for every post in the list!
-                              return data;
-                            }).toList(),
-                            index,
-                          );
-                        }
-                      },
-                      child: _buildPostCard(post),
-                    );
-                  },
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            
+            // Posts feed
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _getFilteredPostsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(color: Colors.blue),
+                    );
+                  }
+
+                  final posts = snapshot.data?.docs ?? [];
+
+                  if (posts.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.feed_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No posts available',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Check back later for new content',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      setState(() {});
+                    },
+                    child: ListView.builder(
+                      padding: EdgeInsets.all(16),
+                      itemCount: posts.length,
+                      // Add performance optimizations
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: false,
+                      itemBuilder: (context, index) {
+                        final doc = posts[index];
+                        final post = doc.data() as Map<String, dynamic>;
+                        post['id'] = doc.id; // Attach the Firestore document ID!
+                        return GestureDetector(
+                          onTap: () {
+                            if (widget.onPostTap != null) {
+                              widget.onPostTap!(
+                                posts.map((doc) {
+                                  final data = doc.data() as Map<String, dynamic>;
+                                  data['id'] = doc.id; // Attach the ID for every post in the list!
+                                  return data;
+                                }).toList(),
+                                index,
+                              );
+                            }
+                          },
+                          child: _buildPostCard(post),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
         // Loading overlay for background removal
         if (_isLoading)
@@ -284,6 +292,36 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                     Text(
                       'Please wait while we process your photo',
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        // Loading overlay for share/download actions
+        if (_isProcessingShare)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Processing post for sharing or download...',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Please wait while we process your request',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
@@ -496,7 +534,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xffffffff), Color(0xffffffff)], // Replace with your two colors
+                colors: [Color(0xffffffff), Color(0xffffffff)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -504,11 +542,11 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // Share Button - 45%
+                // WhatsApp Share Button - 45%
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _navigateToFullscreen(post, 'share'),
+                    onPressed: () => _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post),
                     icon: const Icon(Icons.share, color: Colors.white),
                     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -524,7 +562,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _navigateToFullscreen(post, 'download'),
+                    onPressed: () => _downloadImage(post),
                     icon: const Icon(Icons.download, color: Colors.white),
                     label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -540,7 +578,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 10,
                   child: ElevatedButton(
-                    onPressed: () => _navigateToFullscreen(post, 'edit'),
+                    onPressed: () => _showProfilePhotoDialog(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange[600],
                       shape: RoundedRectangleBorder(
@@ -736,318 +774,220 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     );
   }
 
-  // Share to WhatsApp (just send image URL or a message)
+  // WhatsApp specific sharing (ported from fullscreen_post_viewer.dart)
   Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
-    String message = 'Check out this post!';
-    if (imageUrl.isNotEmpty) {
-      message += '\n';
-      if (imageUrl.startsWith('data:image')) {
-        message += '[Image attached]';
-      } else {
-        message += imageUrl;
-      }
-    }
-    final whatsappUrl = Uri.parse('https://wa.me/?text=' + Uri.encodeComponent(message));
-    if (await canLaunchUrl(whatsappUrl)) {
-      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open WhatsApp.')),
-      );
-    }
-  }
-
-  // Download (simulate) and share to WhatsApp
-  Future<void> _downloadAndShareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
-    // For simplicity, just share as above (downloading to gallery requires more permissions and plugins)
-    await _shareToWhatsApp(imageUrl, post);
-  }
-
-  void _showShareOptions(String imageUrl, Map<String, dynamic> post) {
-    // Directly call _shareImage with 'General' for all options
-    _shareImage(imageUrl, post, 'General');
-  }
-
-  Widget _buildShareOption(String title, IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _shareImage(String imageUrl, Map<String, dynamic> post, String platform) async {
     setState(() {
       _isProcessingShare = true;
     });
-
     try {
-      // Create the image with overlays
-      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
-      
-      if (imageBytes != null) {
-        // Save image to temporary file
-        final Directory tempDir = await getTemporaryDirectory();
-        final String fileName = 'shared_image_${DateTime.now().millisecondsSinceEpoch}.png';
-        final String filePath = '${tempDir.path}/$fileName';
-        final File imageFile = File(filePath);
-        await imageFile.writeAsBytes(imageBytes);
-
-        // Share the image
-        await Share.shareXFiles(
-          [XFile(filePath)],
-          text: 'Check out this amazing design!',
-          subject: 'Shared from Prime Status',
-        );
-
-        // Clean up the temporary file after a delay
-        Future.delayed(Duration(seconds: 5), () {
-          if (imageFile.existsSync()) {
-            imageFile.deleteSync();
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+      final String postId = post['id'] ?? '';
+      if (postId.isEmpty) {
+        throw Exception('Post ID not found.');
+      }
+      final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+      final userUsageType = homeScreenState?.userUsageType ?? '';
+      final String apiEndpoint = userUsageType == 'Business'
+          ? 'https://bgremoval.iaks.site/overlay_business'
+          : 'https://bgremoval.iaks.site/overlay_personal';
+      final Map<String, dynamic> requestBody = {
+        'user_id': currentUser.uid,
+        'admin_post_id': postId,
+      };
+      final response = await http.post(
+        Uri.parse(apiEndpoint),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        if (responseData['success'] == true && responseData['download_url'] != null) {
+          final String downloadUrl = responseData['download_url'];
+          final imageResponse = await http.get(Uri.parse(downloadUrl));
+          if (imageResponse.statusCode == 200) {
+            final Directory tempDir = await getTemporaryDirectory();
+            final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String filePath = '${tempDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(imageResponse.bodyBytes);
+            await Share.shareXFiles(
+              [XFile(filePath)],
+              text: 'Check out this amazing design from Prime Status!',
+              subject: 'Shared from Prime Status',
+            );
+            Future.delayed(Duration(seconds: 10), () {
+              if (imageFile.existsSync()) {
+                imageFile.deleteSync();
+              }
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image shared successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            throw Exception('Failed to download processed image from API');
           }
-        });
+        } else {
+          throw Exception('API returned unsuccessful response: \\${responseData['message'] ?? 'Unknown error'}');
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process image for sharing')),
-        );
+        throw Exception('API request failed with status: \\${response.statusCode}');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sharing image: $e')),
+        SnackBar(
+          content: Text('Error sharing image: \\${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() {
         _isProcessingShare = false;
       });
-      Navigator.pop(context);
     }
   }
 
-  Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
-    try {
-      // Check cache first
-      final String cacheKey = '${imageUrl}_${post['id']}_${_getUserDataHash()}';
-      if (_imageCache.containsKey(cacheKey)) {
-        return _imageCache[cacheKey];
-      }
-
-      final textSettings = post['textSettings'] ?? {};
-      final profileSettings = post['profileSettings'] ?? {};
-      final addressSettings = post['addressSettings'] ?? {};
-      final phoneSettings = post['phoneSettings'] ?? {};
-      final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
-      
-      final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-      final String userName = homeScreenState?.userName ?? 'User';
-      final String? userProfilePhotoUrl = homeScreenState?.userProfilePhotoUrl;
-      final String userUsageType = homeScreenState?.userUsageType ?? '';
-      final String userAddress = homeScreenState?.userAddress ?? '';
-      final String userPhoneNumber = homeScreenState?.userPhoneNumber ?? '';
-
-      // Create a widget with the image and overlays using actual frame size
-      final Widget imageWithOverlays = Container(
-        width: frameSize['width'].toDouble(),
-        height: frameSize['height'].toDouble(),
-        child: Stack(
-          children: [
-            // Background image
-            Positioned.fill(
-              child: _buildMainImage(imageUrl, fit: BoxFit.cover),
-            ),
-            
-            // Username text overlay
-            if (textSettings.isNotEmpty)
-              Positioned(
-                left: (textSettings['x'] ?? 50) / 100 * frameSize['width'],
-                top: (textSettings['y'] ?? 90) / 100 * frameSize['height'],
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: textSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      userName,
-                      style: TextStyle(
-                        fontFamily: textSettings['font'] ?? 'Arial',
-                        fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
-                        color: _parseColor(textSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Address text overlay (for business users)
-            if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
-              Positioned(
-                left: (addressSettings['x'] ?? 50) / 100 * frameSize['width'],
-                top: (addressSettings['y'] ?? 80) / 100 * frameSize['height'],
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: addressSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      userAddress,
-                      style: TextStyle(
-                        fontFamily: addressSettings['font'] ?? 'Arial',
-                        fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
-                        color: _parseColor(addressSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Phone number text overlay (for business users)
-            if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
-              Positioned(
-                left: (phoneSettings['x'] ?? 50) / 100 * frameSize['width'],
-                top: (phoneSettings['y'] ?? 85) / 100 * frameSize['height'],
-                child: Transform.translate(
-                  offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: phoneSettings['hasBackground'] == true
-                        ? BoxDecoration(
-                            color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    child: Text(
-                      userPhoneNumber,
-                      style: TextStyle(
-                        fontFamily: phoneSettings['font'] ?? 'Arial',
-                        fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
-                        color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Profile photo overlay (with background removal)
-            if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
-              Positioned(
-                left: (profileSettings['x'] ?? 20) / 100 * frameSize['width'] - (profileSettings['size'] ?? 80) / 2,
-                top: (profileSettings['y'] ?? 20) / 100 * frameSize['height'] - (profileSettings['size'] ?? 80) / 2,
-                child: Container(
-                  width: (profileSettings['size'] ?? 80).toDouble(),
-                  height: (profileSettings['size'] ?? 80).toDouble(),
-                  decoration: BoxDecoration(
-                    color: profileSettings['hasBackground'] == true
-                        ? Colors.white.withOpacity(0.9)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
-                    ),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      profileSettings['shape'] == 'circle'
-                          ? (profileSettings['size'] ?? 80) / 2
-                          : 8,
-                    ),
-                    child: _buildProfilePhoto(userProfilePhotoUrl!),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
-
-      // Try to capture the widget as an image
-      try {
-        final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
-          imageWithOverlays,
-          delay: Duration(milliseconds: 100),
-          pixelRatio: 2.0, // Higher quality
-        );
-        
-        // Cache the result
-        if (capturedBytes != null) {
-          _imageCache[cacheKey] = capturedBytes;
-        }
-        
-        return capturedBytes;
-      } catch (e) {
-        print('Screenshot capture failed, trying fallback: $e');
-        // Fallback: share the original image URL
-        return await _fallbackShareMethod(imageUrl);
-      }
-    } catch (e) {
-      print('Error capturing image: $e');
-      return null;
-    }
-  }
-
-  // Helper method to generate a hash for user data to use as cache key
-  String _getUserDataHash() {
+  // Download functionality (ported from fullscreen_post_viewer.dart)
+  Future<void> _downloadImage(Map<String, dynamic> post) async {
+    final currentUser = _userService.currentUser;
     final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-    final String userName = homeScreenState?.userName ?? 'User';
-    final String? userProfilePhotoUrl = homeScreenState?.userProfilePhotoUrl;
-    final String userUsageType = homeScreenState?.userUsageType ?? '';
-    final String userAddress = homeScreenState?.userAddress ?? '';
-    final String userPhoneNumber = homeScreenState?.userPhoneNumber ?? '';
-    
-    return '${userName}_${userProfilePhotoUrl}_${userUsageType}_${userAddress}_${userPhoneNumber}'.hashCode.toString();
-  }
-
-  // Fallback method for sharing when screenshot fails
-  Future<Uint8List?> _fallbackShareMethod(String imageUrl) async {
+    final userUsageType = homeScreenState?.userUsageType ?? '';
+    if (currentUser != null) {
+      final hasSubscription = await SubscriptionService().hasActiveSubscription(currentUser.uid);
+      if (!hasSubscription) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostSubscriptionScreen(
+              post: post,
+              userUsageType: userUsageType,
+              userName: homeScreenState?.userName ?? '',
+              userProfilePhotoUrl: homeScreenState?.userProfilePhotoUrl,
+              userAddress: homeScreenState?.userAddress ?? '',
+              userPhoneNumber: homeScreenState?.userPhoneNumber ?? '',
+              userCity: homeScreenState?.userCity ?? '',
+              userEmail: currentUser.email ?? '',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    setState(() {
+      _isProcessingShare = true;
+    });
     try {
-      // Download the image and share it directly
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
+      final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+      final hasPermission = await _requestStoragePermission();
+      if (!hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Storage permission required to download images')),
+        );
+        return;
+      }
+      final downloadsDir = await _getDownloadsDirectory();
+      if (downloadsDir != null) {
+        String fileExtension = 'jpg';
+        if (imageUrl.contains('.png')) {
+          fileExtension = 'png';
+        } else if (imageUrl.contains('.gif')) {
+          fileExtension = 'gif';
+        } else if (imageUrl.contains('.webp')) {
+          fileExtension = 'webp';
+        }
+        final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+        final String filePath = '${downloadsDir.path}/$fileName';
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          final File imageFile = File(filePath);
+          await imageFile.writeAsBytes(response.bodyBytes);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Image saved to gallery successfully!'),
+              duration: Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Share',
+                onPressed: () async {
+                  try {
+                    await Share.shareXFiles([XFile(filePath)]);
+                  } catch (e) {}
+                },
+              ),
+            ),
+          );
+        } else {
+          throw Exception('Failed to download image: HTTP \\${response.statusCode}');
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not access downloads directory')),
+        );
       }
     } catch (e) {
-      print('Fallback method failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: \\${e}')),
+      );
+    } finally {
+      setState(() {
+        _isProcessingShare = false;
+      });
     }
-    return null;
+  }
+
+  Future<bool> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+      if (sdkInt >= 33) {
+        var status = await Permission.photos.status;
+        if (!status.isGranted) {
+          status = await Permission.photos.request();
+        }
+        return status.isGranted;
+      } else if (sdkInt >= 30) {
+        var status = await Permission.manageExternalStorage.status;
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+        return status.isGranted;
+      } else {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        return status.isGranted;
+      }
+    } else {
+      return true;
+    }
+  }
+
+  Future<Directory?> _getDownloadsDirectory() async {
+    if (Platform.isAndroid) {
+      final List<String> possiblePaths = [
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Downloads',
+        '/sdcard/Download',
+        '/sdcard/Downloads',
+      ];
+      for (String path in possiblePaths) {
+        final dir = Directory(path);
+        if (dir.existsSync()) {
+          return dir;
+        }
+      }
+      return await getExternalStorageDirectory();
+    } else {
+      return await getApplicationDocumentsDirectory();
+    }
   }
 
   void _showSubscriptionDialog() {
@@ -1794,7 +1734,11 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     // Get posts from the current StreamBuilder context
     final postsSnapshot = _getFilteredPostsStream().first;
     postsSnapshot.then((snapshot) {
-      final posts = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      final posts = snapshot.docs.map((doc) {
+        Map<String, dynamic> postData = doc.data() as Map<String, dynamic>;
+        postData['id'] = doc.id; // Add document ID to post data
+        return postData;
+      }).toList();
       if (posts.isEmpty) return;
       
       // Find the index of the current post

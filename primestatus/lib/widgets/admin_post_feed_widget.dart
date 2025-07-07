@@ -176,7 +176,11 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                       onTap: () {
                         if (widget.onPostTap != null) {
                           widget.onPostTap!(
-                            posts.map((doc) => doc.data() as Map<String, dynamic>).toList(),
+                            posts.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              data['id'] = doc.id; // Add document ID to post data
+                              return data;
+                            }).toList(),
                             index,
                           );
                         }

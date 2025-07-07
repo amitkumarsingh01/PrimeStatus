@@ -10,15 +10,28 @@ class FirebaseStorageService {
   // Upload profile photo
   Future<String> uploadProfilePhoto(File imageFile, String userId) async {
     try {
-      String fileName = 'profile_photos/$userId/${_uuid.v4()}.jpg';
-      Reference ref = _storage.ref().child(fileName);
+      print('FirebaseStorageService: Starting profile photo upload');
+      print('FirebaseStorageService: Image file path: ${imageFile.path}');
+      print('FirebaseStorageService: User ID: $userId');
       
+      String fileName = 'profile_photos/$userId/${_uuid.v4()}.jpg';
+      print('FirebaseStorageService: File name: $fileName');
+      
+      Reference ref = _storage.ref().child(fileName);
+      print('FirebaseStorageService: Created storage reference');
+      
+      print('FirebaseStorageService: Starting upload task...');
       UploadTask uploadTask = ref.putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
+      print('FirebaseStorageService: Upload task completed');
       
+      print('FirebaseStorageService: Getting download URL...');
       String downloadUrl = await snapshot.ref.getDownloadURL();
+      print('FirebaseStorageService: Download URL: $downloadUrl');
+      
       return downloadUrl;
     } catch (e) {
+      print('FirebaseStorageService: Error uploading profile photo: $e');
       throw 'Failed to upload profile photo: $e';
     }
   }

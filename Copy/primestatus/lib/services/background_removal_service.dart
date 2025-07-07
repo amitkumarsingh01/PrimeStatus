@@ -10,16 +10,24 @@ class BackgroundRemovalService {
   /// Remove background from an image file
   Future<String?> removeBackground(File imageFile) async {
     try {
+      print('BackgroundRemovalService: Starting background removal');
+      print('BackgroundRemovalService: Image file path: ${imageFile.path}');
+      
       // Validate file exists and is readable
       if (!await imageFile.exists()) {
+        print('BackgroundRemovalService: Image file does not exist');
         throw Exception('Image file does not exist');
       }
+      
+      print('BackgroundRemovalService: Image file exists, size: ${await imageFile.length()} bytes');
 
       // Create multipart request
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$_baseUrl/remove-bg/'),
       );
+      
+      print('BackgroundRemovalService: Created request to $_baseUrl/remove-bg/');
 
       // Add the image file
       request.files.add(
@@ -28,22 +36,35 @@ class BackgroundRemovalService {
           imageFile.path,
         ),
       );
+      
+      print('BackgroundRemovalService: Added file to request');
 
       // Send the request with timeout
+      print('BackgroundRemovalService: Sending request...');
       var response = await request.send().timeout(_timeout);
+      print('BackgroundRemovalService: Response status: ${response.statusCode}');
+      print('BackgroundRemovalService: Response headers: ${response.headers}');
+      
       var responseData = await response.stream.bytesToString();
+      print('BackgroundRemovalService: Response data: $responseData');
+      
       var jsonResponse = json.decode(responseData);
+      print('BackgroundRemovalService: Parsed JSON: $jsonResponse');
 
       if (response.statusCode == 200 && jsonResponse['success'] == true) {
         // Return the full URL to the processed image
         String filename = jsonResponse['filename'];
-        return '$_baseUrl/download/$filename';
+        String resultUrl = '$_baseUrl/download/$filename';
+        print('BackgroundRemovalService: Success! Result URL: $resultUrl');
+        return resultUrl;
       } else {
+        print('BackgroundRemovalService: Failed - status: ${response.statusCode}, success: ${jsonResponse['success']}');
         throw Exception('Background removal failed: ${jsonResponse['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('Error removing background: $e');
+      print('BackgroundRemovalService: Error removing background: $e');
       if (e.toString().contains('timeout')) {
+        print('BackgroundRemovalService: Timeout error');
         throw Exception('Background removal timed out. Please try again.');
       }
       return null;

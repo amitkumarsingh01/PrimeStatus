@@ -179,25 +179,19 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchUserProfilePhotos() async {
-    if (_currentUser == null) {
-      print('_fetchUserProfilePhotos: No current user');
-      return;
-    }
+    if (_currentUser == null) return;
     try {
-      print('_fetchUserProfilePhotos: Fetching photos from Firestore');
       final photosSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(_currentUser!.uid)
           .collection('profilePhotos')
           .orderBy('uploadedAt', descending: true)
           .get();
-      print('_fetchUserProfilePhotos: Found ${photosSnapshot.docs.length} photos');
       setState(() {
         userProfilePhotos = photosSnapshot.docs
             .map((doc) => doc.data())
             .toList();
       });
-      print('_fetchUserProfilePhotos: Updated state with ${userProfilePhotos.length} photos');
     } catch (e) {
       print('Error fetching profile photos: $e');
     }
@@ -1920,7 +1914,7 @@ Widget _buildAdminFeedTab() {
       body: Column(
         children: [
           Container(
-            height: 120,
+            height: 85,
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(

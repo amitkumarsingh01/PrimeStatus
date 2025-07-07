@@ -74,19 +74,28 @@ class UserService {
   // Upload profile photo (normal - with background)
   Future<String> uploadProfilePhoto(File imageFile, String userId) async {
     try {
+      print('UserService: Starting profile photo upload');
+      print('UserService: Image file path: ${imageFile.path}');
+      print('UserService: User ID: $userId');
+      
       String downloadUrl = await _storageService.uploadProfilePhoto(imageFile, userId);
+      print('UserService: Upload successful, download URL: $downloadUrl');
       
       // Update user document with new photo URL
+      print('UserService: Updating Firestore user document');
       await _firestoreService.updateUser(userId, {
         'profilePhotoUrl': downloadUrl,
         'profilePhotoWithoutBg': false, // Mark as not processed for background removal
       });
 
       // Update Firebase Auth profile
+      print('UserService: Updating Firebase Auth profile');
       await _authService.updateUserProfile(photoURL: downloadUrl);
 
+      print('UserService: Profile photo upload completed successfully');
       return downloadUrl;
     } catch (e) {
+      print('UserService: Error uploading profile photo: $e');
       throw 'Failed to upload profile photo: $e';
     }
   }

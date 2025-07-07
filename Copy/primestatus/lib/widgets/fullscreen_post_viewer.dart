@@ -294,8 +294,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
       // Get post ID from the post data
       final String postId = post['id'] ?? '';
+      print('=== DEBUG VIDEO: Post data keys: ${post.keys.toList()} ===');
+      print('=== DEBUG VIDEO: Post ID: $postId ===');
       if (postId.isEmpty) {
-        throw Exception('Post ID not found');
+        throw Exception('Post ID not found. Available keys: ${post.keys.toList()}');
       }
 
       print('=== SHARING VIDEO TO WHATSAPP ===');
@@ -497,8 +499,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
       // Get post ID from the post data
       final String postId = post['id'] ?? '';
+      print('=== DEBUG: Post data keys: ${post.keys.toList()} ===');
+      print('=== DEBUG: Post ID: $postId ===');
       if (postId.isEmpty) {
-        throw Exception('Post ID not found');
+        throw Exception('Post ID not found. Available keys: ${post.keys.toList()}');
       }
 
       print('=== SHARING TO WHATSAPP ===');
