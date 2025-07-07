@@ -9,6 +9,8 @@ import '../services/subscription_service.dart';
 import '../widgets/fullscreen_post_viewer.dart';
 import '../services/user_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class PostSubscriptionScreen extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -57,54 +59,111 @@ class _PostSubscriptionScreenState extends State<PostSubscriptionScreen> {
     });
   }
 
+  // Helper function to request storage permissions based on Android version
+  Future<bool> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      // Check Android version
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+      
+      if (sdkInt >= 33) {
+        // Android 13+ - use media permissions
+        var status = await Permission.photos.status;
+        if (!status.isGranted) {
+          status = await Permission.photos.request();
+        }
+        return status.isGranted;
+      } else if (sdkInt >= 30) {
+        // Android 11+ - use manage external storage
+        var status = await Permission.manageExternalStorage.status;
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+        return status.isGranted;
+      } else {
+        // Android 10 and below - use storage permission
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        return status.isGranted;
+      }
+    } else {
+      // iOS - no special permission needed for app documents
+      return true;
+    }
+  }
+
+  // Helper function to get downloads directory
+  Future<Directory?> _getDownloadsDirectory() async {
+    if (Platform.isAndroid) {
+      // For Android, try to use the Downloads directory
+      final List<String> possiblePaths = [
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Downloads',
+        '/sdcard/Download',
+        '/sdcard/Downloads',
+      ];
+      
+      for (String path in possiblePaths) {
+        final dir = Directory(path);
+        if (dir.existsSync()) {
+          return dir;
+        }
+      }
+      
+      // If no download directory found, use external storage
+      return await getExternalStorageDirectory();
+    } else {
+      // For iOS, use app documents directory
+      return await getApplicationDocumentsDirectory();
+    }
+  }
+
   Future<void> _downloadFreeMedia() async {
     setState(() { _processing = true; });
     try {
       final String imageUrl = widget.post['mainImage'] ?? widget.post['imageUrl'] ?? '';
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
-        Directory? downloadsDir;
-        if (Platform.isAndroid) {
-          final List<String> possiblePaths = [
-            '/storage/emulated/0/Download',
-            '/storage/emulated/0/Downloads',
-            '/sdcard/Download',
-            '/sdcard/Downloads',
-          ];
-          for (String path in possiblePaths) {
-            final dir = Directory(path);
-            if (dir.existsSync()) {
-              downloadsDir = dir;
-              break;
-            }
-          }
-          if (downloadsDir == null) {
-            downloadsDir = await getExternalStorageDirectory();
+        // Request appropriate storage permission
+        final hasPermission = await _requestStoragePermission();
+        
+        if (hasPermission) {
+          final downloadsDir = await _getDownloadsDirectory();
+          
+          if (downloadsDir != null) {
+            String fileExtension = 'jpg';
+            if (imageUrl.contains('.png')) fileExtension = 'png';
+            else if (imageUrl.contains('.gif')) fileExtension = 'gif';
+            else if (imageUrl.contains('.webp')) fileExtension = 'webp';
+            final String fileName = 'PrimeStatus_Free_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+            final String filePath = '${downloadsDir.path}/$fileName';
+            final File imageFile = File(filePath);
+            await imageFile.writeAsBytes(response.bodyBytes);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image saved to gallery!'),
+                action: SnackBarAction(
+                  label: 'Share',
+                  onPressed: () async {
+                    await Share.shareXFiles([XFile(filePath)]);
+                  },
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not access downloads directory')),
+            );
           }
         } else {
-          downloadsDir = await getApplicationDocumentsDirectory();
-        }
-        if (downloadsDir != null) {
-          String fileExtension = 'jpg';
-          if (imageUrl.contains('.png')) fileExtension = 'png';
-          else if (imageUrl.contains('.gif')) fileExtension = 'gif';
-          else if (imageUrl.contains('.webp')) fileExtension = 'webp';
-          final String fileName = 'PrimeStatus_Free_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-          final String filePath = '${downloadsDir.path}/$fileName';
-          final File imageFile = File(filePath);
-          await imageFile.writeAsBytes(response.bodyBytes);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Image saved to gallery!'),
-              action: SnackBarAction(
-                label: 'Share',
-                onPressed: () async {
-                  await Share.shareXFiles([XFile(filePath)]);
-                },
-              ),
-            ),
+            SnackBar(content: Text('Storage permission required to download images')),
           );
         }
+      } else {
+        throw Exception('Failed to download image: HTTP ${response.statusCode}');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

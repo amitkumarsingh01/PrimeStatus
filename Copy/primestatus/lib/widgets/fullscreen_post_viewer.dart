@@ -22,6 +22,7 @@ import '../services/video_processing_service.dart';
 import '../services/subscription_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 // Global video controller manager for fullscreen
 class FullscreenVideoControllerManager {
@@ -700,6 +701,67 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     }
   }
 
+  // Helper function to request storage permissions based on Android version
+  Future<bool> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      // Check Android version
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+      
+      if (sdkInt >= 33) {
+        // Android 13+ - use media permissions
+        var status = await Permission.photos.status;
+        if (!status.isGranted) {
+          status = await Permission.photos.request();
+        }
+        return status.isGranted;
+      } else if (sdkInt >= 30) {
+        // Android 11+ - use manage external storage
+        var status = await Permission.manageExternalStorage.status;
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+        return status.isGranted;
+      } else {
+        // Android 10 and below - use storage permission
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        return status.isGranted;
+      }
+    } else {
+      // iOS - no special permission needed for app documents
+      return true;
+    }
+  }
+
+  // Helper function to get downloads directory
+  Future<Directory?> _getDownloadsDirectory() async {
+    if (Platform.isAndroid) {
+      // For Android, try to use the Downloads directory
+      final List<String> possiblePaths = [
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Downloads',
+        '/sdcard/Download',
+        '/sdcard/Downloads',
+      ];
+      
+      for (String path in possiblePaths) {
+        final dir = Directory(path);
+        if (dir.existsSync()) {
+          return dir;
+        }
+      }
+      
+      // If no download directory found, use external storage
+      return await getExternalStorageDirectory();
+    } else {
+      // For iOS, use app documents directory
+      return await getApplicationDocumentsDirectory();
+    }
+  }
+
   // Direct download from URL
   Future<void> _downloadImageFromUrl(String imageUrl, Map<String, dynamic> post) async {
     try {
@@ -709,39 +771,12 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       // Download the image from URL
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
-        // Request storage permission
-        var status = await Permission.storage.status;
-        if (!status.isGranted) {
-          status = await Permission.storage.request();
-        }
+        // Request appropriate storage permission
+        final hasPermission = await _requestStoragePermission();
         
-        if (status.isGranted) {
+        if (hasPermission) {
           // Get the downloads directory
-          Directory? downloadsDir;
-          if (Platform.isAndroid) {
-            // Try multiple possible download directories
-            final List<String> possiblePaths = [
-              '/storage/emulated/0/Download',
-              '/storage/emulated/0/Downloads',
-              '/sdcard/Download',
-              '/sdcard/Downloads',
-            ];
-            
-            for (String path in possiblePaths) {
-              final dir = Directory(path);
-              if (dir.existsSync()) {
-                downloadsDir = dir;
-                break;
-              }
-            }
-            
-            // If no download directory found, use external storage
-            if (downloadsDir == null) {
-              downloadsDir = await getExternalStorageDirectory();
-            }
-          } else {
-            downloadsDir = await getApplicationDocumentsDirectory();
-          }
+          final downloadsDir = await _getDownloadsDirectory();
           
           if (downloadsDir != null) {
             // Determine file extension from URL or content type
@@ -837,39 +872,12 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       }
 
       if (processedFilePath != null) {
-        // Request storage permission
-        var status = await Permission.storage.status;
-        if (!status.isGranted) {
-          status = await Permission.storage.request();
-        }
+        // Request appropriate storage permission
+        final hasPermission = await _requestStoragePermission();
         
-        if (status.isGranted) {
+        if (hasPermission) {
           // Get the downloads directory
-          Directory? downloadsDir;
-          if (Platform.isAndroid) {
-            // Try multiple possible download directories
-            final List<String> possiblePaths = [
-              '/storage/emulated/0/Download',
-              '/storage/emulated/0/Downloads',
-              '/sdcard/Download',
-              '/sdcard/Downloads',
-            ];
-            
-            for (String path in possiblePaths) {
-              final dir = Directory(path);
-              if (dir.existsSync()) {
-                downloadsDir = dir;
-                break;
-              }
-            }
-            
-            // If no download directory found, use external storage
-            if (downloadsDir == null) {
-              downloadsDir = await getExternalStorageDirectory();
-            }
-          } else {
-            downloadsDir = await getApplicationDocumentsDirectory();
-          }
+          final downloadsDir = await _getDownloadsDirectory();
           
           if (downloadsDir != null) {
             final String fileName = processingMethod == 'full_video' 
@@ -1080,7 +1088,7 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
     return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
   }
 
-  Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
+  Widget _buildProfilePhoto(String photoUrl) {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: BoxFit.cover,
@@ -1850,7 +1858,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                                     ? profileSize / 2
                                     : 8,
                               ),
-                              child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
+                              child: _buildProfilePhoto(userProfilePhotoUrl!),
                             ),
                           ),
                         ),
@@ -2005,7 +2013,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
     return url.startsWith('http') && videoExtensions.any((ext) => url.toLowerCase().contains(ext));
   }
 
-  Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
+  Widget _buildProfilePhoto(String photoUrl) {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: BoxFit.cover,

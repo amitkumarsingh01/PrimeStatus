@@ -156,11 +156,16 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     const fetchCategories = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'categories'));
-        setCategories(querySnapshot.docs.map(docSnap => ({
+        const fetchedCategories = querySnapshot.docs.map(docSnap => ({
           id: docSnap.id,
           nameEn: docSnap.data().nameEn || '',
           nameKn: docSnap.data().nameKn || '',
-        })));
+        }));
+        setCategories(fetchedCategories);
+        
+        // Auto-select all regions only
+        setSelectedRegions([...REGIONS]);
+        
       } catch (e) {
         // Optionally handle error
       }

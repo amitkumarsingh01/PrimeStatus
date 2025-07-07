@@ -989,23 +989,19 @@ Widget _buildHomeTab() {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildCategoryChip('All', true),
+                    _buildCategoryChip('All', _selectedCategories.contains('All')),
                     SizedBox(width: 8),
-                    _buildCategoryChip('Today Special', false),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('Good Morning', false),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('My Business', false, icon: Icons.business_center),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('Good Night', false),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('Political', false, icon: Icons.flag),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('Happy Sunday', false),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('Love ❤️', false),
-                    SizedBox(width: 8),
-                    _buildCategoryChip('More (8)', false),
+                    // Show Firebase categories
+                    ..._firebaseCategories.map((category) {
+                      final categoryName = _getCategoryName(category);
+                      final isSelected = _selectedCategories.contains(categoryName);
+                      return Row(
+                        children: [
+                          _buildCategoryChip(categoryName, isSelected, icon: _getCategoryIcon(categoryName)),
+                          SizedBox(width: 8),
+                        ],
+                      );
+                    }).toList(),
                   ],
                 ),
               ),
@@ -1036,36 +1032,54 @@ Widget _buildHomeTab() {
   }
 
   Widget _buildCategoryChip(String label, bool isSelected, {IconData? icon}) {
-  return Container(
-    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: isSelected ? Color(0xFF1976D2) : Colors.white.withOpacity(0.9),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-        color: isSelected ? Color(0xFF1976D2) : Colors.grey.shade300,
-        width: 1,
-      ),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(
-            icon,
-            size: 16,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
-          SizedBox(width: 4),
-        ],
-        Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (label == 'All') {
+          _selectedCategories = {'All'};
+        } else if (_selectedCategories.contains('All')) {
+          _selectedCategories = {label};
+        } else if (_selectedCategories.contains(label)) {
+          _selectedCategories.remove(label);
+          if (_selectedCategories.isEmpty) {
+            _selectedCategories = {'All'};
+          }
+        } else {
+          _selectedCategories.add(label);
+        }
+      });
+    },
+    child: Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? Color(0xFF1976D2) : Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? Color(0xFF1976D2) : Colors.grey.shade300,
+          width: 1,
         ),
-      ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
+            SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black87,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -1537,7 +1551,7 @@ Widget _buildHomeTab() {
         ),
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(6),
+          preferredSize: Size.fromHeight(1),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
             child: Row(
@@ -1779,9 +1793,9 @@ Widget _buildAdminFeedTab() {
       ),
       elevation: 0,
       bottom: PreferredSize(
-        preferredSize: Size.fromHeight(20),
+        preferredSize: Size.fromHeight(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
           child: Column(
             children: [
               // First row: Business/Personal toggle, Search, Profile
@@ -3333,7 +3347,7 @@ Widget _buildAdminFeedTab() {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Contact Us'),
-        content: Text('For any queries, email us at support@primestatus.com or call +91-9060801063.'),
+        content: Text('For any queries, email us at support@primestatusapp.com.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

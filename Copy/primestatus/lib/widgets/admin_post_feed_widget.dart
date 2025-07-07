@@ -483,7 +483,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                                   ? profileSize / 2
                                   : 8,
                             ),
-                            child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl!),
+                            child: _buildProfilePhoto(userProfilePhotoUrl!),
                           ),
                         ),
                       ),
@@ -991,7 +991,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                           ? (profileSettings['size'] ?? 80) / 2
                           : 8,
                     ),
-                    child: _buildProfilePhotoWithoutBackground(userProfilePhotoUrl),
+                    child: _buildProfilePhoto(userProfilePhotoUrl!),
                   ),
                 ),
               ),
@@ -1910,36 +1910,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   }
 
   // Build profile photo with background removal for post overlays
-  Widget _buildProfilePhotoWithoutBackground(String photoUrl) {
-    // Check if we already have a processed version
-    if (_processedProfilePhotos.containsKey(photoUrl)) {
-      String? processedUrl = _processedProfilePhotos[photoUrl];
-      if (processedUrl != null) {
-        return CachedNetworkImage(
-          imageUrl: processedUrl,
-          fit: BoxFit.cover,
-          memCacheWidth: 200, // Optimize for profile photos
-          memCacheHeight: 200,
-          maxWidthDiskCache: 200,
-          maxHeightDiskCache: 200,
-          placeholder: (context, url) => Container(
-            color: Colors.grey[200],
-            child: Center(child: CircularProgressIndicator(color: Colors.blue)),
-          ),
-          errorWidget: (context, url, error) => _buildOriginalProfilePhoto(photoUrl),
-          cacheManager: DefaultCacheManager(),
-        );
-      }
-    }
-
-    // If not processed yet, start processing
-    _processProfilePhotoBackground(photoUrl);
-    
-    // Show original while processing
-    return _buildOriginalProfilePhoto(photoUrl);
-  }
-
-  Widget _buildOriginalProfilePhoto(String photoUrl) {
+  Widget _buildProfilePhoto(String photoUrl) {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: BoxFit.cover,

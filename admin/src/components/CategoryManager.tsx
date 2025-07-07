@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, writeBatch, que
 import { Edit, Trash2, Settings, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function CategoryManager() {
-  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string; position: number }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string; position: number; isFixed?: boolean; isDynamic?: boolean; type?: string }[]>([]);
   const [newCategoryEn, setNewCategoryEn] = useState('');
   const [newCategoryKn, setNewCategoryKn] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,6 +15,61 @@ export default function CategoryManager() {
   const [editNameKn, setEditNameKn] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [newPosition, setNewPosition] = useState<number | ''>('');
+
+  // Helper function to get current time-based greeting
+  const getCurrentTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return { nameEn: 'Good Morning', nameKn: 'ಶುಭೋದಯ' };
+    } else if (hour >= 12 && hour < 17) {
+      return { nameEn: 'Good Afternoon', nameKn: 'ಶುಭ ಮಧ್ಯಾಹ್ನ' };
+    } else if (hour >= 17 && hour < 20) {
+      return { nameEn: 'Good Evening', nameKn: 'ಶುಭ ಸಂಜೆ' };
+    } else {
+      return { nameEn: 'Good Night', nameKn: 'ಶುಭ ರಾತ್ರಿ' };
+    }
+  };
+
+  // Helper function to get current day-based greeting
+  const getCurrentDayGreeting = () => {
+    const days = [
+      { nameEn: 'Good Sunday', nameKn: 'ಶುಭ ಭಾನುವಾರ' },
+      { nameEn: 'Good Monday', nameKn: 'ಶುಭ ಸೋಮವಾರ' },
+      { nameEn: 'Good Tuesday', nameKn: 'ಶುಭ ಮಂಗಳವಾರ' },
+      { nameEn: 'Good Wednesday', nameKn: 'ಶುಭ ಬುಧವಾರ' },
+      { nameEn: 'Good Thursday', nameKn: 'ಶುಭ ಗುರುವಾರ' },
+      { nameEn: 'Good Friday', nameKn: 'ಶುಭ ಶುಕ್ರವಾರ' },
+      { nameEn: 'Good Saturday', nameKn: 'ಶುಭ ಶನಿವಾರ' }
+    ];
+    return days[new Date().getDay()];
+  };
+
+  // Dynamic greeting categories that change automatically
+  const getDynamicCategories = () => {
+    const timeGreeting = getCurrentTimeGreeting();
+    const dayGreeting = getCurrentDayGreeting();
+    
+    return [
+      {
+        id: 'time-greeting',
+        nameEn: timeGreeting.nameEn,
+        nameKn: timeGreeting.nameKn,
+        position: 0, // Always first
+        isFixed: true,
+        isDynamic: true,
+        type: 'time'
+      },
+      {
+        id: 'day-greeting',
+        nameEn: dayGreeting.nameEn,
+        nameKn: dayGreeting.nameKn,
+        position: 1, // Always second
+        isFixed: true,
+        isDynamic: true,
+        type: 'day'
+      }
+    ];
+  };
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -27,12 +82,87 @@ export default function CategoryManager() {
         nameEn: docSnap.data().nameEn || '',
         nameKn: docSnap.data().nameKn || '',
         position: docSnap.data().position ?? 0,
+        isFixed: docSnap.data().isFixed || false,
+        isDynamic: docSnap.data().isDynamic || false,
+        type: docSnap.data().type || '',
       }));
       
       console.log('Fetched categories:', fetchedCategories.map(c => ({ name: c.nameEn, position: c.position })));
       
+      // Check if dynamic categories exist in Firestore, if not add them
+      const existingDynamicCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isDynamic);
+      const dynamicCategories = getDynamicCategories();
+      
+      // Check if we need to create dynamic categories (only if they don't exist at all)
+      if (existingDynamicCategories.length === 0) {
+        console.log('Creating dynamic categories in Firestore:', dynamicCategories.map(c => c.nameEn));
+        const batch = writeBatch(db);
+        
+        dynamicCategories.forEach((dynamicCat) => {
+          const newCategoryRef = doc(collection(db, 'categories'));
+          batch.set(newCategoryRef, {
+            nameEn: dynamicCat.nameEn,
+            nameKn: dynamicCat.nameKn,
+            position: dynamicCat.position,
+            isFixed: true,
+            isDynamic: true,
+            type: dynamicCat.type
+          });
+          console.log(`Creating dynamic category: ${dynamicCat.nameEn} at position ${dynamicCat.position}`);
+        });
+        
+        await batch.commit();
+        console.log('Dynamic categories created in Firestore');
+        
+        // Fetch categories again to get the updated list
+        const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+        fetchedCategories = updatedQuerySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          nameEn: docSnap.data().nameEn || '',
+          nameKn: docSnap.data().nameKn || '',
+          position: docSnap.data().position ?? 0,
+          isFixed: docSnap.data().isFixed || false,
+          isDynamic: docSnap.data().isDynamic || false,
+          type: docSnap.data().type || '',
+        }));
+      } else {
+        // Update existing dynamic categories with current values
+        const batch = writeBatch(db);
+        let hasUpdates = false;
+        
+        dynamicCategories.forEach((dynamicCat) => {
+          const existingCat = existingDynamicCategories.find(cat => cat.type === dynamicCat.type);
+          if (existingCat && (existingCat.nameEn !== dynamicCat.nameEn || existingCat.nameKn !== dynamicCat.nameKn)) {
+            const categoryRef = doc(db, 'categories', existingCat.id);
+            batch.update(categoryRef, {
+              nameEn: dynamicCat.nameEn,
+              nameKn: dynamicCat.nameKn
+            });
+            console.log(`Updating dynamic category: ${existingCat.nameEn} → ${dynamicCat.nameEn}`);
+            hasUpdates = true;
+          }
+        });
+        
+        if (hasUpdates) {
+          await batch.commit();
+          console.log('Dynamic categories updated in Firestore');
+          
+          // Fetch categories again to get the updated list
+          const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+          fetchedCategories = updatedQuerySnapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            nameEn: docSnap.data().nameEn || '',
+            nameKn: docSnap.data().nameKn || '',
+            position: docSnap.data().position ?? 0,
+            isFixed: docSnap.data().isFixed || false,
+            isDynamic: docSnap.data().isDynamic || false,
+            type: docSnap.data().type || '',
+          }));
+        }
+      }
+      
       // If any categories don't have position, assign them
-      const categoriesWithPosition = fetchedCategories.filter(c => c.position !== undefined);
+      const categoriesWithPosition = fetchedCategories.filter(c => c.position !== undefined && c.position >= 0);
       const categoriesWithoutPosition = fetchedCategories.filter(c => c.position === undefined);
       
       if (categoriesWithoutPosition.length > 0) {
@@ -53,7 +183,7 @@ export default function CategoryManager() {
         console.log('Updated categories without position');
       }
       
-      // Sort by position
+      // Sort by position (fixed categories will be at the top)
       fetchedCategories.sort((a, b) => a.position - b.position);
       console.log('Sorted categories:', fetchedCategories.map(c => ({ name: c.nameEn, position: c.position })));
       setCategories(fetchedCategories);
@@ -68,6 +198,49 @@ export default function CategoryManager() {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Update dynamic categories every minute (only if they exist)
+  useEffect(() => {
+    if (categories.length === 0) return; // Don't run if categories haven't loaded yet
+    
+    const updateDynamicCategories = async () => {
+      const dynamicCategories = getDynamicCategories();
+      const currentDynamicCategories = categories.filter(cat => cat.isFixed && cat.isDynamic);
+      
+      if (currentDynamicCategories.length === 0) return; // No dynamic categories to update
+      
+      // Check if any dynamic categories need updating
+      const needsUpdate = dynamicCategories.some(dynamicCat => {
+        const currentCat = currentDynamicCategories.find(c => c.type === dynamicCat.type);
+        return currentCat && currentCat.nameEn !== dynamicCat.nameEn;
+      });
+      
+      if (needsUpdate) {
+        console.log('Updating dynamic categories...');
+        const batch = writeBatch(db);
+        
+        dynamicCategories.forEach(dynamicCat => {
+          const currentCat = currentDynamicCategories.find(c => c.type === dynamicCat.type);
+          if (currentCat && currentCat.nameEn !== dynamicCat.nameEn) {
+            const categoryRef = doc(db, 'categories', currentCat.id);
+            batch.update(categoryRef, {
+              nameEn: dynamicCat.nameEn,
+              nameKn: dynamicCat.nameKn
+            });
+            console.log(`Updated ${currentCat.nameEn} to ${dynamicCat.nameEn}`);
+          }
+        });
+        
+        await batch.commit();
+        fetchCategories(); // Refresh the list
+      }
+    };
+
+    // Update every minute
+    const interval = setInterval(updateDynamicCategories, 60000);
+    
+    return () => clearInterval(interval);
+  }, [categories]);
 
   const handleAdd = async () => {
     if (!newCategoryEn.trim() || !newCategoryKn.trim()) return;
@@ -91,6 +264,12 @@ export default function CategoryManager() {
   };
 
   const handleDelete = async (id: string) => {
+    const category = categories.find(c => c.id === id);
+    if (category?.isFixed) {
+      setError('Fixed categories cannot be deleted');
+      return;
+    }
+
     setLoading(true);
     try {
       await deleteDoc(doc(db, 'categories', id));
@@ -121,7 +300,11 @@ export default function CategoryManager() {
     }
   };
 
-  const startEdit = (category: { id: string; nameEn: string; nameKn: string }) => {
+  const startEdit = (category: { id: string; nameEn: string; nameKn: string; isFixed?: boolean }) => {
+    if (category.isFixed) {
+      setError('Fixed categories cannot be edited');
+      return;
+    }
     setEditingId(category.id);
     setEditNameEn(category.nameEn);
     setEditNameKn(category.nameKn);
@@ -163,6 +346,108 @@ export default function CategoryManager() {
     }
   };
 
+  const cleanupDuplicateCategories = async () => {
+    if (!window.confirm('This will remove all duplicate categories and keep only unique ones. This action cannot be undone. Continue?')) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get all categories from Firestore
+      const querySnapshot = await getDocs(collection(db, 'categories'));
+      const allCategories = querySnapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        nameEn: docSnap.data().nameEn || '',
+        nameKn: docSnap.data().nameKn || '',
+        position: docSnap.data().position ?? 0,
+        isFixed: docSnap.data().isFixed || false,
+        isDynamic: docSnap.data().isDynamic || false,
+        type: docSnap.data().type || '',
+      }));
+
+      console.log('Total categories found:', allCategories.length);
+
+      // Group categories by name to find duplicates
+      const groupedCategories = allCategories.reduce((groups, category) => {
+        const key = category.nameEn.toLowerCase().trim();
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        groups[key].push(category);
+        return groups;
+      }, {} as Record<string, typeof allCategories>);
+
+      // Find duplicates and keep the best one from each group
+      const categoriesToDelete: string[] = [];
+      const categoriesToKeep: typeof allCategories = [];
+
+      Object.entries(groupedCategories).forEach(([name, categoryGroup]) => {
+        if (categoryGroup.length > 1) {
+          console.log(`Found ${categoryGroup.length} duplicates for: ${name}`);
+          
+          // Sort by priority: dynamic categories first, then by position
+          categoryGroup.sort((a, b) => {
+            if (a.isDynamic && !b.isDynamic) return -1;
+            if (!a.isDynamic && b.isDynamic) return 1;
+            return a.position - b.position;
+          });
+
+          // Keep the first one (best one), delete the rest
+          const keepCategory = categoryGroup[0];
+          categoriesToKeep.push(keepCategory);
+          
+          categoryGroup.slice(1).forEach(cat => {
+            categoriesToDelete.push(cat.id);
+          });
+        } else {
+          // No duplicates, keep the single category
+          categoriesToKeep.push(categoryGroup[0]);
+        }
+      });
+
+      console.log('Categories to keep:', categoriesToKeep.length);
+      console.log('Categories to delete:', categoriesToDelete.length);
+
+      if (categoriesToDelete.length > 0) {
+        // Delete duplicate categories
+        const batch = writeBatch(db);
+        categoriesToDelete.forEach(categoryId => {
+          const categoryRef = doc(db, 'categories', categoryId);
+          batch.delete(categoryRef);
+        });
+        await batch.commit();
+
+        // Reassign positions to remaining categories
+        const sortedCategories = categoriesToKeep.sort((a, b) => a.position - b.position);
+        const updatedCategories = sortedCategories.map((cat, index) => ({
+          ...cat,
+          position: index
+        }));
+
+        const updateBatch = writeBatch(db);
+        updatedCategories.forEach((cat) => {
+          const categoryRef = doc(db, 'categories', cat.id);
+          updateBatch.update(categoryRef, { position: cat.position });
+        });
+        await updateBatch.commit();
+
+        setSuccess(`Cleaned up ${categoriesToDelete.length} duplicate categories! ${categoriesToKeep.length} unique categories remaining.`);
+        setTimeout(() => setSuccess(null), 5000);
+      } else {
+        setSuccess('No duplicate categories found!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+
+      // Refresh the categories list
+      fetchCategories();
+    } catch (e) {
+      console.error('Error cleaning up categories:', e);
+      setError('Failed to cleanup duplicate categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePositionChange = async () => {
     if (!selectedCategory || newPosition === '' || newPosition < 0 || newPosition >= categories.length) {
       setError('Please select a category and enter a valid position (0-' + (categories.length - 1) + ')');
@@ -176,6 +461,12 @@ export default function CategoryManager() {
       const selectedCat = categories.find(c => c.id === selectedCategory);
       if (!selectedCat) {
         setError('Selected category not found');
+        return;
+      }
+
+      // Check if it's a fixed category
+      if (selectedCat.isFixed) {
+        setError('Fixed categories cannot be reordered');
         return;
       }
 
@@ -222,8 +513,20 @@ export default function CategoryManager() {
     const currentIndex = categories.findIndex(c => c.id === categoryId);
     if (currentIndex === -1) return;
 
+    const category = categories[currentIndex];
+    if (category.isFixed) {
+      setError('Fixed categories cannot be reordered');
+      return;
+    }
+
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (newIndex < 0 || newIndex >= categories.length) return;
+
+    // Don't allow moving past fixed categories
+    if (newIndex < categories.filter(c => c.isFixed).length) {
+      setError('Cannot move category before fixed categories');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -348,9 +651,9 @@ export default function CategoryManager() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
                     <option value="">Select a category</option>
-                    {categories.map((cat, index) => (
+                    {categories.filter(cat => !cat.isFixed).map((cat, index) => (
                       <option key={cat.id} value={cat.id}>
-                        {index + 1}. {cat.nameEn}
+                        {cat.position + 1}. {cat.nameEn}
                       </option>
                     ))}
                   </select>
@@ -359,9 +662,9 @@ export default function CategoryManager() {
                     value={newPosition}
                     onChange={e => setNewPosition(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder={`Position (0-${categories.length - 1})`}
-                    min="0"
-                    max={categories.length - 1}
+                    placeholder={`Position (${categories.filter(c => c.isFixed).length + 1}-${categories.length})`}
+                    min={categories.filter(c => c.isFixed).length + 1}
+                    max={categories.length}
                   />
                   <button
                     onClick={handlePositionChange}
@@ -381,6 +684,14 @@ export default function CategoryManager() {
                   <h3 className="text-lg font-semibold text-gray-700">All Categories</h3>
                   <div className="flex items-center space-x-3">
                     <button
+                      onClick={cleanupDuplicateCategories}
+                      className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-all"
+                      disabled={loading}
+                      title="Remove duplicate categories"
+                    >
+                      Cleanup Duplicates
+                    </button>
+                    <button
                       onClick={resetToAlphabetical}
                       className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
                       disabled={loading}
@@ -398,93 +709,134 @@ export default function CategoryManager() {
                 {success && <div className="text-green-600 mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">{success}</div>}
                 {loading && <div className="text-gray-500 mb-4">Loading...</div>}
 
-                <ul className="space-y-2">
-                  {categories.map((cat, index) => (
-                    <li
-                      key={cat.id}
-                      className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-orange-300 transition-all"
-                    >
-                      {editingId === cat.id ? (
-                        <div className="flex-1 flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={editNameEn}
-                            onChange={e => setEditNameEn(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            placeholder="English name"
-                          />
-                          <input
-                            type="text"
-                            value={editNameKn}
-                            onChange={e => setEditNameKn(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            placeholder="Kannada name"
-                          />
-                          <button
-                            onClick={() => handleEdit(cat.id)}
-                            className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-all"
-                            disabled={loading || !editNameEn.trim() || !editNameKn.trim()}
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
-                            disabled={loading}
-                          >
-                            Cancel
-                          </button>
+                {/* Dynamic Categories Section */}
+                <div className="mb-6">
+                  <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
+                    <span className="mr-2">🔄</span>
+                    Dynamic Categories (Auto-changing)
+                  </h4>
+                  <ul className="space-y-2">
+                    {categories.filter(cat => cat.isFixed && cat.isDynamic).map((cat, index) => (
+                      <li
+                        key={cat.id}
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200"
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="text-green-600 text-sm font-mono bg-green-100 px-3 py-1 rounded">
+                            #{cat.position + 1}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-900">{cat.nameEn}</span>
+                            <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {cat.type === 'time' ? '🕐 Time-based' : '📅 Day-based'} - Updates automatically
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center space-x-3 flex-1">
-                            <div className="text-gray-400 text-sm font-mono bg-gray-100 px-3 py-1 rounded">
-                              #{cat.position + 1}
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-900">{cat.nameEn}</span>
-                              <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                            Dynamic
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Regular Categories Section */}
+                <div>
+                  <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
+                    <span className="mr-2">📝</span>
+                    Custom Categories
+                  </h4>
+                  <ul className="space-y-2">
+                    {categories.filter(cat => !cat.isFixed).map((cat, index) => (
+                      <li
+                        key={cat.id}
+                        className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-orange-300 transition-all"
+                      >
+                        {editingId === cat.id ? (
+                          <div className="flex-1 flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={editNameEn}
+                              onChange={e => setEditNameEn(e.target.value)}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              placeholder="English name"
+                            />
+                            <input
+                              type="text"
+                              value={editNameKn}
+                              onChange={e => setEditNameKn(e.target.value)}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              placeholder="Kannada name"
+                            />
                             <button
-                              onClick={() => moveCategory(cat.id, 'up')}
-                              className="px-2 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
-                              disabled={loading || index === 0}
-                              title="Move up"
+                              onClick={() => handleEdit(cat.id)}
+                              className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-all"
+                              disabled={loading || !editNameEn.trim() || !editNameKn.trim()}
                             >
-                              <ArrowUp size={14} />
+                              Save
                             </button>
                             <button
-                              onClick={() => moveCategory(cat.id, 'down')}
-                              className="px-2 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
-                              disabled={loading || index === categories.length - 1}
-                              title="Move down"
-                            >
-                              <ArrowDown size={14} />
-                            </button>
-                            <button
-                              onClick={() => startEdit(cat)}
-                              className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center space-x-1"
+                              onClick={cancelEdit}
+                              className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
                               disabled={loading}
                             >
-                              <Edit size={14} />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleDelete(cat.id)}
-                              className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center space-x-1"
-                              disabled={loading}
-                            >
-                              <Trash2 size={14} />
-                              <span>Delete</span>
+                              Cancel
                             </button>
                           </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                        ) : (
+                          <>
+                            <div className="flex items-center space-x-3 flex-1">
+                              <div className="text-gray-400 text-sm font-mono bg-gray-100 px-3 py-1 rounded">
+                                #{cat.position + 1}
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-900">{cat.nameEn}</span>
+                                <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => moveCategory(cat.id, 'up')}
+                                className="px-2 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
+                                disabled={loading || index === 0}
+                                title="Move up"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              <button
+                                onClick={() => moveCategory(cat.id, 'down')}
+                                className="px-2 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all"
+                                disabled={loading || index === categories.filter(c => !c.isFixed).length - 1}
+                                title="Move down"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                              <button
+                                onClick={() => startEdit(cat)}
+                                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center space-x-1"
+                                disabled={loading}
+                              >
+                                <Edit size={14} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDelete(cat.id)}
+                                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center space-x-1"
+                                disabled={loading}
+                              >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
                 {/* Order Summary */}
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
