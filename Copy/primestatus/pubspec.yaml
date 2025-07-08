@@ -51,6 +51,7 @@ dependencies:
   
   # Video Processing
   video_thumbnail: ^0.5.3
+  ffmpeg_kit_flutter_new: ^2.0.0
   
   # Utilities
   uuid: ^4.2.1
