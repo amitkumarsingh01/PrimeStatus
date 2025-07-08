@@ -11,6 +11,8 @@ import 'package:ffmpeg_kit_flutter_new/log.dart';
 import 'package:ffmpeg_kit_flutter_new/session.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
+import 'dart:ui';
 
 class LocalMediaProcessingService {
   static final ScreenshotController _screenshotController = ScreenshotController();
@@ -90,9 +92,17 @@ class LocalMediaProcessingService {
         return null;
       }
 
-      // Create overlay image
+      // Get video dimensions
+      final Size? videoSize = await getVideoDimensions(inputVideoPath);
+      if (videoSize == null) {
+        print('Failed to get video dimensions');
+        return null;
+      }
+      final frameSize = {'width': videoSize.width.toInt(), 'height': videoSize.height.toInt()};
+
+      // Create overlay image with correct frameSize
       final String? overlayImagePath = await _createOverlayImage(
-        post: post,
+        post: {...post, 'frameSize': frameSize}, // override frameSize
         userUsageType: userUsageType,
         userName: userName,
         userProfilePhotoUrl: userProfilePhotoUrl,
@@ -268,6 +278,19 @@ class LocalMediaProcessingService {
       final addressSettings = post['addressSettings'] ?? {};
       final phoneSettings = post['phoneSettings'] ?? {};
       final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
+
+      // Debug prints for overlay data
+      print('--- Overlay Debug Info ---');
+      print('userName: $userName');
+      print('textSettings: $textSettings');
+      print('userUsageType: $userUsageType');
+      print('userAddress: $userAddress');
+      print('addressSettings: $addressSettings');
+      print('userPhoneNumber: $userPhoneNumber');
+      print('phoneSettings: $phoneSettings');
+      print('userProfilePhotoUrl: $userProfilePhotoUrl');
+      print('frameSize: $frameSize');
+      print('--------------------------');
 
       // Create overlay widget with proper positioning (same as AdminPostFullScreenCard)
       final Widget overlayWidget = LayoutBuilder(
@@ -445,6 +468,17 @@ class LocalMediaProcessingService {
         final File overlayFile = File(filePath);
         await overlayFile.writeAsBytes(overlayBytes);
         print('Overlay image saved to: $filePath');
+        // Debug: print actual overlay PNG size
+        try {
+          final img.Image? overlayImg = img.decodeImage(overlayBytes);
+          if (overlayImg != null) {
+            print('Actual overlay PNG size: \\${overlayImg.width}x\\${overlayImg.height}');
+          } else {
+            print('Could not decode overlay PNG for size check');
+          }
+        } catch (e) {
+          print('Error decoding overlay PNG for size check: $e');
+        }
         return filePath;
       } else {
         print('Failed to capture overlay widget');
@@ -605,5 +639,21 @@ class LocalMediaProcessingService {
     hexColor = hexColor.replaceFirst('#', '');
     if (hexColor.length == 6) hexColor = 'FF$hexColor';
     return Color(int.parse('0x$hexColor'));
+  }
+
+  static Future<Size?> getVideoDimensions(String videoPath) async {
+    final session = await FFprobeKit.getMediaInformation(videoPath);
+    final info = session.getMediaInformation();
+    if (info == null) return null;
+    final streams = info.getStreams();
+    if (streams == null || streams.isEmpty) return null;
+    final videoStream = streams.firstWhere((s) => s.getType() == 'video', orElse: () => null as dynamic);
+    if (videoStream == null) return null;
+    final width = videoStream.getWidth();
+    final height = videoStream.getHeight();
+    if (width != null && height != null) {
+      return Size(width.toDouble(), height.toDouble());
+    }
+    return null;
   }
 } 

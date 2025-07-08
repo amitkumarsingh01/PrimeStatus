@@ -496,76 +496,50 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       print('=== SHARING IMAGE TO WHATSAPP ===');
       print('Image URL: $imageUrl');
 
-      // Prepare overlay settings and user data
-      final Map<String, dynamic> requestBody = {
-        'user_id': _userService.currentUser?.uid ?? '',
-        'admin_post_id': post['id'] ?? '',
-        'textSettings': post['textSettings'] ?? {},
-        'profileSettings': post['profileSettings'] ?? {},
-        'addressSettings': post['addressSettings'] ?? {},
-        'phoneSettings': post['phoneSettings'] ?? {},
-        'frameSize': post['frameSize'] ?? {'width': 1080, 'height': 1920},
-        'userName': widget.userName,
-        'userProfilePhotoUrl': widget.userProfilePhotoUrl ?? '',
-        'userAddress': widget.userAddress,
-        'userPhoneNumber': widget.userPhoneNumber,
-        'userCity': widget.userCity,
-      };
-
-      // Choose API endpoint based on user type
-      final String apiEndpoint = widget.userUsageType == 'Business'
-          ? 'https://bgremoval.iaks.site/overlay_business'
-          : 'https://bgremoval.iaks.site/overlay_personal';
-
-      final response = await http.post(
-        Uri.parse(apiEndpoint),
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
+      // Process image with overlays using local FFmpeg
+      final String? processedFilePath = await LocalMediaProcessingService.processImageWithOverlays(
+        imageUrl: imageUrl,
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        if (responseData['success'] == true && responseData['download_url'] != null) {
-          final String downloadUrl = responseData['download_url'];
-          final imageResponse = await http.get(Uri.parse(downloadUrl));
-          if (imageResponse.statusCode == 200) {
-            final Directory tempDir = await getTemporaryDirectory();
-            final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
-            final String filePath = '${tempDir.path}/$fileName';
-            final File imageFile = File(filePath);
-            await imageFile.writeAsBytes(imageResponse.bodyBytes);
-            await Share.shareXFiles(
-              [XFile(filePath)],
-              text: 'Check out this amazing design from Prime Status!',
-              subject: 'Shared from Prime Status',
-            );
-            Future.delayed(Duration(seconds: 10), () {
-              if (imageFile.existsSync()) {
-                imageFile.deleteSync();
-              }
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Image shared successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            throw Exception('Failed to download processed image from API');
+      if (processedFilePath != null) {
+        // Share the processed image
+        await Share.shareXFiles(
+          [XFile(processedFilePath)],
+          text: 'Check out this amazing design from Prime Status!',
+          subject: 'Shared from Prime Status',
+        );
+
+        // Clean up the temporary file after a delay
+        Future.delayed(Duration(seconds: 10), () {
+          final file = File(processedFilePath);
+          if (file.existsSync()) {
+            file.deleteSync();
+            print('Cleaned up shared file: $processedFilePath');
           }
-        } else {
-          throw Exception('API returned unsuccessful response: \\${responseData['message'] ?? 'Unknown error'}');
-        }
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image shared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
-        throw Exception('API request failed with status: \\${response.statusCode}');
+        throw Exception('Failed to process image for sharing');
       }
     } catch (e) {
+      print('Error sharing image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error sharing image: \\${e.toString()}'),
+          content: Text('Error sharing image: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
