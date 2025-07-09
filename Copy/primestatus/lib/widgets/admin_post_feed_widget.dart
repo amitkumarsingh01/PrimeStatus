@@ -24,6 +24,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../services/subscription_service.dart';
 import '../screens/postsubscription.dart';
+import '../services/local_media_processing_service.dart';
+import 'package:image/image.dart' as img;
 
 // Global video controller manager
 class VideoControllerManager {
@@ -546,7 +548,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post),
+                    onPressed: () => _showShareOptions(post),
                     icon: const Icon(Icons.share, color: Colors.white),
                     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -562,7 +564,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 45,
                   child: ElevatedButton.icon(
-                    onPressed: () => _downloadImage(post),
+                    onPressed: () => _downloadImageWithOverlays(post),
                     icon: const Icon(Icons.download, color: Colors.white),
                     label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -774,54 +776,59 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     );
   }
 
-  // WhatsApp specific sharing (ported from fullscreen_post_viewer.dart)
-  Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
+  // Show share options (local overlay/canvas logic for both image and video)
+  void _showShareOptions(Map<String, dynamic> post) async {
+      final currentUser = _userService.currentUser;
+      final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+      final userUsageType = homeScreenState?.userUsageType ?? '';
+    if (currentUser != null) {
+      final hasSubscription = await SubscriptionService().hasActiveSubscription(currentUser.uid);
+      if (!hasSubscription) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostSubscriptionScreen(
+              post: post,
+              userUsageType: userUsageType,
+              userName: homeScreenState?.userName ?? '',
+              userProfilePhotoUrl: homeScreenState?.userProfilePhotoUrl,
+              userAddress: homeScreenState?.userAddress ?? '',
+              userPhoneNumber: homeScreenState?.userPhoneNumber ?? '',
+              userCity: homeScreenState?.userCity ?? '',
+              userEmail: currentUser.email ?? '',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+    if ((post['mediaType'] == null || post['mediaType'] == 'image') && !_isVideoUrl(mediaUrl) && !mediaUrl.startsWith('data:video')) {
+      _shareImageWithCanvas(mediaUrl, post);
+    } else {
+      _shareVideoWithOverlays(mediaUrl, post);
+    }
+  }
+
+  // Share using Flutter canvas (screenshot) and direct WhatsApp share
+  Future<void> _shareImageWithCanvas(String imageUrl, Map<String, dynamic> post) async {
     setState(() {
       _isProcessingShare = true;
     });
     try {
-      final currentUser = _userService.currentUser;
-      if (currentUser == null) {
-        throw Exception('User not authenticated');
-      }
-      final String postId = post['id'] ?? '';
-      if (postId.isEmpty) {
-        throw Exception('Post ID not found.');
-      }
-      final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-      final userUsageType = homeScreenState?.userUsageType ?? '';
-      final String apiEndpoint = userUsageType == 'Business'
-          ? 'https://bgremoval.iaks.site/overlay_business'
-          : 'https://bgremoval.iaks.site/overlay_personal';
-      final Map<String, dynamic> requestBody = {
-        'user_id': currentUser.uid,
-        'admin_post_id': postId,
-      };
-      final response = await http.post(
-        Uri.parse(apiEndpoint),
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
-      );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        if (responseData['success'] == true && responseData['download_url'] != null) {
-          final String downloadUrl = responseData['download_url'];
-          final imageResponse = await http.get(Uri.parse(downloadUrl));
-          if (imageResponse.statusCode == 200) {
+      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
+      if (imageBytes != null) {
             final Directory tempDir = await getTemporaryDirectory();
-            final String fileName = 'whatsapp_share_${DateTime.now().millisecondsSinceEpoch}.png';
+        final String fileName = 'shared_image_${DateTime.now().millisecondsSinceEpoch}.png';
             final String filePath = '${tempDir.path}/$fileName';
             final File imageFile = File(filePath);
-            await imageFile.writeAsBytes(imageResponse.bodyBytes);
+        await imageFile.writeAsBytes(imageBytes);
             await Share.shareXFiles(
               [XFile(filePath)],
               text: 'Check out this amazing design from Prime Status!',
               subject: 'Shared from Prime Status',
             );
-            Future.delayed(Duration(seconds: 10), () {
+        Future.delayed(Duration(seconds: 5), () {
               if (imageFile.existsSync()) {
                 imageFile.deleteSync();
               }
@@ -833,18 +840,63 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               ),
             );
           } else {
-            throw Exception('Failed to download processed image from API');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to process image for sharing')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing image: $e')),
+      );
+    } finally {
+      setState(() {
+        _isProcessingShare = false;
+      });
+    }
+  }
+
+  // Video sharing with overlays
+  Future<void> _shareVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
+    setState(() {
+      _isProcessingShare = true;
+    });
+    try {
+      // For simplicity, always create a thumbnail with overlay for sharing
+      final String? processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '',
+        userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User',
+        userProfilePhotoUrl: context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl,
+        userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
+        userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
+        userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+      );
+      if (processedFilePath != null) {
+        await Share.shareXFiles(
+          [XFile(processedFilePath)],
+          text: 'Check out this amazing video from Prime Status!',
+          subject: 'Shared from Prime Status',
+        );
+        Future.delayed(Duration(seconds: 10), () {
+          final file = File(processedFilePath);
+          if (file.existsSync()) {
+            file.deleteSync();
           }
-        } else {
-          throw Exception('API returned unsuccessful response: \\${responseData['message'] ?? 'Unknown error'}');
-        }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video thumbnail shared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
-        throw Exception('API request failed with status: \\${response.statusCode}');
+        throw Exception('Failed to process video for sharing');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error sharing image: \\${e.toString()}'),
+          content: Text('Error sharing video: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -855,8 +907,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     }
   }
 
-  // Download functionality (ported from fullscreen_post_viewer.dart)
-  Future<void> _downloadImage(Map<String, dynamic> post) async {
+  // Download image or video with overlays (local logic)
+  Future<void> _downloadImageWithOverlays(Map<String, dynamic> post) async {
     final currentUser = _userService.currentUser;
     final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
     final userUsageType = homeScreenState?.userUsageType ?? '';
@@ -885,7 +937,28 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       _isProcessingShare = true;
     });
     try {
-      final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+      final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+      if (_isVideoUrl(mediaUrl) || mediaUrl.startsWith('data:video')) {
+        await _downloadVideoWithOverlays(mediaUrl, post);
+      } else {
+        await _downloadImageWithCanvas(mediaUrl, post);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading: $e')),
+      );
+    } finally {
+      setState(() {
+        _isProcessingShare = false;
+      });
+    }
+  }
+
+  // Download image with overlays using Flutter canvas
+  Future<void> _downloadImageWithCanvas(String imageUrl, Map<String, dynamic> post) async {
+    try {
+      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
+      if (imageBytes != null) {
       final hasPermission = await _requestStoragePermission();
       if (!hasPermission) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -895,23 +968,13 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       }
       final downloadsDir = await _getDownloadsDirectory();
       if (downloadsDir != null) {
-        String fileExtension = 'jpg';
-        if (imageUrl.contains('.png')) {
-          fileExtension = 'png';
-        } else if (imageUrl.contains('.gif')) {
-          fileExtension = 'gif';
-        } else if (imageUrl.contains('.webp')) {
-          fileExtension = 'webp';
-        }
-        final String fileName = 'PrimeStatus_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+          final String fileName = 'PrimeStatus_WithOverlays_${DateTime.now().millisecondsSinceEpoch}.png';
         final String filePath = '${downloadsDir.path}/$fileName';
-        final response = await http.get(Uri.parse(imageUrl));
-        if (response.statusCode == 200) {
           final File imageFile = File(filePath);
-          await imageFile.writeAsBytes(response.bodyBytes);
+          await imageFile.writeAsBytes(imageBytes);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Image saved to gallery successfully!'),
+              content: Text('Image with overlays saved successfully!'),
               duration: Duration(seconds: 3),
               action: SnackBarAction(
                 label: 'Share',
@@ -924,22 +987,307 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
             ),
           );
         } else {
-          throw Exception('Failed to download image: HTTP \\${response.statusCode}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not access downloads directory')),
+          );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not access downloads directory')),
+          SnackBar(content: Text('Failed to process image for download')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download image: \\${e}')),
+        SnackBar(content: Text('Failed to download image: $e')),
       );
-    } finally {
-      setState(() {
-        _isProcessingShare = false;
-      });
     }
+  }
+
+  // Download video with overlays (thumbnail only for now)
+  Future<void> _downloadVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
+    try {
+      final String? processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '',
+        userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User',
+        userProfilePhotoUrl: context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl,
+        userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
+        userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
+        userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+      );
+      if (processedFilePath != null) {
+        final hasPermission = await _requestStoragePermission();
+        if (!hasPermission) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Storage permission required to download images')),
+          );
+          return;
+        }
+        final downloadsDir = await _getDownloadsDirectory();
+        if (downloadsDir != null) {
+          final String fileName = 'PrimeStatus_Thumbnail_${DateTime.now().millisecondsSinceEpoch}.png';
+          final String filePath = '${downloadsDir.path}/$fileName';
+          final File sourceFile = File(processedFilePath);
+          final File destFile = File(filePath);
+          await sourceFile.copy(destFile.path);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Video thumbnail saved successfully!'),
+              duration: Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Share',
+                onPressed: () async {
+                  try {
+                    await Share.shareXFiles([XFile(filePath)]);
+                  } catch (e) {}
+                },
+              ),
+            ),
+          );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not access downloads directory')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to process video for download')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading video: $e')),
+      );
+    }
+  }
+
+  // Capture widget as image with overlays (copied from fullscreen_post_viewer.dart)
+  Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
+    try {
+      final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
+      final int cropWidth = frameSize['width'] ?? 1080;
+      final int cropHeight = frameSize['height'] ?? 1920;
+      
+      // Create a widget that only contains the image content without action buttons
+      final Widget imageWithOverlays = Container(
+        width: cropWidth.toDouble(),
+        height: cropHeight.toDouble(),
+        child: ClipRect(
+          child: _buildImageContentOnly(post),
+        ),
+      );
+      
+      final Uint8List? capturedBytes = await _screenshotController.captureFromWidget(
+        Material(
+          color: Colors.transparent,
+          child: imageWithOverlays,
+        ),
+        delay: Duration(milliseconds: 1000),
+        pixelRatio: 2.0,
+        context: context,
+      );
+      
+      if (capturedBytes == null) return null;
+
+      // Decode the image
+      final img.Image? capturedImage = img.decodeImage(capturedBytes);
+      if (capturedImage == null) return null;
+
+      // Crop to exact frame size if the captured image is larger
+      if (capturedImage.width > cropWidth || capturedImage.height > cropHeight) {
+        final img.Image cropped = img.copyCrop(
+          capturedImage,
+          x: 0,
+          y: 0,
+          width: cropWidth,
+          height: cropHeight,
+        );
+        final Uint8List croppedBytes = Uint8List.fromList(img.encodePng(cropped));
+        return croppedBytes;
+      } else {
+        // No cropping needed, just return the captured bytes
+        return capturedBytes;
+      }
+    } catch (e) {
+      print('Error capturing/cropping image: $e');
+      return null;
+    }
+  }
+
+  // Build only the image content without action buttons
+  Widget _buildImageContentOnly(Map<String, dynamic> post) {
+    final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
+    final textSettings = post['textSettings'] ?? {};
+    final profileSettings = post['profileSettings'] ?? {};
+    final addressSettings = post['addressSettings'] ?? {};
+    final phoneSettings = post['phoneSettings'] ?? {};
+    final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
+    final String userName = context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User';
+    final String? userProfilePhotoUrl = context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl;
+    final String userUsageType = context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '';
+    final String userAddress = context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '';
+    final String userPhoneNumber = context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '';
+    final String userCity = context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '';
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        final double aspectRatio = frameSize['width'] / frameSize['height'];
+        final double height = width / aspectRatio;
+        final double textX = (textSettings['x'] ?? 50) / 100 * width;
+        final double textY = (textSettings['y'] ?? 90) / 100 * height;
+        final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
+        final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
+        final double profileSize = (profileSettings['size'] ?? 80).toDouble();
+        final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+        final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
+        final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
+        final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+
+        return SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              Container(
+                width: width,
+                height: height,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                  child: _buildMainImage(imageUrl, fit: BoxFit.contain),
+                ),
+              ),
+              if (textSettings.isNotEmpty)
+                Positioned(
+                  left: textX,
+                  top: textY,
+                  child: Transform.translate(
+                    offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: textSettings['hasBackground'] == true
+                          ? BoxDecoration(
+                              color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                              borderRadius: BorderRadius.circular(8),
+                            )
+                          : null,
+                      child: Text(
+                        userName,
+                        style: TextStyle(
+                          fontFamily: textSettings['font'] ?? 'Arial',
+                          fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                          color: _parseColor(textSettings['color'] ?? '#ffffff'),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+                Positioned(
+                  left: addressX,
+                  top: addressY,
+                  child: Transform.translate(
+                    offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: addressSettings['hasBackground'] == true
+                          ? BoxDecoration(
+                              color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+                              borderRadius: BorderRadius.circular(8),
+                            )
+                          : null,
+                      child: Text(
+                        userAddress,
+                        style: TextStyle(
+                          fontFamily: addressSettings['font'] ?? 'Arial',
+                          fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                          color: _parseColor(addressSettings['color'] ?? '#ffffff'),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+                Positioned(
+                  left: phoneX,
+                  top: phoneY,
+                  child: Transform.translate(
+                    offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: phoneSettings['hasBackground'] == true
+                          ? BoxDecoration(
+                              color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+                              borderRadius: BorderRadius.circular(8),
+                            )
+                          : null,
+                      child: Text(
+                        userPhoneNumber,
+                        style: TextStyle(
+                          fontFamily: phoneSettings['font'] ?? 'Arial',
+                          fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                          color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+                Positioned(
+                  left: profileX - profileSize / 2,
+                  top: profileY - profileSize / 2,
+                  child: Container(
+                    width: profileSize,
+                    height: profileSize,
+                    decoration: BoxDecoration(
+                      color: profileSettings['hasBackground'] == true
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        profileSettings['shape'] == 'circle'
+                            ? profileSize / 2
+                            : 8,
+                      ),
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        profileSettings['shape'] == 'circle'
+                            ? profileSize / 2
+                            : 8,
+                      ),
+                      child: _buildProfilePhoto(userProfilePhotoUrl!),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<bool> _requestStoragePermission() async {
