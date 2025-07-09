@@ -253,9 +253,9 @@ def create_overlay_image(admin_post, user_data):
             text_x_percent = text_settings['x'] / 100
             text_y_percent = text_settings['y'] / 100
             
-            # Convert to pixel positions
-            text_x = int(text_x_percent * frame_width)
-            text_y = int(text_y_percent * frame_height)
+            # Convert to pixel positions - SCALE DOWN TO 1/4 SIZE
+            text_x = int(text_x_percent * frame_width / 4)
+            text_y = int(text_y_percent * frame_height / 4)
             
             # Get text dimensions for background
             text_bbox = draw.textbbox((0, 0), user_data['name'], font=font)
@@ -297,9 +297,9 @@ def create_overlay_image(admin_post, user_data):
             phone_x_percent = phone_settings['x'] / 100
             phone_y_percent = phone_settings['y'] / 100
             
-            # Convert to pixel positions
-            phone_x = int(phone_x_percent * frame_width)
-            phone_y = int(phone_y_percent * frame_height)
+            # Convert to pixel positions - SCALE DOWN TO 1/4 SIZE
+            phone_x = int(phone_x_percent * frame_width / 4)
+            phone_y = int(phone_y_percent * frame_height / 4)
             
             # Get phone text dimensions
             phone_bbox = draw.textbbox((0, 0), user_data['phoneNumber'], font=font)

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -295,19 +296,21 @@ class LocalMediaProcessingService {
       // Create overlay widget with proper positioning (same as AdminPostFullScreenCard)
       final Widget overlayWidget = LayoutBuilder(
         builder: (context, constraints) {
+          
           final double width = frameSize['width'].toDouble();
           final double height = frameSize['height'].toDouble();
           
           // Calculate positions exactly like AdminPostFullScreenCard
-          final double textX = (textSettings['x'] ?? 50) / 100 * width;
-          final double textY = (textSettings['y'] ?? 90) / 100 * height;
-          final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
-          final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
-          final double profileSize = (profileSettings['size'] ?? 80).toDouble();
-          final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
-          final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
-          final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
-          final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+          final double textX = ((textSettings['x'] ?? 50) / 100 * width) / 2;
+          final double textY = ((textSettings['y'] ?? 90) / 100 * height) / 2;
+          final double profileX = ((profileSettings['x'] ?? 20) / 100 * width) / 2;
+          final double profileY = ((profileSettings['y'] ?? 20) / 100 * height) / 2;
+          final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
+          final double addressX = ((addressSettings['x'] ?? 50) / 100 * width) / 2;
+          final double addressY = ((addressSettings['y'] ?? 80) / 100 * height) / 2;
+          final double phoneX = ((phoneSettings['x'] ?? 50) / 100 * width) / 2;
+          final double phoneY = ((phoneSettings['y'] ?? 85) / 100 * height) / 2;
+          
 
           return Container(
             width: width,
@@ -321,7 +324,7 @@ class LocalMediaProcessingService {
                     left: textX,
                     top: textY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * (textSettings['fontSize'] ?? 24) * (userName.length / 2), -20),
+                      offset: Offset(-0.5 * ((textSettings['fontSize'] ?? 24) * 0.98) * (userName.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: textSettings['hasBackground'] == true
@@ -348,7 +351,8 @@ class LocalMediaProcessingService {
                     left: addressX,
                     top: addressY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                      offset: Offset(-0.5 * ((addressSettings['fontSize'] ?? 18) * 0.98) * (userAddress.length / 2), -20),
+                      // offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: addressSettings['hasBackground'] == true
@@ -375,7 +379,8 @@ class LocalMediaProcessingService {
                     left: phoneX,
                     top: phoneY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                      offset: Offset(-0.5 * ((phoneSettings['fontSize'] ?? 18) * 0.98) * (userPhoneNumber.length / 2), -20),
+                      // offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: phoneSettings['hasBackground'] == true
@@ -402,8 +407,8 @@ class LocalMediaProcessingService {
                     left: profileX - profileSize / 2,
                     top: profileY - profileSize / 2,
                     child: Container(
-                      width: profileSize,
-                      height: profileSize,
+                      width: profileSize * 0.85,
+                      height: profileSize * 0.85,
                       decoration: BoxDecoration(
                         color: profileSettings['hasBackground'] == true
                             ? Colors.white.withOpacity(0.9)
@@ -422,12 +427,12 @@ class LocalMediaProcessingService {
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          profileSettings['shape'] == 'circle'
-                              ? profileSize / 2
-                              : 8,
-                        ),
+                                              child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? profileSize / 2
+                                : 8,
+                          ),
                         child: CachedNetworkImage(
                           imageUrl: userProfilePhotoUrl!,
                           fit: BoxFit.cover,
