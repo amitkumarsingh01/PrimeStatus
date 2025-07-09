@@ -241,6 +241,22 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       mainImageUrl = await uploadMediaFile(dataURLtoFile(media, fileName), fileName);
     }
 
+    // Adjust x-axis values before sending to Firebase
+    const adjustedTextSettings = {
+      ...textSettings,
+      x: textSettings.x - 7
+    };
+
+    const adjustedAddressSettings = {
+      ...addressSettings,
+      x: addressSettings.x - 5
+    };
+
+    const adjustedPhoneSettings = {
+      ...phoneSettings,
+      x: phoneSettings.x - 5
+    };
+
     const postData = {
       mainImage: mainImageUrl,
       categories: selectedCategories,
@@ -248,9 +264,9 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       frameSize,
       mediaType,
       language,
-      textSettings,
-      addressSettings,
-      phoneSettings,
+      textSettings: adjustedTextSettings,
+      addressSettings: adjustedAddressSettings,
+      phoneSettings: adjustedPhoneSettings,
       profileSettings,
       adminName: userName,
       adminPhotoUrl: profileSettings.enabled ? '' : '',
