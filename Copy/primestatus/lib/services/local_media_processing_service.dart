@@ -301,15 +301,15 @@ class LocalMediaProcessingService {
           final double height = frameSize['height'].toDouble();
           
           // Calculate positions exactly like AdminPostFullScreenCard
-          final double textX = ((textSettings['x'] ?? 50) / 100 * width) / 2;
-          final double textY = ((textSettings['y'] ?? 90) / 100 * height) / 2;
-          final double profileX = ((profileSettings['x'] ?? 20) / 100 * width) / 2;
-          final double profileY = ((profileSettings['y'] ?? 20) / 100 * height) / 2;
+          final double textX = ((textSettings['x'] ?? 50) / 100 * width) / 1.96;
+          final double textY = ((textSettings['y'] ?? 90) / 100 * height) / 1.96;
+          final double profileX = ((profileSettings['x'] ?? 20) / 100 * width) / 1.96;
+          final double profileY = ((profileSettings['y'] ?? 20) / 100 * height) / 1.96;
           final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
-          final double addressX = ((addressSettings['x'] ?? 50) / 100 * width) / 2;
-          final double addressY = ((addressSettings['y'] ?? 80) / 100 * height) / 2;
-          final double phoneX = ((phoneSettings['x'] ?? 50) / 100 * width) / 2;
-          final double phoneY = ((phoneSettings['y'] ?? 85) / 100 * height) / 2;
+          final double addressX = ((addressSettings['x'] ?? 50) / 100 * width) / 1.96;
+          final double addressY = ((addressSettings['y'] ?? 80) / 100 * height) / 1.96;
+          final double phoneX = ((phoneSettings['x'] ?? 50) / 100 * width) / 1.96;
+          final double phoneY = ((phoneSettings['y'] ?? 85) / 100 * height) / 1.96;
           
 
           return Container(
@@ -324,7 +324,7 @@ class LocalMediaProcessingService {
                     left: textX,
                     top: textY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * ((textSettings['fontSize'] ?? 24) * 0.98) * (userName.length / 2), -20),
+                      offset: Offset(-0.5 * (((textSettings['fontSize'] ?? 24) * 1.35) * 0.98) * (userName.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: textSettings['hasBackground'] == true
@@ -337,7 +337,7 @@ class LocalMediaProcessingService {
                           userName,
                           style: TextStyle(
                             fontFamily: textSettings['font'] ?? 'Arial',
-                            fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                            fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35),
                             color: _parseColor(textSettings['color'] ?? '#ffffff'),
                             fontWeight: FontWeight.bold,
                           ),
@@ -351,7 +351,7 @@ class LocalMediaProcessingService {
                     left: addressX,
                     top: addressY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * ((addressSettings['fontSize'] ?? 18) * 0.98) * (userAddress.length / 2), -20),
+                      offset: Offset(-0.5 * (((addressSettings['fontSize'] ?? 18) * 1.35)) * (userAddress.length / 2), -20),
                       // offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -365,7 +365,7 @@ class LocalMediaProcessingService {
                           userAddress,
                           style: TextStyle(
                             fontFamily: addressSettings['font'] ?? 'Arial',
-                            fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                            fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35),
                             color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                             fontWeight: FontWeight.bold,
                           ),
@@ -379,7 +379,7 @@ class LocalMediaProcessingService {
                     left: phoneX,
                     top: phoneY,
                     child: Transform.translate(
-                      offset: Offset(-0.5 * ((phoneSettings['fontSize'] ?? 18) * 0.98) * (userPhoneNumber.length / 2), -20),
+                      offset: Offset(-0.5 * (((phoneSettings['fontSize'] ?? 18) * 1.35) * 0.98) * (userPhoneNumber.length / 2), -20),
                       // offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -393,7 +393,7 @@ class LocalMediaProcessingService {
                           userPhoneNumber,
                           style: TextStyle(
                             fontFamily: phoneSettings['font'] ?? 'Arial',
-                            fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                            fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35),
                             color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                             fontWeight: FontWeight.bold,
                           ),
@@ -404,18 +404,18 @@ class LocalMediaProcessingService {
                 // Profile photo overlay
                 if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                   Positioned(
-                    left: profileX - profileSize / 2,
-                    top: profileY - profileSize / 2,
+                    left: profileX - (profileSize * 1.1) / 2,
+                    top: profileY - (profileSize * 1.1) / 2,
                     child: Container(
-                      width: profileSize * 0.85,
-                      height: profileSize * 0.85,
+                      width: profileSize * 1.1,
+                      height: profileSize * 1.1,
                       decoration: BoxDecoration(
                         color: profileSettings['hasBackground'] == true
                             ? Colors.white.withOpacity(0.9)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(
                           profileSettings['shape'] == 'circle'
-                              ? profileSize / 2
+                              ? (profileSize * 1.1) / 2
                               : 8,
                         ),
                         border: Border.all(color: Colors.white, width: 2),
@@ -427,12 +427,12 @@ class LocalMediaProcessingService {
                           ),
                         ],
                       ),
-                                              child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            profileSettings['shape'] == 'circle'
-                                ? profileSize / 2
-                                : 8,
-                          ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          profileSettings['shape'] == 'circle'
+                              ? (profileSize * 1.1) / 2
+                              : 8,
+                        ),
                         child: CachedNetworkImage(
                           imageUrl: userProfilePhotoUrl!,
                           fit: BoxFit.cover,
