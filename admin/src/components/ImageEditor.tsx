@@ -244,7 +244,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     // Adjust x-axis values before sending to Firebase
     const adjustedTextSettings = {
       ...textSettings,
-      x: textSettings.x - 7
+      x: textSettings.x - 5
     };
 
     const adjustedAddressSettings = {
