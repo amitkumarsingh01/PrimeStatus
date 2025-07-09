@@ -299,17 +299,35 @@ class LocalMediaProcessingService {
           
           final double width = frameSize['width'].toDouble();
           final double height = frameSize['height'].toDouble();
-          
-          // Calculate positions exactly like AdminPostFullScreenCard
-          final double textX = ((textSettings['x'] ?? 50) / 100 * width) / 1.96;
-          final double textY = ((textSettings['y'] ?? 90) / 100 * height) / 1.96;
-          final double profileX = ((profileSettings['x'] ?? 20) / 100 * width) / 1.96;
-          final double profileY = ((profileSettings['y'] ?? 20) / 100 * height) / 1.96;
+
+          // Use different formulas for 1080x1080 vs others
+          bool isSquare = width == 1080 && height == 1080;
+          // 1080x1080: use original, else use alternate
+          final double textX = isSquare
+              ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) - 15
+              : (((textSettings['x'] ?? 50) / 100 * width) / 1.96);
+          final double textY = isSquare
+              ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 35
+              : (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10;
+          final double profileX = isSquare
+              ? ((profileSettings['x'] ?? 20) / 100 * width) / 1.96
+              : (((profileSettings['x'] ?? 20) / 100 * width) / 1.96) + 15;
+          final double profileY = isSquare
+              ? ((profileSettings['y'] ?? 20) / 100 * height) / 1.96
+              : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 23;
           final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
-          final double addressX = ((addressSettings['x'] ?? 50) / 100 * width) / 1.96;
-          final double addressY = ((addressSettings['y'] ?? 80) / 100 * height) / 1.96;
-          final double phoneX = ((phoneSettings['x'] ?? 50) / 100 * width) / 1.96;
-          final double phoneY = ((phoneSettings['y'] ?? 85) / 100 * height) / 1.96;
+          final double addressX = isSquare
+              ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 34
+              : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) + 10;
+          final double addressY = isSquare
+              ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 39
+              : (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 12;
+          final double phoneX = isSquare
+              ? (((phoneSettings['x'] ?? 50) / 100 * width) / 1.96) + 5
+              : (((phoneSettings['x'] ?? 50) / 100 * width) / 1.96);
+          final double phoneY = isSquare
+              ? ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13
+              : ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13;
           
 
           return Container(
@@ -404,8 +422,8 @@ class LocalMediaProcessingService {
                 // Profile photo overlay
                 if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                   Positioned(
-                    left: profileX - (profileSize * 1.1) / 2,
-                    top: profileY - (profileSize * 1.1) / 2,
+                    left: profileX - (profileSize * 1.1) / 2 - 20,
+                    top: profileY - (profileSize * 1.1) / 2 - 27,
                     child: Container(
                       width: profileSize * 1.1,
                       height: profileSize * 1.1,

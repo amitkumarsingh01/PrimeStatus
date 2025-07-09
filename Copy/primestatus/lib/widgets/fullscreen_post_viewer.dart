@@ -108,7 +108,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   List<Map<String, dynamic>> _userProfilePhotos = [];
   String? _activeProfilePhotoUrl;
   bool _isLoadingProfilePhotos = false;
-  bool _isImageTab = true; // Track current tab
+  // Tab selection state
+  int _selectedTabIndex = 0; // 0: All, 1: Images, 2: Videos
   List<Map<String, dynamic>> _filteredPosts = []; // Filtered posts based on tab
 
   @override
@@ -153,28 +154,32 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         children: [
           Column(
             children: [
-              // Tabs for Image/Video classification
-              Container(
-                color: Colors.black,
-                padding: EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildTabButton('Images', Icons.image, _isImageTab),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: _buildTabButton('Videos', Icons.video_library, !_isImageTab),
-                    ),
-                  ],
-                ),
-              ),
+              // Tabs for Image/Video/All classification
+              // Container(
+              //   color: Colors.black,
+              //   padding: EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 16),
+              //   child: Row(
+              //     children: [
+              //       Expanded(
+              //         child: _buildTabButton('All', Icons.collections, _selectedTabIndex == 0, 0),
+              //       ),
+              //       SizedBox(width: 8),
+              //       Expanded(
+              //         child: _buildTabButton('Images', Icons.image, _selectedTabIndex == 1, 1),
+              //       ),
+              //       SizedBox(width: 8),
+              //       Expanded(
+              //         child: _buildTabButton('Videos', Icons.video_library, _selectedTabIndex == 2, 2),
+              //       ),
+              //     ],
+              //   ),
+              // ),
               // Content area
               Expanded(
                 child: _filteredPosts.isEmpty
                     ? Center(
                         child: Text(
-                          _isImageTab ? 'No images found.' : 'No videos found.',
+                          _selectedTabIndex == 1 ? 'No images found.' : _selectedTabIndex == 2 ? 'No videos found.' : 'No posts found.',
                           style: TextStyle(color: Colors.white, fontSize: 18),
                         ),
                       )
@@ -303,66 +308,20 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         return;
       }
     }
+    
     final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
-    // Only use Flutter canvas for images, never for videos
-    if ((post['mediaType'] == null || post['mediaType'] == 'image') && !_isVideoUrl(mediaUrl) && !mediaUrl.startsWith('data:video')) {
-      _shareImageWithCanvas(mediaUrl, post);
-    } else {
-      // For video, keep existing logic
+    
+    // Check if it's a video
+    if (_isVideoUrl(mediaUrl) || mediaUrl.startsWith('data:video')) {
+      print('=== SHARING VIDEO ===');
       _shareVideoWithOverlays(mediaUrl, post);
+    } else {
+      print('=== SHARING IMAGE ===');
+      _shareToWhatsApp(mediaUrl, post);
     }
   }
 
-  // Share using Flutter canvas (screenshot) and direct WhatsApp share
-  Future<void> _shareImageWithCanvas(String imageUrl, Map<String, dynamic> post) async {
-    setState(() {
-      _isProcessingShare = true;
-    });
-    try {
-      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
-      if (imageBytes != null) {
-        final Directory tempDir = await getTemporaryDirectory();
-        final String fileName = 'shared_image_${DateTime.now().millisecondsSinceEpoch}.png';
-        final String filePath = '${tempDir.path}/$fileName';
-        final File imageFile = File(filePath);
-        await imageFile.writeAsBytes(imageBytes);
-        // Direct WhatsApp share
-        final whatsappUrl = "whatsapp://send";
-        // Use share_plus to share to WhatsApp
-        await Share.shareXFiles(
-          [XFile(filePath)],
-          text: 'Check out this amazing design from Prime Status!',
-          subject: 'Shared from Prime Status',
-          sharePositionOrigin: Rect.zero,
-        );
-        Future.delayed(Duration(seconds: 5), () {
-          if (imageFile.existsSync()) {
-            imageFile.deleteSync();
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image shared successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process image for sharing')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sharing image: $e')),
-      );
-    } finally {
-      setState(() {
-        _isProcessingShare = false;
-      });
-    }
-  }
-
-  // Video sharing with overlays (restored)
+  // Video sharing with overlays
   Future<void> _shareVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
     setState(() {
       _isProcessingShare = true;
@@ -370,6 +329,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
     try {
       print('Starting video share process for: $videoUrl');
+      
       // Show processing options dialog
       final String? processingMethod = await _showVideoProcessingOptions();
       if (processingMethod == null) {
@@ -380,6 +340,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       }
 
       String? processedFilePath;
+      
       if (processingMethod == 'full_video') {
         // Process full video with overlays using local FFmpeg
         processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
@@ -407,11 +368,14 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
       }
 
       if (processedFilePath != null) {
+        // Share the processed file
         await Share.shareXFiles(
           [XFile(processedFilePath!)],
           text: 'Check out this amazing video from Prime Status!',
           subject: 'Shared from Prime Status',
         );
+
+        // Clean up the temporary file after a delay
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath!);
           if (file.existsSync()) {
@@ -419,6 +383,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             print('Cleaned up shared file: $processedFilePath');
           }
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
@@ -526,14 +491,17 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     );
   }
 
-  // New: Local image sharing with overlays using Flutter/Canvas
-  Future<void> _shareImageWithOverlays(String imageUrl, Map<String, dynamic> post) async {
+  // WhatsApp specific sharing
+  Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
     setState(() {
       _isProcessingShare = true;
     });
 
     try {
-      // Process image with overlays using local Flutter/FFmpeg
+      print('=== SHARING IMAGE TO WHATSAPP (FFmpeg) ===');
+      print('Image URL: $imageUrl');
+
+      // Process image with overlays using local FFmpeg
       final String? processedFilePath = await LocalMediaProcessingService.processImageWithOverlays(
         imageUrl: imageUrl,
         post: post,
@@ -551,15 +519,12 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           text: 'Check out this amazing design from Prime Status!',
           subject: 'Shared from Prime Status',
         );
-
-        // Clean up the temporary file after a delay
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath);
           if (file.existsSync()) {
             file.deleteSync();
           }
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Image shared successfully!'),
@@ -589,28 +554,28 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     });
 
     try {
-      // Create the image with overlays
-      final Uint8List? imageBytes = await _captureImageWithOverlays(imageUrl, post);
-      
-      if (imageBytes != null) {
-        // Save image to temporary file
-        final Directory tempDir = await getTemporaryDirectory();
-        final String fileName = 'shared_image_${DateTime.now().millisecondsSinceEpoch}.png';
-        final String filePath = '${tempDir.path}/$fileName';
-        final File imageFile = File(filePath);
-        await imageFile.writeAsBytes(imageBytes);
+      // Process image with overlays using local FFmpeg
+      final String? processedFilePath = await LocalMediaProcessingService.processImageWithOverlays(
+        imageUrl: imageUrl,
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
+      );
 
-        // Share the image
+      if (processedFilePath != null) {
         await Share.shareXFiles(
-          [XFile(filePath)],
+          [XFile(processedFilePath)],
           text: 'Check out this amazing design!',
           subject: 'Shared from Prime Status',
         );
-
-        // Clean up the temporary file after a delay
         Future.delayed(Duration(seconds: 5), () {
-          if (imageFile.existsSync()) {
-            imageFile.deleteSync();
+          final file = File(processedFilePath);
+          if (file.existsSync()) {
+            file.deleteSync();
           }
         });
       } else {
@@ -1721,11 +1686,11 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
   }
 
   // Build tab button widget
-  Widget _buildTabButton(String title, IconData icon, bool isSelected) {
+  Widget _buildTabButton(String title, IconData icon, bool isSelected, int tabIndex) {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _isImageTab = title == 'Images';
+          _selectedTabIndex = tabIndex;
         });
         // Filter posts based on tab
         _filterPostsByType();
@@ -1766,12 +1731,17 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
   // Filter posts based on current tab
   void _filterPostsByType() {
     setState(() {
-      if (_isImageTab) {
+      if (_selectedTabIndex == 0) {
+        // All
+        _filteredPosts = List.from(widget.posts);
+      } else if (_selectedTabIndex == 1) {
+        // Images
         _filteredPosts = widget.posts.where((post) {
           final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
           return !_isVideoUrl(mediaUrl) && !mediaUrl.startsWith('data:video');
         }).toList();
       } else {
+        // Videos
         _filteredPosts = widget.posts.where((post) {
           final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
           return _isVideoUrl(mediaUrl) || mediaUrl.startsWith('data:video');
@@ -1962,24 +1932,6 @@ class AdminPostFullScreenCard extends StatelessWidget {
                           child: Container(
                             width: profileSize,
                             height: profileSize,
-                            decoration: BoxDecoration(
-                              color: profileSettings['hasBackground'] == true
-                                  ? Colors.white.withOpacity(0.9)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(
-                                profileSettings['shape'] == 'circle'
-                                    ? profileSize / 2
-                                    : 8,
-                              ),
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(
                                 profileSettings['shape'] == 'circle'
@@ -2282,4 +2234,3 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
     );
   }
 } 
-

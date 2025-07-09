@@ -293,7 +293,7 @@ class HomeScreenState extends State<HomeScreen> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Cancel'),
+                      child: Text('Done'),
                     ),
                     ElevatedButton.icon(
                       onPressed: cropping
@@ -2562,8 +2562,10 @@ Widget _buildAdminFeedTab() {
               ],
             ),
           ),
+          SizedBox(height: 54),
           // Profile Options (always visible and scrollable)
         ],
+        
       ),
     );
   }
@@ -2851,9 +2853,20 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('About Prime Status'),
-        content: Text(
-          'Prime Status v1.0\n\nCreate beautiful quote designs with stunning backgrounds. Share your inspiration with the world.\n\nDeveloped with ❤️ using Flutter',
+        title: Text('🧾 About Us – Prime Status'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Prime Status is your ultimate platform for creating, customizing, and sharing motivational, devotional, trending, and festive videos and images — tailored for WhatsApp, Instagram, and other social media platforms. Designed with simplicity and creativity in mind, our app empowers users to express themselves with custom overlays, personalized text, and easy download/share options.\n\n'
+            'Whether you want to create daily quotes, festival wishes, birthday greetings, or business promotional content — Prime Status offers all tools in one place. With intuitive design, a massive content library, and creative freedom, Prime Status is your go-to app for all status-related needs.\n\n'
+            'Features:\n'
+            '• Trending and motivational content\n'
+            '• Personalized profile overlays (name, photo, city, etc.)\n'
+            '• Video/image download and sharing\n'
+            '• Real-time previews\n'
+            '• Business card-like visual content\n'
+            '• Lightweight, fast, and easy to use\n\n'
+            'Our goal is to empower creators and businesses to connect with their audience through beautiful content — effortlessly.'
+          ),
         ),
         actions: [
           TextButton(
@@ -3294,7 +3307,7 @@ Widget _buildAdminFeedTab() {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Contact Us'),
-        content: Text('For any queries, email us at support@primestatus.com or call +91-9876543210.'),
+        content: Text('For any queries, email us at support@primestatusapp.com'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -3309,9 +3322,32 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Privacy Policy'),
+        title: Text('🔒 Privacy Policy'),
         content: SingleChildScrollView(
-          child: Text('We value your privacy. All your data is securely stored and never shared with third parties. This is a sample privacy policy.'),
+          child: Text(
+            'Last Updated: [Insert Date]\n\n'
+            'Prime Status is committed to protecting your privacy. This Privacy Policy outlines how we collect, use, and protect your personal data.\n\n'
+            '1. Data We Collect:\n'
+            '• Personal Info: Name, email, phone number, location (city)\n'
+            '• Media Files: Uploaded images/videos for customization\n'
+            '• Device Info: Device ID, OS version, app usage logs (for analytics)\n\n'
+            '2. How We Use Your Data:\n'
+            '• To provide customized overlays and content\n'
+            '• To improve app functionality and user experience\n'
+            '• To notify users about updates and features\n'
+            '• For analytics and performance monitoring\n\n'
+            '3. Sharing of Data:\n'
+            'We do not sell or rent your personal information. Data may be shared:\n'
+            '• With trusted third-party services (e.g., Firebase, analytics tools)\n'
+            '• To comply with legal obligations\n\n'
+            '4. Storage & Security:\n'
+            '• Your data is securely stored in encrypted servers.\n'
+            '• We use Firebase & other secure platforms.\n\n'
+            '5. Your Rights:\n'
+            '• You can request deletion or correction of your data.\n'
+            '• You may revoke consent anytime by uninstalling the app.\n\n'
+            'For any privacy-related concerns, contact us at: support@primestatus.app'
+          ),
         ),
         actions: [
           TextButton(
@@ -3327,9 +3363,28 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Terms and Conditions'),
+        title: Text('✅ Terms & Conditions'),
         content: SingleChildScrollView(
-          child: Text('By using this app, you agree to our terms and conditions. This is a placeholder for the actual terms.'),
+          child: Text(
+            'Welcome to Prime Status. By using our app, you agree to the following terms:\n\n'
+            '1. Usage:\n'
+            '• You must be 13 years or older to use this app.\n'
+            '• You agree to use the app for lawful purposes only.\n'
+            '• You are responsible for the content you upload or generate.\n\n'
+            '2. Intellectual Property:\n'
+            '• All default templates and assets are property of Prime Status.\n'
+            '• User-generated content remains owned by the respective user.\n\n'
+            '3. Prohibited Actions:\n'
+            '• Misusing the app for hate, violence, or illegal promotions\n'
+            '• Attempting to hack or modify the app\n'
+            '• Uploading offensive, abusive, or copyrighted material\n\n'
+            '4. Limitation of Liability:\n'
+            '• We are not liable for any content misuse or data loss.\n'
+            '• The app is provided "as-is" without warranties.\n\n'
+            '5. Modifications:\n'
+            '• We reserve the right to update these terms anytime.\n'
+            '• Continued usage after updates implies acceptance.'
+          ),
         ),
         actions: [
           TextButton(
@@ -3345,9 +3400,13 @@ Widget _buildAdminFeedTab() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Refund Policy'),
+        title: Text('💰 Refund Policy'),
         content: SingleChildScrollView(
-          child: Text('Refunds are processed within 7 business days. Please contact support for any refund-related queries. This is a sample refund policy.'),
+          child: Text(
+            'All purchases made on Prime Status are final and non-refundable.\n\n'
+            'As Prime Status deals with digital content (such as images, videos, overlays), we do not offer refunds for any reason once content is downloaded, processed, or accessed.\n\n'
+            'Please review your order carefully before completing your purchase.'
+          ),
         ),
         actions: [
           TextButton(
@@ -3359,4 +3418,194 @@ Widget _buildAdminFeedTab() {
     );
   }
 
+} 
+
+class PolicyScreen extends StatelessWidget {
+  const PolicyScreen({super.key});
+
+  void _showPolicyDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            content,
+            style: const TextStyle(fontSize: 16, height: 1.5),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    _showPolicyDialog(
+      context: context,
+      title: '🧾 About Us – Prime Status',
+      content: '''
+Prime Status is your ultimate platform for creating, customizing, and sharing motivational, devotional, trending, and festive videos and images — tailored for WhatsApp, Instagram, and other social media platforms. Designed with simplicity and creativity in mind, our app empowers users to express themselves with custom overlays, personalized text, and easy download/share options.
+
+Whether you want to create daily quotes, festival wishes, birthday greetings, or business promotional content — Prime Status offers all tools in one place. With intuitive design, a massive content library, and creative freedom, Prime Status is your go-to app for all status-related needs.
+
+Features:
+• Trending and motivational content
+• Personalized profile overlays (name, photo, city, etc.)
+• Video/image download and sharing
+• Real-time previews
+• Business card-like visual content
+• Lightweight, fast, and easy to use
+
+Our goal is to empower creators and businesses to connect with their audience through beautiful content — effortlessly.
+''',
+    );
+  }
+
+  void _showContactUsDialog(BuildContext context) {
+    _showPolicyDialog(
+      context: context,
+      title: 'Contact Us',
+      content: '''
+Need help? Reach out to us:
+
+support@primestatus.app
+''',
+    );
+  }
+
+  void _showPrivacyPolicyDialog(BuildContext context) {
+    _showPolicyDialog(
+      context: context,
+      title: '🔒 Privacy Policy',
+      content: '''
+Last Updated: [Insert Date]
+
+Prime Status is committed to protecting your privacy. This Privacy Policy outlines how we collect, use, and protect your personal data.
+
+1. Data We Collect:
+• Personal Info: Name, email, phone number, location (city)
+• Media Files: Uploaded images/videos for customization
+• Device Info: Device ID, OS version, app usage logs (for analytics)
+
+2. How We Use Your Data:
+• To provide customized overlays and content
+• To improve app functionality and user experience
+• To notify users about updates and features
+• For analytics and performance monitoring
+
+3. Sharing of Data:
+We do not sell or rent your personal information. Data may be shared:
+• With trusted third-party services (e.g., Firebase, analytics tools)
+• To comply with legal obligations
+
+4. Storage & Security:
+• Your data is securely stored in encrypted servers.
+• We use Firebase & other secure platforms.
+
+5. Your Rights:
+• You can request deletion or correction of your data.
+• You may revoke consent anytime by uninstalling the app.
+
+For any privacy-related concerns, contact us at: support@primestatus.app
+''',
+    );
+  }
+
+  void _showTermsDialog(BuildContext context) {
+    _showPolicyDialog(
+      context: context,
+      title: '✅ Terms & Conditions',
+      content: '''
+Welcome to Prime Status. By using our app, you agree to the following terms:
+
+1. Usage:
+• You must be 13 years or older to use this app.
+• You agree to use the app for lawful purposes only.
+• You are responsible for the content you upload or generate.
+
+2. Intellectual Property:
+• All default templates and assets are property of Prime Status.
+• User-generated content remains owned by the respective user.
+
+3. Prohibited Actions:
+• Misusing the app for hate, violence, or illegal promotions
+• Attempting to hack or modify the app
+• Uploading offensive, abusive, or copyrighted material
+
+4. Limitation of Liability:
+• We are not liable for any content misuse or data loss.
+• The app is provided "as-is" without warranties.
+
+5. Modifications:
+• We reserve the right to update these terms anytime.
+• Continued usage after updates implies acceptance.
+''',
+    );
+  }
+
+  void _showRefundDialog(BuildContext context) {
+    _showPolicyDialog(
+      context: context,
+      title: '💰 Refund Policy',
+      content: '''
+Digital Content Policy:
+As Prime Status deals with digital content (e.g., images, videos, overlays), all purchases are considered final and non-refundable once content is downloaded or processed.
+
+However, in rare cases such as:
+• Duplicate payments
+• Transaction failures with confirmed deduction
+You may contact our support team within 7 days of the transaction for resolution.
+
+Refund Eligibility:
+• Must provide transaction ID or payment proof
+• Refund will be processed to the original payment method (if approved)
+
+Contact:
+Email us at support@primestatus.app for refund queries or complaints.
+''',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Info & Policies')),
+      body: ListView(
+        children: [
+          ListTile(
+            title: const Text('About'),
+            onTap: () => _showAboutDialog(context),
+          ),
+          ListTile(
+            title: const Text('Contact Us'),
+            onTap: () => _showContactUsDialog(context),
+          ),
+          ListTile(
+            title: const Text('Privacy Policy'),
+            onTap: () => _showPrivacyPolicyDialog(context),
+          ),
+          ListTile(
+            title: const Text('Terms & Conditions'),
+            onTap: () => _showTermsDialog(context),
+          ),
+          ListTile(
+            title: const Text('Refund Policy'),
+            onTap: () => _showRefundDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
 } 
