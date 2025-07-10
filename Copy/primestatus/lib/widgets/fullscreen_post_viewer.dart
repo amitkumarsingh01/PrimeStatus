@@ -144,8 +144,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        // Resume feed videos when going back
+        // Pause all fullscreen videos and resume feed videos when going back
+        FullscreenVideoControllerManager().pauseAllControllers();
         VideoControllerManager().setFullscreenMode(false);
+        VideoControllerManager().resumeAllControllers();
         return true;
       },
       child: Scaffold(
@@ -230,8 +232,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
               ),
               child: IconButton(
                 onPressed: () {
-                  // Resume feed videos when going back
+                  // Pause all fullscreen videos and resume feed videos when going back
+                  FullscreenVideoControllerManager().pauseAllControllers();
                   VideoControllerManager().setFullscreenMode(false);
+                  VideoControllerManager().resumeAllControllers();
                   Navigator.pop(context);
                 },
                 icon: Icon(

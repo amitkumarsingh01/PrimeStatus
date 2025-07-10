@@ -25,6 +25,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import '../services/subscription_service.dart';
 import '../screens/postsubscription.dart';
 import '../services/local_media_processing_service.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 // Global video controller manager
 class VideoControllerManager {
@@ -1846,6 +1847,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   // Navigate to fullscreen post viewer
   void _navigateToFullscreen(Map<String, dynamic> post, String action) {
     // Pause all video controllers before navigating
+    VideoControllerManager().pauseAllControllers();
     VideoControllerManager().setFullscreenMode(true);
     
     // Get current posts list and find the index of this post
@@ -2132,18 +2134,33 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _initializeVideoPlayerFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return AspectRatio(
-            aspectRatio: _controller.value.aspectRatio,
-            child: VideoPlayer(_controller),
-          );
+    return VisibilityDetector(
+      key: Key(_controllerKey),
+      onVisibilityChanged: (info) {
+        if (!mounted) return;
+        if (info.visibleFraction > 0.5) {
+          if (_controller.value.isInitialized && !_controller.value.isPlaying) {
+            _controller.play();
+          }
         } else {
-          return Center(child: CircularProgressIndicator(color: Colors.blue));
+          if (_controller.value.isInitialized && _controller.value.isPlaying) {
+            _controller.pause();
+          }
         }
       },
+      child: FutureBuilder(
+        future: _initializeVideoPlayerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            );
+          } else {
+            return Center(child: CircularProgressIndicator(color: Colors.blue));
+          }
+        },
+      ),
     );
   }
 }
@@ -2185,18 +2202,33 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _initializeVideoPlayerFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return AspectRatio(
-            aspectRatio: _controller.value.aspectRatio,
-            child: VideoPlayer(_controller),
-          );
+    return VisibilityDetector(
+      key: Key(_controllerKey),
+      onVisibilityChanged: (info) {
+        if (!mounted) return;
+        if (info.visibleFraction > 0.5) {
+          if (_controller.value.isInitialized && !_controller.value.isPlaying) {
+            _controller.play();
+          }
         } else {
-          return Center(child: CircularProgressIndicator(color: Colors.blue));
+          if (_controller.value.isInitialized && _controller.value.isPlaying) {
+            _controller.pause();
+          }
         }
       },
+      child: FutureBuilder(
+        future: _initializeVideoPlayerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            );
+          } else {
+            return Center(child: CircularProgressIndicator(color: Colors.blue));
+          }
+        },
+      ),
     );
   }
 }

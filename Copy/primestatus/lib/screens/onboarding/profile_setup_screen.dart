@@ -150,47 +150,47 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     children: [
                       // Profile Photo Section
                       SizedBox(height: 8),
-                      Center(
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Color(0xFFD74D02).withOpacity(0.15),
-                              backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                              child: _profileImage == null
-                                  ? Icon(
-                                      Icons.person,
-                                      size: 60,
-                                      color: Color(0xFF2C0036),
-                                    )
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: _pickImage,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [Color(0xFFD74D02), Color(0xFF2C0036)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // Center(
+                      //   child: Stack(
+                      //     children: [
+                      //       CircleAvatar(
+                      //         radius: 60,
+                      //         backgroundColor: Color(0xFFD74D02).withOpacity(0.15),
+                      //         backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                      //         child: _profileImage == null
+                      //             ? Icon(
+                      //                 Icons.person,
+                      //                 size: 60,
+                      //                 color: Color(0xFF2C0036),
+                      //               )
+                      //             : null,
+                      //       ),
+                      //       Positioned(
+                      //         bottom: 0,
+                      //         right: 0,
+                      //         child: GestureDetector(
+                      //           onTap: _pickImage,
+                      //           child: Container(
+                      //             decoration: BoxDecoration(
+                      //               shape: BoxShape.circle,
+                      //               gradient: LinearGradient(
+                      //                 colors: [Color(0xFFD74D02), Color(0xFF2C0036)],
+                      //                 begin: Alignment.topLeft,
+                      //                 end: Alignment.bottomRight,
+                      //               ),
+                      //             ),
+                      //             padding: EdgeInsets.all(8),
+                      //             child: Icon(
+                      //               Icons.camera_alt,
+                      //               color: Colors.white,
+                      //               size: 20,
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                       SizedBox(height: 24),
                       // Name/Phone/Address Input Section
                       Padding(
