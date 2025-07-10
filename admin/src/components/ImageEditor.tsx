@@ -810,7 +810,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                     id="textBackground"
                     checked={textSettings.hasBackground}
                     onChange={(e) => setTextSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                   />
                   <label htmlFor="textBackground" className="text-sm text-gray-700">Enable Background</label>
                 </div>
