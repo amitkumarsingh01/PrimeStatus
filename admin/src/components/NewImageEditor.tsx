@@ -182,7 +182,7 @@ export default function NewImageEditor({ onOpenEditor }: NewImageEditorProps) {
   const FRAME_SIZES = [
     { label: 'Square (1080x1080)', width: 1080, height: 1080 },
     { label: 'Portrait (1350x1080)', width: 1080, height: 1350 },
-    { label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 },
+    // { label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 },
   ];
 
   if (showExisting) {
