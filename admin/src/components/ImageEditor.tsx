@@ -30,6 +30,122 @@ const ENGLISH_FONTS = [
   'Poppins-Regular',
   'Poppins-SemiBold',
   'Poppins-SemiBoldItalic',
+  'Roboto-Bold',
+  'Roboto-Medium',
+  'Roboto-Regular',
+  'Roboto-Light',
+  'OpenSans-Bold',
+  'OpenSans-SemiBold',
+  'OpenSans-Regular',
+  'OpenSans-Light',
+  'Montserrat-Bold',
+  'Montserrat-SemiBold',
+  'Montserrat-Regular',
+  'Montserrat-Light',
+  'Inter-Bold',
+  'Inter-SemiBold',
+  'Inter-Regular',
+  'Inter-Light',
+  'Lato-Bold',
+  'Lato-Regular',
+  'Lato-Light',
+  'SourceSansPro-Bold',
+  'SourceSansPro-Regular',
+  'SourceSansPro-Light',
+  'Nunito-Bold',
+  'Nunito-SemiBold',
+  'Nunito-Regular',
+  'Nunito-Light',
+  'Ubuntu-Bold',
+  'Ubuntu-Medium',
+  'Ubuntu-Regular',
+  'Ubuntu-Light',
+  'PlayfairDisplay-Bold',
+  'PlayfairDisplay-Regular',
+  'Merriweather-Bold',
+  'Merriweather-Regular',
+  'Merriweather-Light',
+  'Oswald-Bold',
+  'Oswald-Regular',
+  'Oswald-Light',
+  'Raleway-Bold',
+  'Raleway-SemiBold',
+  'Raleway-Regular',
+  'Raleway-Light',
+  'PT-Sans-Bold',
+  'PT-Sans-Regular',
+  'PT-Sans-Narrow-Bold',
+  'PT-Sans-Narrow-Regular',
+  'Work-Sans-Bold',
+  'Work-Sans-SemiBold',
+  'Work-Sans-Regular',
+  'Work-Sans-Light',
+  'Quicksand-Bold',
+  'Quicksand-SemiBold',
+  'Quicksand-Regular',
+  'Quicksand-Light',
+  'Josefin-Sans-Bold',
+  'Josefin-Sans-SemiBold',
+  'Josefin-Sans-Regular',
+  'Josefin-Sans-Light',
+  'Bebas-Neue',
+  'Anton',
+  'Righteous',
+  'Fredoka-One',
+  'Pacifico',
+  'Dancing-Script-Bold',
+  'Dancing-Script-Regular',
+  'Great-Vibes',
+  'Satisfy',
+  'Kaushan-Script',
+  'Allura',
+  'Alex-Brush',
+  'Tangerine-Bold',
+  'Tangerine-Regular',
+  'Sacramento',
+  'Courgette',
+  'Yellowtail',
+  'Homemade-Apple',
+  'Caveat-Bold',
+  'Caveat-Regular',
+  'Indie-Flower',
+  'Permanent-Marker',
+  'Shadows-Into-Light',
+  'Architects-Daughter',
+  'Rock-Salt',
+  'Special-Elite',
+  'VT323',
+  'Press-Start-2P',
+  'Orbitron-Bold',
+  'Orbitron-Regular',
+  'Audiowide',
+  'Russo-One',
+  'Black-Ops-One',
+  'Changa-One',
+  'Faster-One',
+  'Freckle-Face',
+  'Frijole',
+  'Gravitas-One',
+  'Iceberg',
+  'Keania-One',
+  'Lemon',
+  'Londrina-Solid',
+  'Megrim',
+  'Monoton',
+  'Nixie-One',
+  'Offside',
+  'Plaster',
+  'Ribeye',
+  'Ribeye-Marrow',
+  'Sonsie-One',
+  'Stalinist-One',
+  'UnifrakturMaguntia',
+  'Vampiro-One',
+  'Vast-Shadow',
+  'Wallpoet',
+  'Zilla-Slab-Bold',
+  'Zilla-Slab-Regular',
+  'Zilla-Slab-Light',
 ];
 const KANNADA_FONT_GROUPS = [
   {
@@ -94,8 +210,84 @@ const getFontGroups = (lang: 'english' | 'kannada') => {
 function getFontFamily(font: string) {
   // English fonts (Poppins)
   if (font.startsWith('Poppins')) return `'${font}', Poppins, Arial, sans-serif`;
+  
+  // Google Fonts - Sans Serif
+  if (font.startsWith('Roboto')) return `'${font}', Roboto, Arial, sans-serif`;
+  if (font.startsWith('OpenSans')) return `'${font}', 'Open Sans', Arial, sans-serif`;
+  if (font.startsWith('Montserrat')) return `'${font}', Montserrat, Arial, sans-serif`;
+  if (font.startsWith('Inter')) return `'${font}', Inter, Arial, sans-serif`;
+  if (font.startsWith('Lato')) return `'${font}', Lato, Arial, sans-serif`;
+  if (font.startsWith('SourceSansPro')) return `'${font}', 'Source Sans Pro', Arial, sans-serif`;
+  if (font.startsWith('Nunito')) return `'${font}', Nunito, Arial, sans-serif`;
+  if (font.startsWith('Ubuntu')) return `'${font}', Ubuntu, Arial, sans-serif`;
+  if (font.startsWith('Raleway')) return `'${font}', Raleway, Arial, sans-serif`;
+  if (font.startsWith('PT-Sans')) return `'${font}', 'PT Sans', Arial, sans-serif`;
+  if (font.startsWith('Work-Sans')) return `'${font}', 'Work Sans', Arial, sans-serif`;
+  if (font.startsWith('Quicksand')) return `'${font}', Quicksand, Arial, sans-serif`;
+  if (font.startsWith('Josefin-Sans')) return `'${font}', 'Josefin Sans', Arial, sans-serif`;
+  if (font.startsWith('Zilla-Slab')) return `'${font}', 'Zilla Slab', Arial, sans-serif`;
+  
+  // Google Fonts - Serif
+  if (font.startsWith('PlayfairDisplay')) return `'${font}', 'Playfair Display', Georgia, serif`;
+  if (font.startsWith('Merriweather')) return `'${font}', Merriweather, Georgia, serif`;
+  
+  // Google Fonts - Display/Decorative
+  if (font.startsWith('Oswald')) return `'${font}', Oswald, Arial, sans-serif`;
+  if (font.startsWith('Bebas-Neue')) return `'Bebas Neue', Arial, sans-serif`;
+  if (font === 'Anton') return `'Anton', Arial, sans-serif`;
+  if (font === 'Righteous') return `'Righteous', Arial, sans-serif`;
+  if (font === 'Fredoka-One') return `'Fredoka One', Arial, sans-serif`;
+  if (font === 'Pacifico') return `'Pacifico', cursive`;
+  if (font.startsWith('Dancing-Script')) return `'${font}', 'Dancing Script', cursive`;
+  if (font === 'Great-Vibes') return `'Great Vibes', cursive`;
+  if (font === 'Satisfy') return `'Satisfy', cursive`;
+  if (font === 'Kaushan-Script') return `'Kaushan Script', cursive`;
+  if (font === 'Allura') return `'Allura', cursive`;
+  if (font === 'Alex-Brush') return `'Alex Brush', cursive`;
+  if (font.startsWith('Tangerine')) return `'${font}', Tangerine, cursive`;
+  if (font === 'Sacramento') return `'Sacramento', cursive`;
+  if (font === 'Courgette') return `'Courgette', cursive`;
+  if (font === 'Yellowtail') return `'Yellowtail', cursive`;
+  if (font === 'Homemade-Apple') return `'Homemade Apple', cursive`;
+  if (font.startsWith('Caveat')) return `'${font}', Caveat, cursive`;
+  if (font === 'Indie-Flower') return `'Indie Flower', cursive`;
+  if (font === 'Permanent-Marker') return `'Permanent Marker', cursive`;
+  if (font === 'Shadows-Into-Light') return `'Shadows Into Light', cursive`;
+  if (font === 'Architects-Daughter') return `'Architects Daughter', cursive`;
+  if (font === 'Rock-Salt') return `'Rock Salt', cursive`;
+  if (font === 'Special-Elite') return `'Special Elite', cursive`;
+  if (font === 'VT323') return `'VT323', monospace`;
+  if (font === 'Press-Start-2P') return `'Press Start 2P', monospace`;
+  if (font.startsWith('Orbitron')) return `'${font}', Orbitron, monospace`;
+  if (font === 'Audiowide') return `'Audiowide', cursive`;
+  if (font === 'Russo-One') return `'Russo One', sans-serif`;
+  if (font === 'Black-Ops-One') return `'Black Ops One', cursive`;
+  if (font === 'Changa-One') return `'Changa One', cursive`;
+  if (font === 'Faster-One') return `'Faster One', cursive`;
+  if (font === 'Freckle-Face') return `'Freckle Face', cursive`;
+  if (font === 'Frijole') return `'Frijole', cursive`;
+  if (font === 'Gravitas-One') return `'Gravitas One', cursive`;
+  if (font === 'Iceberg') return `'Iceberg', cursive`;
+  if (font === 'Keania-One') return `'Keania One', cursive`;
+  if (font === 'Lemon') return `'Lemon', cursive`;
+  if (font === 'Londrina-Solid') return `'Londrina Solid', cursive`;
+  if (font === 'Megrim') return `'Megrim', cursive`;
+  if (font === 'Monoton') return `'Monoton', cursive`;
+  if (font === 'Nixie-One') return `'Nixie One', cursive`;
+  if (font === 'Offside') return `'Offside', cursive`;
+  if (font === 'Plaster') return `'Plaster', cursive`;
+  if (font === 'Ribeye') return `'Ribeye', cursive`;
+  if (font === 'Ribeye-Marrow') return `'Ribeye Marrow', cursive`;
+  if (font === 'Sonsie-One') return `'Sonsie One', cursive`;
+  if (font === 'Stalinist-One') return `'Stalinist One', cursive`;
+  if (font === 'UnifrakturMaguntia') return `'UnifrakturMaguntia', cursive`;
+  if (font === 'Vampiro-One') return `'Vampiro One', cursive`;
+  if (font === 'Vast-Shadow') return `'Vast Shadow', cursive`;
+  if (font === 'Wallpoet') return `'Wallpoet', cursive`;
+  
   // Anek Kannada (Google Fonts)
   if (font.startsWith('AnekKannada')) return `'${font}', 'Anek Kannada', Arial, sans-serif`;
+  
   // Other Kannada fonts: user must add @font-face or CDN
   // Example: 'Gubbi', 'akshar', etc.
   return `'${font}', Arial, sans-serif`;
@@ -143,7 +335,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     y: 20,
     shape: 'circle' as 'circle' | 'square',
     size: 80,
-    hasBackground: true,
+    hasBackground: false,
     enabled: false,
   });
   const [isDraggingText, setIsDraggingText] = useState(false);
@@ -618,7 +810,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                     id="textBackground"
                     checked={textSettings.hasBackground}
                     onChange={(e) => setTextSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                   />
                   <label htmlFor="textBackground" className="text-sm text-gray-700">Enable Background</label>
                 </div>
@@ -705,6 +897,16 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                         </div>
                       )}
                     </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id="addressBackground"
+                        checked={addressSettings.hasBackground}
+                        onChange={(e) => setAddressSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                      />
+                      <label htmlFor="addressBackground" className="text-sm text-gray-700">Enable Background</label>
+                    </div>
                   </>
                 )}
               </div>
@@ -789,6 +991,16 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                           />
                         </div>
                       )}
+                    </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id="phoneBackground"
+                        checked={phoneSettings.hasBackground}
+                        onChange={(e) => setPhoneSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                      />
+                      <label htmlFor="phoneBackground" className="text-sm text-gray-700">Enable Background</label>
                     </div>
                   </>
                 )}

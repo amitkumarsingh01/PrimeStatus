@@ -2288,19 +2288,19 @@ Widget _buildAdminFeedTab() {
                       Container(
                         height: 120,
                         child: userProfilePhotos.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.photo_library_outlined, size: 32, color: Colors.grey),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'No profile photos yet',
-                                      style: TextStyle(color: Colors.grey[600]),
-                                    ),
-                                  ],
-                                ),
-                              )
+                            ? Container()
+                              //   child: Column(
+                              //     mainAxisAlignment: MainAxisAlignment.center,
+                              //     children: [
+                              //       Icon(Icons.photo_library_outlined, size: 32, color: Colors.grey),
+                              //       SizedBox(height: 8),
+                              //       // Text(
+                              //       //   'No profile photos yet',
+                              //       //   style: TextStyle(color: Colors.grey[600]),
+                              //       // ),
+                              //     ],
+                              //   ),
+                              // )
                             : ListView.builder(
                                 scrollDirection: Axis.horizontal,
                                 padding: EdgeInsets.symmetric(horizontal: 16),

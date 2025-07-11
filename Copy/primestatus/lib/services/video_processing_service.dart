@@ -197,13 +197,6 @@ class VideoProcessingService {
                 child: Container(
                   width: (profileSettings['size'] ?? 60).toDouble(),
                   height: (profileSettings['size'] ?? 60).toDouble(),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _parseColor(profileSettings['borderColor'] ?? '#ffffff'),
-                      width: (profileSettings['borderWidth'] ?? 3).toDouble(),
-                    ),
-                  ),
                   child: ClipOval(
                     child: CachedNetworkImage(
                       imageUrl: userProfilePhotoUrl!,

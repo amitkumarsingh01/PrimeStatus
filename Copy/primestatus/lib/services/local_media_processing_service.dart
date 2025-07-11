@@ -304,184 +304,195 @@ class LocalMediaProcessingService {
           bool isSquare = width == 1080 && height == 1080;
           // 1080x1080: use original, else use alternate
           final double textX = isSquare
-              ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) - 15
+              ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + 8
               : (((textSettings['x'] ?? 50) / 100 * width) / 1.96);
           final double textY = isSquare
-              ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 35
+              ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10
               : (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10;
           final double profileX = isSquare
-              ? ((profileSettings['x'] ?? 20) / 100 * width) / 1.96
+              ? (((profileSettings['x'] ?? 20) / 100 * width) / 1.96) + 22
               : (((profileSettings['x'] ?? 20) / 100 * width) / 1.96) + 15;
           final double profileY = isSquare
-              ? ((profileSettings['y'] ?? 20) / 100 * height) / 1.96
+              ? (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 22
               : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 23;
           final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
           final double addressX = isSquare
-              ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 34
+              ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 14
               : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) + 10;
           final double addressY = isSquare
-              ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 39
+              ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 11
               : (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 12;
           final double phoneX = isSquare
               ? (((phoneSettings['x'] ?? 50) / 100 * width) / 1.96) + 5
               : (((phoneSettings['x'] ?? 50) / 100 * width) / 1.96);
           final double phoneY = isSquare
-              ? ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13
+              ? ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 8
               : ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13;
           
 
-          return Container(
+          return SizedBox(
             width: width,
             height: height,
-            color: Colors.transparent,
-            child: Stack(
-              children: [
-                // Text overlay
-                if (textSettings.isNotEmpty)
-                  Positioned(
-                    left: textX,
-                    top: textY,
-                    child: Transform.translate(
-                      offset: Offset(-0.5 * (((textSettings['fontSize'] ?? 24) * 1.35) * 0.98) * (userName.length / 2), -20),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: textSettings['hasBackground'] == true
-                            ? BoxDecoration(
-                                color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
-                        child: Text(
-                          userName,
-                          style: TextStyle(
-                            fontFamily: textSettings['font'] ?? 'Arial',
-                            fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35),
-                            color: _parseColor(textSettings['color'] ?? '#ffffff'),
-                            fontWeight: FontWeight.bold,
+            child: Container(
+              width: width,
+              height: height,
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  // Text overlay
+                  if (textSettings.isNotEmpty)
+                    Positioned(
+                      left: textX,
+                      top: textY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (((textSettings['fontSize'] ?? 24) * 1.35) * 0.98) * (userName.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: textSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(textSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userName,
+                            style: TextStyle(
+                              fontFamily: textSettings['font'] ?? 'Arial',
+                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35),
+                              color: _parseColor(textSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                // Address overlay
-                if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
-                  Positioned(
-                    left: addressX,
-                    top: addressY,
-                    child: Transform.translate(
-                      offset: Offset(-0.5 * (((addressSettings['fontSize'] ?? 18) * 1.35)) * (userAddress.length / 2), -20),
-                      // offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: addressSettings['hasBackground'] == true
-                            ? BoxDecoration(
-                                color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
-                        child: Text(
-                          userAddress,
-                          style: TextStyle(
-                            fontFamily: addressSettings['font'] ?? 'Arial',
-                            fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35),
-                            color: _parseColor(addressSettings['color'] ?? '#ffffff'),
-                            fontWeight: FontWeight.bold,
+                  // Address overlay
+                  if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
+                    Positioned(
+                      left: addressX,
+                      top: addressY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (((addressSettings['fontSize'] ?? 18) * 1.35)) * (userAddress.length / 2), -20),
+                        // offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: addressSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(addressSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userAddress,
+                            style: TextStyle(
+                              fontFamily: addressSettings['font'] ?? 'Arial',
+                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35),
+                              color: _parseColor(addressSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                // Phone overlay
-                if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
-                  Positioned(
-                    left: phoneX,
-                    top: phoneY,
-                    child: Transform.translate(
-                      offset: Offset(-0.5 * (((phoneSettings['fontSize'] ?? 18) * 1.35) * 0.98) * (userPhoneNumber.length / 2), -20),
-                      // offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: phoneSettings['hasBackground'] == true
-                            ? BoxDecoration(
-                                color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
-                        child: Text(
-                          userPhoneNumber,
-                          style: TextStyle(
-                            fontFamily: phoneSettings['font'] ?? 'Arial',
-                            fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35),
-                            color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
-                            fontWeight: FontWeight.bold,
+                  // Phone overlay
+                  if (userUsageType == 'Business' && phoneSettings['enabled'] == true && userPhoneNumber.isNotEmpty)
+                    Positioned(
+                      left: phoneX,
+                      top: phoneY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (((phoneSettings['fontSize'] ?? 18) * 1.35) * 0.98) * (userPhoneNumber.length / 2), -20),
+                        // offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: phoneSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userPhoneNumber,
+                            style: TextStyle(
+                              fontFamily: phoneSettings['font'] ?? 'Arial',
+                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35),
+                              color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                // Profile photo overlay
-                if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
-                  Positioned(
-                    left: profileX - (profileSize * 1.1) / 2 - 20,
-                    top: profileY - (profileSize * 1.1) / 2 - 27,
-                    child: Container(
-                      width: profileSize * 1.1,
-                      height: profileSize * 1.1,
-                      decoration: BoxDecoration(
-                        color: profileSettings['hasBackground'] == true
-                            ? Colors.white.withOpacity(0.9)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(
-                          profileSettings['shape'] == 'circle'
-                              ? (profileSize * 1.1) / 2
-                              : 8,
-                        ),
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                  // Profile photo overlay
+                  if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+                    Positioned(
+                      left: profileX - (profileSize * 1.1) / 2 - 20,
+                      top: profileY - (profileSize * 1.1) / 2 - 27,
+                      child: Container(
+                        width: profileSize * 1.1,
+                        height: profileSize * 1.1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            profileSettings['shape'] == 'circle'
+                                ? (profileSize * 1.1) / 2
+                                : 8,
                           ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          profileSettings['shape'] == 'circle'
-                              ? (profileSize * 1.1) / 2
-                              : 8,
-                        ),
-                        child: CachedNetworkImage(
-                          imageUrl: userProfilePhotoUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[200],
-                            child: Icon(Icons.person, color: Colors.grey),
-                          ),
-                          errorWidget: (context, error, stackTrace) {
-                            return Container(
+                          child: CachedNetworkImage(
+                            imageUrl: userProfilePhotoUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
                               color: Colors.grey[200],
                               child: Icon(Icons.person, color: Colors.grey),
-                            );
-                          },
+                            ),
+                            errorWidget: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Icon(Icons.person, color: Colors.grey),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           );
         },
       );
 
       // Capture overlay as image
+      // final Uint8List? overlayBytes = await _screenshotController.captureFromWidget(
+      //   Material(
+      //     color: Colors.transparent,
+      //     child: overlayWidget,
+      //   ),
+      //   delay: Duration(milliseconds: 1000),
+      //   pixelRatio: 2.0,
+      // );
+
+      // Capture overlay as image with forced 1080 width
+      // final double targetWidth = 2160.0;
+      // final double currentWidth = frameSize['width'].toDouble();
+      // final double scaleFactor = targetWidth / currentWidth;
+
+      // final Uint8List? overlayBytes = await _screenshotController.captureFromWidget(
+      //   Material(
+      //     color: Colors.transparent,
+      //     child: overlayWidget,
+      //   ),
+      //   delay: Duration(milliseconds: 1000),
+      //   pixelRatio: scaleFactor,
+      // );
+
+      // Capture overlay as image with forced dimensions
       final Uint8List? overlayBytes = await _screenshotController.captureFromWidget(
         Material(
           color: Colors.transparent,
           child: overlayWidget,
         ),
         delay: Duration(milliseconds: 1000),
-        pixelRatio: 2.0,
+        pixelRatio: 2.0, // Use 1.0 to capture at exact widget size
+        targetSize: Size(frameSize['width'].toDouble(), frameSize['height'].toDouble()),
       );
 
       if (overlayBytes != null) {
