@@ -333,53 +333,25 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
     try {
       print('Starting video share process for: $videoUrl');
-      
-      // Show processing options dialog
-      final String? processingMethod = await _showVideoProcessingOptions();
-      if (processingMethod == null) {
-        setState(() {
-          _isProcessingShare = false;
-        });
-        return;
-      }
-
+      // Always use full video for WhatsApp share, skip dialog
+      final String processingMethod = 'full_video';
       String? processedFilePath;
-      
-      if (processingMethod == 'full_video') {
-        // Process full video with overlays using local FFmpeg
-        processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
-      } else {
-        // Create thumbnail with overlay using local FFmpeg
-        processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
-      }
-
+      processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
+      );
       if (processedFilePath != null) {
-        // Share the processed file
         await Share.shareXFiles(
           [XFile(processedFilePath!)],
           text: 'Check out this amazing video from Prime Status!',
           subject: 'Shared from Prime Status',
         );
-
-        // Clean up the temporary file after a delay
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath!);
           if (file.existsSync()) {
@@ -387,10 +359,9 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             print('Cleaned up shared file: $processedFilePath');
           }
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
+            content: Text('Video shared successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -412,88 +383,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     }
   }
 
-  // Show video processing options dialog
-  Future<String?> _showVideoProcessingOptions() async {
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.video_library, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Video Sharing Options'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Choose how you want to share your video:',
-              style: TextStyle(fontSize: 14),
-            ),
-            SizedBox(height: 16),
-            _buildProcessingOption(
-              'Full Video with Overlays',
-              'Process the entire video with your information overlays',
-              Icons.video_file,
-              Colors.green,
-            ),
-            SizedBox(height: 8),
-            _buildProcessingOption(
-              'Thumbnail with Overlays',
-              'Share a thumbnail image with your information (faster)',
-              Icons.image,
-              Colors.orange,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildProcessingOption(String title, String description, IconData icon, Color color) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context, title == 'Full Video with Overlays' ? 'full_video' : 'thumbnail');
-      },
-      child: Container(
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 24),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // WhatsApp specific sharing
   Future<void> _shareToWhatsApp(String imageUrl, Map<String, dynamic> post) async {
@@ -865,39 +755,19 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   // Download video with overlays
   Future<void> _downloadVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
     try {
-      // Show processing options dialog
-      final String? processingMethod = await _showVideoProcessingOptions();
-      if (processingMethod == null) {
-        return;
-      }
-
+      // Always use full video for downloads, skip dialog
+      final String processingMethod = 'full_video';
       String? processedFilePath;
-      
-      if (processingMethod == 'full_video') {
-        // Process full video with overlays using local FFmpeg
-        processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
-      } else {
-        // Create thumbnail with overlay using local FFmpeg
-        processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: widget.userUsageType,
-          userName: widget.userName,
-          userProfilePhotoUrl: widget.userProfilePhotoUrl,
-          userAddress: widget.userAddress,
-          userPhoneNumber: widget.userPhoneNumber,
-          userCity: widget.userCity,
-        );
-      }
+      processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: widget.userUsageType,
+        userName: widget.userName,
+        userProfilePhotoUrl: widget.userProfilePhotoUrl,
+        userAddress: widget.userAddress,
+        userPhoneNumber: widget.userPhoneNumber,
+        userCity: widget.userCity,
+      );
 
       if (processedFilePath != null) {
         // Request appropriate storage permission

@@ -232,6 +232,47 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 padding: EdgeInsets.all(24),
                 child: Column(
                   children: [
+                    // Back Button and Title Row
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(
+                              Icons.arrow_back_ios,
+                              color: Colors.grey[700],
+                              size: 20,
+                            ),
+                            style: IconButton.styleFrom(
+                              padding: EdgeInsets.all(12),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            'Subscription Plans',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
                     // Logo placeholder - replace with your actual logo
                     Container(
                       width: 80,
@@ -255,20 +296,12 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Subscription Plans',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
                       'Choose the perfect plan for your ${selectedUsageType.toLowerCase()} needs',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),

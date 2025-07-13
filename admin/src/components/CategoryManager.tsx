@@ -270,9 +270,18 @@ export default function CategoryManager() {
       return;
     }
 
+    // Show confirmation dialog
+    const isConfirmed = window.confirm(`Are you sure you want to delete "${category?.nameEn}"? This action cannot be undone.`);
+    
+    if (!isConfirmed) {
+      return;
+    }
+
     setLoading(true);
     try {
       await deleteDoc(doc(db, 'categories', id));
+      setSuccess(`Category "${category?.nameEn}" deleted successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
       fetchCategories();
     } catch (e) {
       setError('Failed to delete category');

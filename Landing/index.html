@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrimeStatus - Creative Photo Editing & Name Art App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#2c0036',
+                        'accent': '#d74d02',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #2c0036 0%, #4a0e4e 50%, #2c0036 100%);
+        }
+        
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .glow-effect {
+            box-shadow: 0 0 30px rgba(215, 77, 2, 0.3);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.8s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar {
+            backdrop-filter: blur(10px);
+            background: rgba(44, 0, 54, 0.95);
+        }
+
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-800 overflow-x-hidden">
+    <!-- Header/Navigation -->
+    <header class="navbar fixed top-0 left-0 right-0 z-50 border-b border-white/10">
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center space-x-4">
+                    <a href="index.html" class="text-2xl font-bold text-white">
+                        Prime<span class="text-accent">Status</span>
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="text-white hover:text-accent transition-colors font-medium">Home</a>
+                    <a href="about.html" class="text-white hover:text-accent transition-colors font-medium">About Us</a>
+                    <a href="contact.html" class="text-white hover:text-accent transition-colors font-medium">Contact</a>
+                    <a href="privacy.html" class="text-white hover:text-accent transition-colors font-medium">Privacy</a>
+                    <a href="terms.html" class="text-white hover:text-accent transition-colors font-medium">Terms</a>
+                    <a href="refund.html" class="text-white hover:text-accent transition-colors font-medium">Refund</a>
+                    <button class="bg-accent text-white px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition-all duration-300">
+                        Download App
+                    </button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="mobile-menu md:hidden absolute top-full left-0 right-0 bg-primary border-t border-white/10">
+            <div class="px-6 py-4 space-y-4">
+                <a href="index.html" class="block text-white hover:text-accent transition-colors font-medium">Home</a>
+                <a href="about.html" class="block text-white hover:text-accent transition-colors font-medium">About Us</a>
+                <a href="contact.html" class="block text-white hover:text-accent transition-colors font-medium">Contact</a>
+                <a href="privacy.html" class="block text-white hover:text-accent transition-colors font-medium">Privacy</a>
+                <a href="terms.html" class="block text-white hover:text-accent transition-colors font-medium">Terms</a>
+                <a href="refund.html" class="block text-white hover:text-accent transition-colors font-medium">Refund</a>
+                <button class="w-full bg-accent text-white px-6 py-3 rounded-full font-semibold hover:bg-opacity-90 transition-all duration-300">
+                    Download App
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg min-h-screen flex items-center justify-center relative pt-20">
+        <!-- Floating decorative elements -->
+        <div class="absolute top-20 left-10 w-20 h-20 bg-accent rounded-full opacity-20 floating-animation"></div>
+        <div class="absolute bottom-20 right-10 w-32 h-32 bg-accent rounded-full opacity-10 floating-animation" style="animation-delay: 2s;"></div>
+        <div class="absolute top-40 right-20 w-16 h-16 bg-white rounded-full opacity-10 floating-animation" style="animation-delay: 4s;"></div>
+        
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <div class="slide-in">
+                <h1 class="text-6xl md:text-8xl font-bold text-white mb-6 leading-tight">
+                    Prime<span class="text-accent">Status</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-200 mb-8 max-w-4xl mx-auto font-light">
+                    Your ultimate platform for creating, customizing, and sharing motivational, devotional, trending, and festive videos and images — tailored for WhatsApp, Instagram, and other social media platforms.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+                    <button class="bg-accent text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-opacity-90 transition-all duration-300 glow-effect pulse-animation">
+                        Get Started Free
+                    </button>
+                    <button class="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-primary transition-all duration-300">
+                        Watch Demo
+                    </button>
+                </div>
+                
+                <!-- App Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                        <div class="text-3xl font-bold text-white mb-2">10K+</div>
+                        <div class="text-gray-200">Active Users</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                        <div class="text-3xl font-bold text-white mb-2">50K+</div>
+                        <div class="text-gray-200">Downloads</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                        <div class="text-3xl font-bold text-white mb-2">4.8★</div>
+                        <div class="text-gray-200">App Rating</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-primary mb-4">
+                    Unleash Your Creative Potential
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Everything you need to create beautiful name art, social media posts, and personalized designs with trending and motivational content
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature Card 1 -->
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                    <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-primary mb-4">Rich Font Collection</h3>
+                    <p class="text-gray-600">
+                        Access hundreds of stylish fonts, symbols, and emojis to make your text truly unique and eye-catching for all your social media needs
+                    </p>
+                </div>
+                
+                <!-- Feature Card 2 -->
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                    <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-primary mb-4">Ready Templates</h3>
+                    <p class="text-gray-600">
+                        Choose from professionally designed templates for birthday cards, love notes, festival wishes, and social media posts
+                    </p>
+                </div>
+                
+                <!-- Feature Card 3 -->
+                <div class="bg-white p-8 rounded-2xl shadow-lg card-hover">
+                    <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-primary mb-4">Advanced Customization</h3>
+                    <p class="text-gray-600">
+                        Fine-tune your designs with color control, shadow effects, stroke options, background customization, and personalized overlays
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Showcase Section -->
+    <section class="py-20 bg-white">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-primary mb-4">
+                    Create Something Amazing
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    From WhatsApp status to Instagram posts, make every design count with our comprehensive content library
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Showcase Item 1 -->
+                <div class="bg-gradient-to-br from-purple-100 to-pink-100 p-6 rounded-xl text-center card-hover">
+                    <div class="text-4xl mb-4">🎨</div>
+                    <h4 class="text-lg font-semibold text-primary mb-2">Name Art</h4>
+                    <p class="text-gray-600 text-sm">Personalized name designs with artistic flair</p>
+                </div>
+                
+                <!-- Showcase Item 2 -->
+                <div class="bg-gradient-to-br from-orange-100 to-red-100 p-6 rounded-xl text-center card-hover">
+                    <div class="text-4xl mb-4">💝</div>
+                    <h4 class="text-lg font-semibold text-primary mb-2">Love Cards</h4>
+                    <p class="text-gray-600 text-sm">Romantic designs for special occasions</p>
+                </div>
+                
+                <!-- Showcase Item 3 -->
+                <div class="bg-gradient-to-br from-green-100 to-teal-100 p-6 rounded-xl text-center card-hover">
+                    <div class="text-4xl mb-4">🎉</div>
+                    <h4 class="text-lg font-semibold text-primary mb-2">Birthday Greetings</h4>
+                    <p class="text-gray-600 text-sm">Festive birthday wishes and celebrations</p>
+                </div>
+                
+                <!-- Showcase Item 4 -->
+                <div class="bg-gradient-to-br from-blue-100 to-indigo-100 p-6 rounded-xl text-center card-hover">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h4 class="text-lg font-semibold text-primary mb-2">Social Media</h4>
+                    <p class="text-gray-600 text-sm">Eye-catching posts for all platforms</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional Features Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-primary mb-4">
+                    Why Choose PrimeStatus?
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Designed with simplicity and creativity in mind, our app empowers users to express themselves effortlessly
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">⚡</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Lightweight & Fast</h3>
+                    <p class="text-gray-600">Optimized for performance with quick loading times and smooth interactions</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">🎯</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Real-time Preview</h3>
+                    <p class="text-gray-600">See your changes instantly as you customize your content</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">📥</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Easy Download</h3>
+                    <p class="text-gray-600">Download and share your creations with one tap</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">👤</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Personalized Overlays</h3>
+                    <p class="text-gray-600">Add your name, photo, city, and other personal details</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">💼</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Business Ready</h3>
+                    <p class="text-gray-600">Create professional business card-like visual content</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="text-3xl mb-4">🔥</div>
+                    <h3 class="text-xl font-bold text-primary mb-3">Trending Content</h3>
+                    <p class="text-gray-600">Stay updated with the latest trending and motivational content</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="gradient-bg py-20 relative">
+        <div class="absolute inset-0 bg-black opacity-10"></div>
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+                Ready to Create Magic?
+            </h2>
+            <p class="text-xl text-gray-200 mb-8 max-w-3xl mx-auto">
+                Join thousands of users who are already creating stunning name art and personalized designs. Whether you want to create daily quotes, festival wishes, birthday greetings, or business promotional content — Prime Status offers all tools in one place.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="bg-accent text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-opacity-90 transition-all duration-300 glow-effect">
+                    Download Now
+                </button>
+                <button class="border-2 border-white text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-primary transition-all duration-300">
+                    Learn More
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-primary text-white py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-2xl font-bold mb-4">PrimeStatus</h3>
+                    <p class="text-gray-300 mb-4">
+                        Creating beautiful name art and personalized designs made simple. Your ultimate platform for creative content.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-300 hover:text-accent transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-300 hover:text-accent transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.346-.09.375-.292 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.986C24.007 5.367 18.641.001 12.017.001z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Features</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li>Name Art Creation</li>
+                        <li>Photo Editing</li>
+                        <li>Ready Templates</li>
+                        <li>Custom Fonts</li>
+                        <li>Video Creation</li>
+                        <li>Social Media Tools</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="contact.html" class="hover:text-accent transition-colors">Help Center</a></li>
+                        <li><a href="about.html" class="hover:text-accent transition-colors">About Us</a></li>
+                        <li><a href="contact.html" class="hover:text-accent transition-colors">Contact Us</a></li>
+                        <li><a href="privacy.html" class="hover:text-accent transition-colors">Privacy Policy</a></li>
+                        <li><a href="terms.html" class="hover:text-accent transition-colors">Terms & Conditions</a></li>
+                        <li><a href="refund.html" class="hover:text-accent transition-colors">Refund Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
+                    <div class="space-y-2 text-gray-300">
+                        <p>📧 support@primestatus.app</p>
+                        <p>🌐 www.primestatus.app</p>
+                        <p>📱 Available on Android & iOS</p>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
+                <p>&copy; 2025 PrimeStatus. All rights reserved. | Empowering creators worldwide</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking on a link
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+            });
+        });
+
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Add intersection observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('slide-in');
+                }
+            });
+        }, observerOptions);
+        
+        // Observe all cards and sections
+        document.querySelectorAll('.card-hover, section').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

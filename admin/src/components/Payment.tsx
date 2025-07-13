@@ -286,21 +286,21 @@ export default function Payment() {
 
           {/* Feature Cards */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
               <svg className="h-8 w-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
               <h3 className="font-semibold mb-2">Dynamic Pricing</h3>
               <p className="text-sm opacity-90">Set different prices for Personal and Business users</p>
             </div>
-            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #2c0036 0%, #d74d02 100%)' }}>
+            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}>
               <svg className="h-8 w-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <h3 className="font-semibold mb-2">Active Management</h3>
               <p className="text-sm opacity-90">Enable or disable plans without deletion</p>
             </div>
-            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
               <svg className="h-8 w-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

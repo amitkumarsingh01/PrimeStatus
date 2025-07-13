@@ -449,9 +449,14 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       x: phoneSettings.x - 5
     };
 
+    // Get category names instead of IDs
+    const selectedCategoryNames = categories
+      .filter(cat => selectedCategories.includes(cat.id))
+      .map(cat => cat.nameEn);
+
     const postData = {
       mainImage: mainImageUrl,
-      categories: selectedCategories,
+      categories: selectedCategoryNames,
       regions: selectedRegions,
       frameSize,
       mediaType,

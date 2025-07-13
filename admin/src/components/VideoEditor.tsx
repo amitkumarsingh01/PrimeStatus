@@ -405,17 +405,17 @@ export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
           </div>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
               <Type className="h-8 w-8 mb-2" />
               <h3 className="font-semibold mb-1">Text Elements</h3>
               <p className="text-sm opacity-90">Add username, address, and phone number</p>
             </div>
-            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #2c0036 0%, #d74d02 100%)' }}>
+            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}>
               <Move className="h-8 w-8 mb-2" />
               <h3 className="font-semibold mb-1">Profile Placement</h3>
               <p className="text-sm opacity-90">Optional profile photo positioning</p>
             </div>
-            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #d74d02 0%, #2c0036 100%)' }}>
+            <div className="text-white p-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
               <Save className="h-8 w-8 mb-2" />
               <h3 className="font-semibold mb-1">Save & Publish</h3>
               <p className="text-sm opacity-90">Save your creation to gallery</p>

@@ -1972,16 +1972,8 @@ Widget _buildAdminFeedTab() {
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    if (_selectedCategories.contains('All')) {
-                                      _selectedCategories = {categoryName};
-                                    } else if (_selectedCategories.contains(categoryName)) {
-                                      _selectedCategories.remove(categoryName);
-                                      if (_selectedCategories.isEmpty) {
-                                        _selectedCategories = {'All'};
-                                      }
-                                    } else {
-                                      _selectedCategories.add(categoryName);
-                                    }
+                                    // Single select: always replace the selection with the tapped category
+                                    _selectedCategories = {categoryName};
                                   });
                                 },
                                 child: Container(

@@ -238,6 +238,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                       setState(() {});
                     },
                     child: ListView.builder(
+                      key: PageStorageKey('admin_posts_list'), // Add key to preserve scroll position
                       padding: EdgeInsets.all(16),
                       itemCount: posts.length,
                       // Add performance optimizations
@@ -760,35 +761,47 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
   // WhatsApp specific sharing (ported from fullscreen_post_viewer.dart)
   Future<void> _shareToWhatsApp(String mediaUrl, Map<String, dynamic> post) async {
-    setState(() {
-      _isProcessingShare = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isProcessingShare = true;
+      });
+    }
     try {
       // Check if it's a video
       if (_isVideoUrl(mediaUrl) || mediaUrl.startsWith('data:video')) {
-        await _shareVideoWithOverlays(mediaUrl, post);
+        // Always use full video for WhatsApp, skip dialog
+        await _shareVideoWithOverlays(mediaUrl, post, forceFullVideo: true);
       } else {
         await _shareImageWithOverlays(mediaUrl, post);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sharing: \\${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sharing: \\${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isProcessingShare = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessingShare = false;
+        });
+      }
     }
   }
 
-  Future<void> _shareVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
+  Future<void> _shareVideoWithOverlays(String videoUrl, Map<String, dynamic> post, {bool forceFullVideo = false}) async {
     try {
-      // Show processing options dialog (copy from fullscreen_post_viewer.dart)
-      final String? processingMethod = await _showVideoProcessingOptions();
-      if (processingMethod == null) return;
+      String? processingMethod;
+      if (forceFullVideo) {
+        processingMethod = 'full_video';
+      } else {
+        // Show processing options dialog (copy from fullscreen_post_viewer.dart)
+        processingMethod = await _showVideoProcessingOptions();
+        if (processingMethod == null) return;
+      }
       String? processedFilePath;
       if (processingMethod == 'full_video') {
         processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
@@ -825,7 +838,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
+            content: Text('[38;5;2m${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -909,9 +922,11 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         return;
       }
     }
-    setState(() {
-      _isProcessingShare = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isProcessingShare = true;
+      });
+    }
     try {
       final String mediaUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
       if (_isVideoUrl(mediaUrl) || mediaUrl.startsWith('data:video')) {
@@ -920,13 +935,17 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         await _downloadImageWithOverlays(mediaUrl, post);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error downloading: \\${e}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading: \\${e}')),
+        );
+      }
     } finally {
-      setState(() {
-        _isProcessingShare = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessingShare = false;
+        });
+      }
     }
   }
 
@@ -990,77 +1009,74 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
   Future<void> _downloadVideoWithOverlays(String videoUrl, Map<String, dynamic> post) async {
     try {
-      final String? processingMethod = await _showVideoProcessingOptions();
-      if (processingMethod == null) return;
+      // Always use full video for downloads, skip dialog
+      final String processingMethod = 'full_video';
       String? processedFilePath;
-      if (processingMethod == 'full_video') {
-        processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '',
-          userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? '',
-          userProfilePhotoUrl: context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl,
-          userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
-          userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
-          userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
-        );
-      } else {
-        processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
-          videoUrl: videoUrl,
-          post: post,
-          userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '',
-          userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? '',
-          userProfilePhotoUrl: context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl,
-          userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
-          userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
-          userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
-        );
-      }
+      
+      processedFilePath = await LocalMediaProcessingService.processVideoWithOverlays(
+        videoUrl: videoUrl,
+        post: post,
+        userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? '',
+        userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? '',
+        userProfilePhotoUrl: context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl,
+        userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
+        userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
+        userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+      );
+      
       if (processedFilePath != null) {
         final hasPermission = await _requestStoragePermission();
         if (hasPermission) {
           final downloadsDir = await _getDownloadsDirectory();
           if (downloadsDir != null) {
-            final String fileName = processingMethod == 'full_video'
-                ? 'PrimeStatus_Video_${DateTime.now().millisecondsSinceEpoch}.mp4'
-                : 'PrimeStatus_Thumbnail_${DateTime.now().millisecondsSinceEpoch}.png';
+            final String fileName = 'PrimeStatus_Video_${DateTime.now().millisecondsSinceEpoch}.mp4';
             final String filePath = '${downloadsDir.path}/$fileName';
             final File sourceFile = File(processedFilePath);
             final File destFile = File(filePath);
             await sourceFile.copy(destFile.path);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} saved successfully!'),
-                duration: Duration(seconds: 3),
-                action: SnackBarAction(
-                  label: 'Share',
-                  onPressed: () async {
-                    try {
-                      await Share.shareXFiles([XFile(filePath)]);
-                    } catch (e) {}
-                  },
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Video saved successfully!'),
+                  duration: Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'Share',
+                    onPressed: () async {
+                      try {
+                        await Share.shareXFiles([XFile(filePath)]);
+                      } catch (e) {}
+                    },
+                  ),
                 ),
-              ),
-            );
+              );
+            }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not access downloads directory')),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not access downloads directory')),
+              );
+            }
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Storage permission required to download videos')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Storage permission required to download videos')),
+            );
+          }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process video for download')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to process video for download')),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error downloading video: \\${e}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading video: \\${e}')),
+        );
+      }
     }
   }
 
@@ -1068,28 +1084,77 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       final sdkInt = androidInfo.version.sdkInt;
+      
       if (sdkInt >= 33) {
+        // Android 13+ uses photos permission
         var status = await Permission.photos.status;
-        if (!status.isGranted) {
+        if (status.isDenied) {
           status = await Permission.photos.request();
+        }
+        if (status.isPermanentlyDenied) {
+          if (mounted) {
+            _showPermissionSettingsDialog('Photos');
+          }
         }
         return status.isGranted;
       } else if (sdkInt >= 30) {
+        // Android 11+ uses manage external storage
         var status = await Permission.manageExternalStorage.status;
-        if (!status.isGranted) {
+        if (status.isDenied) {
           status = await Permission.manageExternalStorage.request();
+        }
+        if (status.isPermanentlyDenied) {
+          if (mounted) {
+            _showPermissionSettingsDialog('Storage');
+          }
         }
         return status.isGranted;
       } else {
+        // Android 10 and below uses storage permission
         var status = await Permission.storage.status;
-        if (!status.isGranted) {
+        if (status.isDenied) {
           status = await Permission.storage.request();
+        }
+        if (status.isPermanentlyDenied) {
+          if (mounted) {
+            _showPermissionSettingsDialog('Storage');
+          }
         }
         return status.isGranted;
       }
     } else {
+      // iOS doesn't need explicit storage permission for app documents
       return true;
     }
+  }
+
+  void _showPermissionSettingsDialog(String permissionType) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Permission Required'),
+        content: Text(
+          'Storage permission is required to download files. Please enable it in your device settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: Text('Open Settings'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<Directory?> _getDownloadsDirectory() async {
