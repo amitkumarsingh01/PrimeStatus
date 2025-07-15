@@ -15,6 +15,29 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'dart:ui';
 
+// List of supported Kannada fonts
+const List<String> kannadaFonts = [
+  'AksharUnicode',
+  'AnekKannada-Bold',
+  'AnekKannada-Regular',
+  'BalooTamma2-Regular',
+  'BarahaUnicode',
+  'KanTTH',
+  'Kedage',
+  'LohitKannada',
+  'Mallige',
+  'NotoSansKannada-Regular',
+  'Sampige',
+  'Tunga',
+];
+
+String? getFontFamily(String? font) {
+  if (font != null && kannadaFonts.contains(font)) {
+    return font;
+  }
+  return null; // fallback to default
+}
+
 class LocalMediaProcessingService {
   static final ScreenshotController _screenshotController = ScreenshotController();
 
@@ -357,7 +380,7 @@ class LocalMediaProcessingService {
                           child: Text(
                             userName,
                             style: TextStyle(
-                              fontFamily: textSettings['font'] ?? 'Arial',
+                              fontFamily: getFontFamily(textSettings['font']),
                               fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35),
                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
@@ -385,7 +408,7 @@ class LocalMediaProcessingService {
                           child: Text(
                             userAddress,
                             style: TextStyle(
-                              fontFamily: addressSettings['font'] ?? 'Arial',
+                              fontFamily: getFontFamily(addressSettings['font']),
                               fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35),
                               color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
@@ -413,7 +436,7 @@ class LocalMediaProcessingService {
                           child: Text(
                             userPhoneNumber,
                             style: TextStyle(
-                              fontFamily: phoneSettings['font'] ?? 'Arial',
+                              fontFamily: getFontFamily(phoneSettings['font']),
                               fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35),
                               color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,

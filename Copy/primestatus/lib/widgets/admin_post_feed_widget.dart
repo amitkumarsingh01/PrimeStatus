@@ -77,6 +77,29 @@ class VideoControllerManager {
   }
 }
 
+// List of supported Kannada fonts
+const List<String> kannadaFonts = [
+  'AksharUnicode',
+  'AnekKannada-Bold',
+  'AnekKannada-Regular',
+  'BalooTamma2-Regular',
+  'BarahaUnicode',
+  'KanTTH',
+  'Kedage',
+  'LohitKannada',
+  'Mallige',
+  'NotoSansKannada-Regular',
+  'Sampige',
+  'Tunga',
+];
+
+String? getFontFamily(String? font) {
+  if (font != null && kannadaFonts.contains(font)) {
+    return font;
+  }
+  return null; // fallback to default
+}
+
 class AdminPostFeedWidget extends StatefulWidget {
   final List<String> selectedCategories;
   final String? language;
@@ -429,7 +452,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                             child: Text(
                               userName,
                               style: TextStyle(
-                                fontFamily: textSettings['font'] ?? 'Arial',
+                                fontFamily: getFontFamily(textSettings['font']) ?? 'Arial',
                                 fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
                                 color: _parseColor(textSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
@@ -456,7 +479,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                             child: Text(
                               userAddress,
                               style: TextStyle(
-                                fontFamily: addressSettings['font'] ?? 'Arial',
+                                fontFamily: getFontFamily(addressSettings['font']) ?? 'Arial',
                                 fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
                                 color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
@@ -483,7 +506,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                             child: Text(
                               userPhoneNumber,
                               style: TextStyle(
-                                fontFamily: phoneSettings['font'] ?? 'Arial',
+                                fontFamily: getFontFamily(phoneSettings['font']) ?? 'Arial',
                                 fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
                                 color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,

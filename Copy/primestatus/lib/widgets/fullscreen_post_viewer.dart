@@ -71,6 +71,29 @@ class FullscreenVideoControllerManager {
   }
 }
 
+// List of supported Kannada fonts
+const List<String> kannadaFonts = [
+  'AksharUnicode',
+  'AnekKannada-Bold',
+  'AnekKannada-Regular',
+  'BalooTamma2-Regular',
+  'BarahaUnicode',
+  'KanTTH',
+  'Kedage',
+  'LohitKannada',
+  'Mallige',
+  'NotoSansKannada-Regular',
+  'Sampige',
+  'Tunga',
+];
+
+String? getFontFamily(String? font) {
+  if (font != null && kannadaFonts.contains(font)) {
+    return font;
+  }
+  return null; // fallback to default
+}
+
 class FullscreenPostViewer extends StatefulWidget {
   final List<Map<String, dynamic>> posts;
   final int initialIndex;
@@ -1738,7 +1761,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                               child: Text(
                                 userName,
                                 style: TextStyle(
-                                  fontFamily: textSettings['font'] ?? 'Arial',
+                                  fontFamily: getFontFamily(textSettings['font']),
                                   fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
                                   color: _parseColor(textSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
@@ -1764,7 +1787,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                               child: Text(
                                 userAddress,
                                 style: TextStyle(
-                                  fontFamily: addressSettings['font'] ?? 'Arial',
+                                  fontFamily: getFontFamily(addressSettings['font']),
                                   fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
                                   color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
@@ -1790,7 +1813,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                               child: Text(
                                 userPhoneNumber,
                                 style: TextStyle(
-                                  fontFamily: phoneSettings['font'] ?? 'Arial',
+                                  fontFamily: getFontFamily(phoneSettings['font']),
                                   fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
                                   color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
