@@ -1859,10 +1859,49 @@ class AdminPostFullScreenCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 0),
               child: Row(
                 children: [
+                  // Expanded(
+                  //   flex: 35,
+                  //   child: ElevatedButton.icon(
+                  //     onPressed: onShare,
+                  //     icon: const Icon(Icons.share, color: Colors.white),
+                  //     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: Colors.green[600],
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(8),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
+                  // const SizedBox(width: 8),
+                  // Expanded(
+                  //   flex: 35,
+                  //   child: ElevatedButton.icon(
+                  //     onPressed: onDownload,
+                  //     icon: const Icon(Icons.download, color: Colors.white),
+                  //     label: const Text('Download', style: TextStyle(color: Colors.white)),
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: Colors.blue[600],
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(8),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   Expanded(
                     flex: 35,
                     child: ElevatedButton.icon(
-                      onPressed: onShare,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen(
+                            userUsageType: userUsageType,
+                            userName: userName,
+                            userEmail: userEmail,
+                            userPhone: userPhoneNumber,
+                          )),
+                        );
+                      },
                       icon: const Icon(Icons.share, color: Colors.white),
                       label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
@@ -1877,21 +1916,6 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   Expanded(
                     flex: 35,
                     child: ElevatedButton.icon(
-                      onPressed: onDownload,
-                      icon: const Icon(Icons.download, color: Colors.white),
-                      label: const Text('Download', style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 15,
-                    child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -1903,16 +1927,42 @@ class AdminPostFullScreenCard extends StatelessWidget {
                           )),
                         );
                       },
-                      icon: const Icon(Icons.star, color: Colors.white),
-                      label: const Text('', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      icon: const Icon(Icons.download, color: Colors.white),
+                      label: const Text('Download', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple[600],
+                        backgroundColor: Colors.blue[600],
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
                   ),
+                  
+                  const SizedBox(width: 8),
+                  // Expanded(
+                  //   flex: 15,
+                  //   child: ElevatedButton.icon(
+                  //     onPressed: () {
+                  //       Navigator.push(
+                  //         context,
+                  //         MaterialPageRoute(builder: (context) => SubscriptionPlansScreen(
+                  //           userUsageType: userUsageType,
+                  //           userName: userName,
+                  //           userEmail: userEmail,
+                  //           userPhone: userPhoneNumber,
+                  //         )),
+                  //       );
+                  //     },
+                  //     icon: const Icon(Icons.star, color: Colors.white),
+                  //     label: const Text('', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: Colors.purple[600],
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(8),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 15,
