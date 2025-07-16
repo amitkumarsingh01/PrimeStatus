@@ -131,10 +131,10 @@ class VideoProcessingService {
                         )
                       : null,
                   child: Text(
-                    userName,
+                    userName.length > 15 ? (' ' * (userName.length ~/ 3)) + userName : userName,
                     style: TextStyle(
                       fontFamily: textSettings['font'] ?? 'Arial',
-                      fontSize: (textSettings['fontSize'] ?? 24).toDouble(),
+                      fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.6 : 1.0),
                       color: _parseColor(textSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),
@@ -155,10 +155,10 @@ class VideoProcessingService {
                         )
                       : null,
                   child: Text(
-                    userAddress,
+                    userAddress.length > 15 ? (' ' * (userAddress.length ~/ 3)) + userAddress : userAddress,
                     style: TextStyle(
                       fontFamily: addressSettings['font'] ?? 'Arial',
-                      fontSize: (addressSettings['fontSize'] ?? 18).toDouble(),
+                      fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.6 : 1.0),
                       color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),
@@ -179,10 +179,10 @@ class VideoProcessingService {
                         )
                       : null,
                   child: Text(
-                    userPhoneNumber,
+                    userPhoneNumber.length > 15 ? (' ' * (userPhoneNumber.length ~/ 3)) + userPhoneNumber : userPhoneNumber,
                     style: TextStyle(
                       fontFamily: phoneSettings['font'] ?? 'Arial',
-                      fontSize: (phoneSettings['fontSize'] ?? 18).toDouble(),
+                      fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
                       color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),

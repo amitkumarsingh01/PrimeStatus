@@ -378,10 +378,10 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userName,
+                            userName.length > 15 ? (' ' * (userName.length ~/ 3)) + userName : userName,
                             style: TextStyle(
                               fontFamily: getFontFamily(textSettings['font']),
-                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35),
+                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.6 : 1.0),
                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -396,7 +396,6 @@ class LocalMediaProcessingService {
                       top: addressY,
                       child: Transform.translate(
                         offset: Offset(-0.5 * (((addressSettings['fontSize'] ?? 18) * 1.35)) * (userAddress.length / 2), -20),
-                        // offset: Offset(-0.5 * (addressSettings['fontSize'] ?? 18) * (userAddress.length / 2), -20),
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: addressSettings['hasBackground'] == true
@@ -406,10 +405,10 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userAddress,
+                            userAddress.length > 15 ? (' ' * (userAddress.length ~/ 3)) + userAddress : userAddress,
                             style: TextStyle(
                               fontFamily: getFontFamily(addressSettings['font']),
-                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35),
+                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.6 : 1.0),
                               color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -424,7 +423,6 @@ class LocalMediaProcessingService {
                       top: phoneY,
                       child: Transform.translate(
                         offset: Offset(-0.5 * (((phoneSettings['fontSize'] ?? 18) * 1.35) * 0.98) * (userPhoneNumber.length / 2), -20),
-                        // offset: Offset(-0.5 * (phoneSettings['fontSize'] ?? 18) * (userPhoneNumber.length / 2), -20),
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: phoneSettings['hasBackground'] == true
@@ -434,10 +432,10 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userPhoneNumber,
+                            userPhoneNumber.length > 15 ? (' ' * (userPhoneNumber.length ~/ 3)) + userPhoneNumber : userPhoneNumber,
                             style: TextStyle(
                               fontFamily: getFontFamily(phoneSettings['font']),
-                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35),
+                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
                               color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
