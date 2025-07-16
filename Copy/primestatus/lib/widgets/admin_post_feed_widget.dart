@@ -797,6 +797,10 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       } else {
         await _shareImageWithOverlays(mediaUrl, post);
       }
+      // Increment share count in Firestore
+      if (post['id'] != null) {
+        await _adminPostService.shareAdminPost(post['id']);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -855,13 +859,17 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           text: 'Check out this amazing video from Prime Status!',
           subject: 'Shared from Prime Status',
         );
+        // Increment share count in Firestore
+        if (post['id'] != null) {
+          await _adminPostService.shareAdminPost(post['id']);
+        }
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath!);
           if (file.existsSync()) file.deleteSync();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('[38;5;2m${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
+            content: Text('\u001b[38;5;2m${processingMethod == 'full_video' ? 'Video' : 'Thumbnail'} shared successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -896,6 +904,10 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           text: 'Check out this amazing design from Prime Status!',
           subject: 'Shared from Prime Status',
         );
+        // Increment share count in Firestore
+        if (post['id'] != null) {
+          await _adminPostService.shareAdminPost(post['id']);
+        }
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath);
           if (file.existsSync()) file.deleteSync();

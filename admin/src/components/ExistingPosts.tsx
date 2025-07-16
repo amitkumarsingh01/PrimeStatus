@@ -54,6 +54,7 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
             text: '', x: 50, y: 85, font: 'Arial', fontSize: 18, color: '#ffffff', hasBackground: true, backgroundColor: '#000000', enabled: false,
           },
           profileSettings: data.profileSettings,
+          shares: data.shares || 0,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         });
       });
@@ -358,6 +359,9 @@ export default function ExistingPosts({ onBack }: ExistingPostsProps) {
                       <p className="mt-1 text-[10px] text-blue-600">
                         Aspect: {getAspectRatio(post.frameSize)}
                       </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                      <span>Shares: <b>{post.shares}</b></span>
                     </div>
                   </div>
                 </div>

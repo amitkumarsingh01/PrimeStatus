@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'religion_selection_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:image_cropper/image_cropper.dart';
+import 'package:crop_your_image/crop_your_image.dart';
+import 'dart:typed_data';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({Key? key}) : super(key: key);
@@ -379,29 +380,161 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      // Crop the image before further processing
-      final croppedFile = await ImageCropper().cropImage(
-        sourcePath: pickedFile.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Crop Image',
-            toolbarColor: Colors.deepOrange,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.square,
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(
-            title: 'Crop Image',
-          ),
-        ],
-      );
+      // Use crop_your_image for cropping
+      final croppedFile = await _showCropDialog(File(pickedFile.path));
       if (croppedFile != null) {
         setState(() {
-          _profileImage = File(croppedFile.path);
+          _profileImage = croppedFile;
         });
       }
     }
+  }
+
+  // Custom image cropping dialog using crop_your_image
+  Future<File?> _showCropDialog(File imageFile) async {
+    final cropController = CropController();
+    bool cropping = false;
+    Uint8List? croppedData;
+    
+    return await showDialog<File?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.crop, color: Color(0xFFD74D02)),
+              SizedBox(width: 8),
+              Text('Crop Profile Photo'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Crop(
+                        controller: cropController,
+                        image: imageFile.readAsBytesSync(),
+                        aspectRatio: 1.0,
+                        withCircleUi: false,
+                        baseColor: Color(0xFFD74D02),
+                        maskColor: Colors.black.withOpacity(0.6),
+                        cornerDotBuilder: (size, edgeAlignment) => const DotControl(color: Color(0xFFD74D02)),
+                        interactive: true,
+                        fixCropRect: true,
+                        radius: 20,
+                        willUpdateScale: (newScale) => newScale < 5,
+                        onStatusChanged: (status) {
+                          // Optional: Handle crop status changes
+                        },
+                        initialRectBuilder: InitialRectBuilder.withBuilder(
+                          (viewportRect, imageRect) {
+                            // Create a perfect square in the center
+                            final size = viewportRect.width < viewportRect.height 
+                                ? viewportRect.width - 48 
+                                : viewportRect.height - 48;
+                            final centerX = viewportRect.left + viewportRect.width / 2;
+                            final centerY = viewportRect.top + viewportRect.height / 2;
+                            final halfSize = size / 2;
+                            
+                            return Rect.fromCenter(
+                              center: Offset(centerX, centerY),
+                              width: size,
+                              height: size,
+                            );
+                          },
+                        ),
+                        onCropped: (result) async {
+                          try {
+                            if (result is CropSuccess) {
+                              croppedData = result.croppedImage;
+                              final tempDir = Directory.systemTemp;
+                              final tempFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
+                              await tempFile.writeAsBytes(croppedData!);
+                              Navigator.pop(context, tempFile);
+                            } else if (result is CropFailure) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Error'),
+                                  content: Text('Failed to crop image: ${result.cause}'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Error'),
+                                content: Text('Failed to crop image: $e'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          setDialogState(() => cropping = false);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Drag to adjust crop area',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: cropping
+                        ? null
+                        : () {
+                            setDialogState(() => cropping = true);
+                            cropController.crop();
+                          },
+                      icon: Icon(Icons.crop),
+                      label: Text('Crop'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFD74D02),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDobField(BuildContext context, String label, bool isKannada) {

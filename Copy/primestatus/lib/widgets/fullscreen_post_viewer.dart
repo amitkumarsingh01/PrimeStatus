@@ -24,6 +24,7 @@ import '../services/local_media_processing_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import '../services/admin_post_service.dart';
 
 // Global video controller manager for fullscreen
 class FullscreenVideoControllerManager {
@@ -134,6 +135,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
   // Tab selection state
   int _selectedTabIndex = 0; // 0: All, 1: Images, 2: Videos
   List<Map<String, dynamic>> _filteredPosts = []; // Filtered posts based on tab
+  final AdminPostService _adminPostService = AdminPostService();
 
   @override
   void initState() {
@@ -375,6 +377,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           text: 'Check out this amazing video from Prime Status!',
           subject: 'Shared from Prime Status',
         );
+        // Increment share count in Firestore
+        if (post['id'] != null) {
+          await _adminPostService.shareAdminPost(post['id']);
+        }
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath!);
           if (file.existsSync()) {
@@ -436,6 +442,10 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           text: 'Check out this amazing design from Prime Status!',
           subject: 'Shared from Prime Status',
         );
+        // Increment share count in Firestore
+        if (post['id'] != null) {
+          await _adminPostService.shareAdminPost(post['id']);
+        }
         Future.delayed(Duration(seconds: 10), () {
           final file = File(processedFilePath);
           if (file.existsSync()) {

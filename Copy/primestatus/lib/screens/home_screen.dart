@@ -227,12 +227,13 @@ class HomeScreenState extends State<HomeScreen> {
   Future<File?> _showCropDialog(File imageFile) async {
     final cropController = CropController();
     bool cropping = false;
+    Uint8List? croppedData;
     
     return await showDialog<File?>(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
               Icon(Icons.crop, color: Colors.deepOrange),
@@ -257,24 +258,74 @@ class HomeScreenState extends State<HomeScreen> {
                         controller: cropController,
                         image: imageFile.readAsBytesSync(),
                         aspectRatio: 1.0,
-                        onCropped: (data) async {
-                          // data can be Uint8List or CropResult depending on crop_your_image version
-                          final bytes = (data is Uint8List)
-                              ? data
-                              : (data as dynamic).bytes as Object;
-                          if (bytes is List<int>) {
-                            final tempDir = Directory.systemTemp;
-                            final tempFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
-                            await tempFile.writeAsBytes(bytes);
-                            Navigator.pop(context, tempFile);
-                          } else {
-                            Navigator.pop(context, null);
-                          }
-                        },
                         withCircleUi: false,
                         baseColor: Colors.deepOrange,
                         maskColor: Colors.black.withOpacity(0.6),
                         cornerDotBuilder: (size, edgeAlignment) => const DotControl(color: Colors.deepOrange),
+                        interactive: true,
+                        fixCropRect: true,
+                        radius: 20,
+                        willUpdateScale: (newScale) => newScale < 5,
+                        onStatusChanged: (status) {
+                          // Optional: Handle crop status changes
+                        },
+                        initialRectBuilder: InitialRectBuilder.withBuilder(
+                          (viewportRect, imageRect) {
+                            // Create a perfect square in the center
+                            final size = viewportRect.width < viewportRect.height 
+                                ? viewportRect.width - 48 
+                                : viewportRect.height - 48;
+                            final centerX = viewportRect.left + viewportRect.width / 2;
+                            final centerY = viewportRect.top + viewportRect.height / 2;
+                            final halfSize = size / 2;
+                            
+                            return Rect.fromCenter(
+                              center: Offset(centerX, centerY),
+                              width: size,
+                              height: size,
+                            );
+                          },
+                        ),
+                        onCropped: (result) async {
+                          try {
+                            if (result is CropSuccess) {
+                              croppedData = result.croppedImage;
+                              final tempDir = Directory.systemTemp;
+                              final tempFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
+                              await tempFile.writeAsBytes(croppedData!);
+                              Navigator.pop(context, tempFile);
+                            } else if (result is CropFailure) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Error'),
+                                  content: Text('Failed to crop image: ${result.cause}'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Error'),
+                                content: Text('Failed to crop image: $e'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          setDialogState(() => cropping = false);
+                        },
                       ),
                     ),
                   ),
@@ -291,15 +342,15 @@ class HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('Done'),
-                    ),
+                    // TextButton(
+                    //   onPressed: () => Navigator.pop(context),
+                    //   child: Text('Cancel'),
+                    // ),
                     ElevatedButton.icon(
                       onPressed: cropping
                         ? null
                         : () {
-                            setState(() => cropping = true);
+                            setDialogState(() => cropping = true);
                             cropController.crop();
                           },
                       icon: Icon(Icons.crop),
@@ -317,7 +368,6 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    // This return is not used, as the dialog returns the file
   }
 
   // Search functionality methods
@@ -2516,6 +2566,7 @@ Widget _buildAdminFeedTab() {
           CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
           CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
           CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
+          // CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
           SizedBox(height: 24),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -3410,194 +3461,91 @@ Widget _buildAdminFeedTab() {
     );
   }
 
-} 
+  void _showMultiFontDialog() {
+    final fontList = [
+      {'name': 'BarahaUnicode', 'file': 'BarahaUnicode.ttf'},
+      {'name': 'Sampige', 'file': 'Sampige.ttf'},
+      {'name': 'KanTTH', 'file': 'KanTTH.ttf'},
+      {'name': 'AksharUnicode', 'file': 'AksharUnicode.ttf'},
+      {'name': 'Kedage', 'file': 'Kedage.ttf'},
+      {'name': 'LohitKannada', 'file': 'LohitKannada.ttf'},
+      {'name': 'Mallige', 'file': 'Mallige.ttf'},
+      {'name': 'Tunga', 'file': 'Tunga.ttf'},
+      {'name': 'BalooTamma2-Regular', 'file': 'BalooTamma2-Regular.ttf'},
+      {'name': 'NotoSansKannada-Regular', 'file': 'NotoSansKannada-Regular.ttf'},
+      {'name': 'AnekKannada-Bold', 'file': 'AnekKannada-Bold.ttf'},
+      {'name': 'AnekKannada-Regular', 'file': 'AnekKannada-Regular.ttf'},
+      {'name': 'PlaywriteVNGuides-Regular', 'file': 'PlaywriteVNGuides-Regular.ttf'},
+      {'name': 'Nudi-01-e', 'file': 'Nudi-01-e.ttf'},
+    ];
 
-class PolicyScreen extends StatelessWidget {
-  const PolicyScreen({super.key});
-
-  void _showPolicyDialog({
-    required BuildContext context,
-    required String title,
-    required String content,
-  }) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            content,
-            style: const TextStyle(fontSize: 16, height: 1.5),
+        title: Text('Multi Font Preview'),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: Scrollbar(
+            child: ListView.builder(
+              itemCount: fontList.length,
+              itemBuilder: (context, index) {
+                final font = fontList[index];
+                final fontName = font['name']!;
+                final fontFamily = fontName; // Font family should match pubspec.yaml
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fontName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Amit',
+                              style: TextStyle(
+                                fontFamily: fontFamily,
+                                fontSize: 24,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Apple ಅಮಿತ್',
+                              style: TextStyle(
+                                fontFamily: fontFamily,
+                                fontSize: 24,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Divider(),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text('Close'),
           ),
         ],
       ),
     );
   }
 
-  void _showAboutDialog(BuildContext context) {
-    _showPolicyDialog(
-      context: context,
-      title: '🧾 About Us – Prime Status',
-      content: '''
-Prime Status is your ultimate platform for creating, customizing, and sharing motivational, devotional, trending, and festive videos and images — tailored for WhatsApp, Instagram, and other social media platforms. Designed with simplicity and creativity in mind, our app empowers users to express themselves with custom overlays, personalized text, and easy download/share options.
-
-Whether you want to create daily quotes, festival wishes, birthday greetings, or business promotional content — Prime Status offers all tools in one place. With intuitive design, a massive content library, and creative freedom, Prime Status is your go-to app for all status-related needs.
-
-Features:
-• Trending and motivational content
-• Personalized profile overlays (name, photo, city, etc.)
-• Video/image download and sharing
-• Real-time previews
-• Business card-like visual content
-• Lightweight, fast, and easy to use
-
-Our goal is to empower creators and businesses to connect with their audience through beautiful content — effortlessly.
-''',
-    );
-  }
-
-  void _showContactUsDialog(BuildContext context) {
-    _showPolicyDialog(
-      context: context,
-      title: 'Contact Us',
-      content: '''
-Need help? Reach out to us:
-
-support@primestatus.app
-''',
-    );
-  }
-
-  void _showPrivacyPolicyDialog(BuildContext context) {
-    _showPolicyDialog(
-      context: context,
-      title: '🔒 Privacy Policy',
-      content: '''
-Last Updated: [Insert Date]
-
-Prime Status is committed to protecting your privacy. This Privacy Policy outlines how we collect, use, and protect your personal data.
-
-1. Data We Collect:
-• Personal Info: Name, email, phone number, location (city)
-• Media Files: Uploaded images/videos for customization
-• Device Info: Device ID, OS version, app usage logs (for analytics)
-
-2. How We Use Your Data:
-• To provide customized overlays and content
-• To improve app functionality and user experience
-• To notify users about updates and features
-• For analytics and performance monitoring
-
-3. Sharing of Data:
-We do not sell or rent your personal information. Data may be shared:
-• With trusted third-party services (e.g., Firebase, analytics tools)
-• To comply with legal obligations
-
-4. Storage & Security:
-• Your data is securely stored in encrypted servers.
-• We use Firebase & other secure platforms.
-
-5. Your Rights:
-• You can request deletion or correction of your data.
-• You may revoke consent anytime by uninstalling the app.
-
-For any privacy-related concerns, contact us at: support@primestatus.app
-''',
-    );
-  }
-
-  void _showTermsDialog(BuildContext context) {
-    _showPolicyDialog(
-      context: context,
-      title: '✅ Terms & Conditions',
-      content: '''
-Welcome to Prime Status. By using our app, you agree to the following terms:
-
-1. Usage:
-• You must be 13 years or older to use this app.
-• You agree to use the app for lawful purposes only.
-• You are responsible for the content you upload or generate.
-
-2. Intellectual Property:
-• All default templates and assets are property of Prime Status.
-• User-generated content remains owned by the respective user.
-
-3. Prohibited Actions:
-• Misusing the app for hate, violence, or illegal promotions
-• Attempting to hack or modify the app
-• Uploading offensive, abusive, or copyrighted material
-
-4. Limitation of Liability:
-• We are not liable for any content misuse or data loss.
-• The app is provided "as-is" without warranties.
-
-5. Modifications:
-• We reserve the right to update these terms anytime.
-• Continued usage after updates implies acceptance.
-''',
-    );
-  }
-
-  void _showRefundDialog(BuildContext context) {
-    _showPolicyDialog(
-      context: context,
-      title: '💰 Refund Policy',
-      content: '''
-Digital Content Policy:
-As Prime Status deals with digital content (e.g., images, videos, overlays), all purchases are considered final and non-refundable once content is downloaded or processed.
-
-However, in rare cases such as:
-• Duplicate payments
-• Transaction failures with confirmed deduction
-You may contact our support team within 7 days of the transaction for resolution.
-
-Refund Eligibility:
-• Must provide transaction ID or payment proof
-• Refund will be processed to the original payment method (if approved)
-
-Contact:
-Email us at support@primestatus.app for refund queries or complaints.
-''',
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Info & Policies')),
-      body: ListView(
-        children: [
-          ListTile(
-            title: const Text('About'),
-            onTap: () => _showAboutDialog(context),
-          ),
-          ListTile(
-            title: const Text('Contact Us'),
-            onTap: () => _showContactUsDialog(context),
-          ),
-          ListTile(
-            title: const Text('Privacy Policy'),
-            onTap: () => _showPrivacyPolicyDialog(context),
-          ),
-          ListTile(
-            title: const Text('Terms & Conditions'),
-            onTap: () => _showTermsDialog(context),
-          ),
-          ListTile(
-            title: const Text('Refund Policy'),
-            onTap: () => _showRefundDialog(context),
-          ),
-        ],
-      ),
-    );
-  }
 } 
