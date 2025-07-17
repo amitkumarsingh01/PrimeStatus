@@ -378,7 +378,7 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userName.length > 15 ? (' ' * (userName.length ~/ 3)) + userName : userName,
+                            userName.length > 15 ? userName : userName,
                             style: TextStyle(
                               fontFamily: getFontFamily(textSettings['font']),
                               fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.6 : 1.0),
@@ -405,7 +405,7 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userAddress.length > 15 ? (' ' * (userAddress.length ~/ 3)) + userAddress : userAddress,
+                            userAddress.length > 15 ? userAddress : userAddress,
                             style: TextStyle(
                               fontFamily: getFontFamily(addressSettings['font']),
                               fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.6 : 1.0),
@@ -432,7 +432,7 @@ class LocalMediaProcessingService {
                                 )
                               : null,
                           child: Text(
-                            userPhoneNumber.length > 15 ? (' ' * (userPhoneNumber.length ~/ 3)) + userPhoneNumber : userPhoneNumber,
+                            userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                             style: TextStyle(
                               fontFamily: getFontFamily(phoneSettings['font']),
                               fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
