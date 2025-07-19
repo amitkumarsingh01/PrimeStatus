@@ -74,18 +74,9 @@ class FullscreenVideoControllerManager {
 
 // List of supported Kannada fonts
 const List<String> kannadaFonts = [
-  'AksharUnicode',
-  'AnekKannada-Bold',
-  'AnekKannada-Regular',
-  'BalooTamma2-Regular',
-  'BarahaUnicode',
-  'KanTTH',
-  'Kedage',
-  'LohitKannada',
-  'Mallige',
-  'NotoSansKannada-Regular',
-  'Sampige',
-  'Tunga',
+  'AnekKannada',
+  'BalooTamma2',
+  'NotoSansKannada',
 ];
 
 String? getFontFamily(String? font) {

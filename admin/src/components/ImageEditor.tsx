@@ -6,74 +6,20 @@ import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore
 // Add @font-face declarations for local Kannada fonts
 const fontFaceStyles = `
   @font-face {
-    font-family: 'AksharUnicode';
-    src: url('/assets/font/AksharUnicode.ttf') format('truetype');
+    font-family: 'AnekKannada';
+    src: url('/assets/fonts/Anek_Kannada/AnekKannada-VariableFont_wdth,wght.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
   }
   @font-face {
-    font-family: 'AnekKannada-Bold';
-    src: url('/assets/font/AnekKannada-Bold.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'AnekKannada-Regular';
-    src: url('/assets/font/AnekKannada-Regular.ttf') format('truetype');
+    font-family: 'BalooTamma2';
+    src: url('/assets/fonts/Baloo_Tamma_2/BalooTamma2-VariableFont_wght.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
   }
   @font-face {
-    font-family: 'BalooTamma2-Regular';
-    src: url('/assets/font/BalooTamma2-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'BarahaUnicode';
-    src: url('/assets/font/BarahaUnicode.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'KanTTH';
-    src: url('/assets/font/KanTTH.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Kedage';
-    src: url('/assets/font/Kedage.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'LohitKannada';
-    src: url('/assets/font/LohitKannada.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Mallige';
-    src: url('/assets/font/Mallige.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'NotoSansKannada-Regular';
-    src: url('/assets/font/NotoSansKannada-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Sampige';
-    src: url('/assets/font/Sampige.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Tunga';
-    src: url('/assets/font/Tunga.ttf') format('truetype');
+    font-family: 'NotoSansKannada';
+    src: url('/assets/fonts/Noto_Sans_Kannada/NotoSansKannada-VariableFont_wdth,wght.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
   }
@@ -225,35 +171,11 @@ const ENGLISH_FONTS = [
 ];
 const KANNADA_FONT_GROUPS = [
   {
-    label: 'Anek Kannada Fonts',
+    label: 'Kannada Fonts',
     fonts: [
-      'AnekKannada-Bold',
-      'AnekKannada-Regular',
-    ],
-  },
-  {
-    label: 'Kannada Unicode Fonts',
-    fonts: [
-      'AksharUnicode',
-      'BarahaUnicode',
-      'KanTTH',
-      'NotoSansKannada-Regular',
-    ],
-  },
-  {
-    label: 'Traditional Kannada Fonts',
-    fonts: [
-      'Kedage',
-      'LohitKannada',
-      'Mallige',
-      'Sampige',
-      'Tunga',
-    ],
-  },
-  {
-    label: 'Modern Kannada Fonts',
-    fonts: [
-      'BalooTamma2-Regular',
+      'AnekKannada',
+      'BalooTamma2',
+      'NotoSansKannada',
     ],
   },
 ];
@@ -346,20 +268,10 @@ function getFontFamily(font: string) {
   if (font === 'Vast-Shadow') return `'Vast Shadow', cursive`;
   if (font === 'Wallpoet') return `'Wallpoet', cursive`;
   
-  // Anek Kannada Fonts
-  if (font.startsWith('AnekKannada')) return `'${font}', 'Anek Kannada', Arial, sans-serif`;
-  
-  // Local Kannada Fonts
-  if (font === 'AksharUnicode') return `'AksharUnicode', Arial, sans-serif`;
-  if (font === 'BarahaUnicode') return `'BarahaUnicode', Arial, sans-serif`;
-  if (font === 'KanTTH') return `'KanTTH', Arial, sans-serif`;
-  if (font === 'Kedage') return `'Kedage', Arial, sans-serif`;
-  if (font === 'LohitKannada') return `'LohitKannada', Arial, sans-serif`;
-  if (font === 'Mallige') return `'Mallige', Arial, sans-serif`;
-  if (font === 'NotoSansKannada-Regular') return `'NotoSansKannada-Regular', 'Noto Sans Kannada', Arial, sans-serif`;
-  if (font === 'Sampige') return `'Sampige', Arial, sans-serif`;
-  if (font === 'Tunga') return `'Tunga', Arial, sans-serif`;
-  if (font === 'BalooTamma2-Regular') return `'BalooTamma2-Regular', 'Baloo Tamma 2', Arial, sans-serif`;
+  // Kannada Fonts
+  if (font === 'AnekKannada') return `'AnekKannada', 'Anek Kannada', Arial, sans-serif`;
+  if (font === 'BalooTamma2') return `'BalooTamma2', 'Baloo Tamma 2', Arial, sans-serif`;
+  if (font === 'NotoSansKannada') return `'NotoSansKannada', 'Noto Sans Kannada', Arial, sans-serif`;
   
   return `'${font}', Arial, sans-serif`;
 }
@@ -373,7 +285,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     text: userName,
     x: 50,
     y: 90,
-    font: language === 'kannada' ? 'NotoSansKannada-Regular' : 'Arial',
+    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
     fontSize: 24,
     color: '#ffffff',
     hasBackground: true,
@@ -383,7 +295,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     text: '',
     x: 50,
     y: 80,
-    font: language === 'kannada' ? 'NotoSansKannada-Regular' : 'Arial',
+    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
     fontSize: 18,
     color: '#ffffff',
     hasBackground: true,
@@ -394,7 +306,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     text: '',
     x: 50,
     y: 85,
-    font: language === 'kannada' ? 'NotoSansKannada-Regular' : 'Arial',
+    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
     fontSize: 18,
     color: '#ffffff',
     hasBackground: true,

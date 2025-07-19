@@ -175,7 +175,7 @@ class VideoProcessingService {
                   decoration: phoneSettings['hasBackground'] == true
                       ? BoxDecoration(
                           color: _parseColor(phoneSettings['backgroundColor'] ?? '#000000'),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8), 
                         )
                       : null,
                   child: Text(

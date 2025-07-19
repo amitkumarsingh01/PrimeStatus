@@ -116,48 +116,16 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-    - family: BarahaUnicode
+    # New fonts from /fonts directory
+    - family: NotoSansKannada
       fonts:
-        - asset: assets/fonts/BarahaUnicode.ttf
-    - family: Sampige
+        - asset: assets/fonts/Noto_Sans_Kannada/NotoSansKannada-VariableFont_wdth,wght.ttf
+    - family: BalooTamma2
       fonts:
-        - asset: assets/fonts/Sampige.ttf
-    - family: KanTTH
+        - asset: assets/fonts/Baloo_Tamma_2/BalooTamma2-VariableFont_wght.ttf
+    - family: AnekKannada
       fonts:
-        - asset: assets/fonts/KanTTH.ttf
-    - family: AksharUnicode
-      fonts:
-        - asset: assets/fonts/AksharUnicode.ttf
-    - family: Kedage
-      fonts:
-        - asset: assets/fonts/Kedage.ttf
-    - family: LohitKannada
-      fonts:
-        - asset: assets/fonts/LohitKannada.ttf
-    - family: Mallige
-      fonts:
-        - asset: assets/fonts/Mallige.ttf
-    - family: Tunga
-      fonts:
-        - asset: assets/fonts/Tunga.ttf
-    - family: BalooTamma2-Regular
-      fonts:
-        - asset: assets/fonts/BalooTamma2-Regular.ttf
-    - family: NotoSansKannada-Regular
-      fonts:
-        - asset: assets/fonts/NotoSansKannada-Regular.ttf
-    - family: AnekKannada-Bold
-      fonts:
-        - asset: assets/fonts/AnekKannada-Bold.ttf
-    - family: AnekKannada-Regular
-      fonts:
-        - asset: assets/fonts/AnekKannada-Regular.ttf
-    - family: PlaywriteVNGuides-Regular
-      fonts:
-        - asset: assets/fonts/PlaywriteVNGuides-Regular.ttf
-    - family: Nudi-01-e
-      fonts:
-        - asset: assets/fonts/Nudi-01-e.ttf
+        - asset: assets/fonts/Anek_Kannada/AnekKannada-VariableFont_wdth,wght.ttf
 
 
   #

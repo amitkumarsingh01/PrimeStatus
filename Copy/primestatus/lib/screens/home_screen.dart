@@ -2484,17 +2484,35 @@ Widget _buildAdminFeedTab() {
                   child: Column(
                     children: [
                       _buildUserDataCard(
-                        'Email',
-                        userEmail,
-                        Icons.email,
-                        isEditable: false, // Email cannot be changed
-                      ),
-                      _buildUserDataCard(
                         'Name',
                         userName,
                         Icons.person,
                         onTap: () => _showEditFieldDialog('Name', userName, 'name'),
                       ),
+                      _buildUserDataCard(
+                        'Designation',
+                        userAddress,
+                        Icons.location_on,
+                        onTap: () => _showEditFieldDialog('Address', userAddress, 'address', isMultiline: true),
+                      ),
+                      _buildUserDataCard(
+                        'Phone Number',
+                        userPhoneNumber,
+                        Icons.phone,
+                        onTap: () => _showEditFieldDialog('Phone Number', userPhoneNumber, 'phoneNumber', isPhone: true),
+                      ),
+                      _buildUserDataCard(
+                        'Email',
+                        userEmail,
+                        Icons.email,
+                        isEditable: false, // Email cannot be changed
+                      ),
+                      // _buildUserDataCard(
+                      //   'Name',
+                      //   userName,
+                      //   Icons.person,
+                      //   onTap: () => _showEditFieldDialog('Name', userName, 'name'),
+                      // ),
                       _buildUserDataCard(
                         'Language',
                         userLanguage,
@@ -2507,24 +2525,24 @@ Widget _buildAdminFeedTab() {
                         Icons.category,
                         onTap: () => _showUsageTypeSelectionDialog(),
                       ),
-                      _buildUserDataCard(
-                        'Phone Number',
-                        userPhoneNumber,
-                        Icons.phone,
-                        onTap: () => _showEditFieldDialog('Phone Number', userPhoneNumber, 'phoneNumber', isPhone: true),
-                      ),
-                      _buildUserDataCard(
-                        'Address',
-                        userAddress,
-                        Icons.location_on,
-                        onTap: () => _showEditFieldDialog('Address', userAddress, 'address', isMultiline: true),
-                      ),
-                      _buildUserDataCard(
-                        'City',
-                        userCity,
-                        Icons.location_city,
-                        onTap: () => _showEditFieldDialog('City', userCity, 'city'),
-                      ),
+                      // _buildUserDataCard(
+                      //   'Phone Number',
+                      //   userPhoneNumber,
+                      //   Icons.phone,
+                      //   onTap: () => _showEditFieldDialog('Phone Number', userPhoneNumber, 'phoneNumber', isPhone: true),
+                      // ),
+                      // _buildUserDataCard(
+                      //   'Address',
+                      //   userAddress,
+                      //   Icons.location_on,
+                      //   onTap: () => _showEditFieldDialog('Address', userAddress, 'address', isMultiline: true),
+                      // ),
+                      // _buildUserDataCard(
+                      //   'City',
+                      //   userCity,
+                      //   Icons.location_city,
+                      //   onTap: () => _showEditFieldDialog('City', userCity, 'city'),
+                      // ),
                       _buildUserDataCard(
                         'D.O.B',
                         userDob,
@@ -2566,7 +2584,7 @@ Widget _buildAdminFeedTab() {
           CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
           CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
           CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
-          // CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
+          CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
           SizedBox(height: 24),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -3464,19 +3482,9 @@ Widget _buildAdminFeedTab() {
   void _showMultiFontDialog() {
     final fontList = [
       {'name': 'BarahaUnicode', 'file': 'BarahaUnicode.ttf'},
-      {'name': 'Sampige', 'file': 'Sampige.ttf'},
-      {'name': 'KanTTH', 'file': 'KanTTH.ttf'},
-      {'name': 'AksharUnicode', 'file': 'AksharUnicode.ttf'},
-      {'name': 'Kedage', 'file': 'Kedage.ttf'},
-      {'name': 'LohitKannada', 'file': 'LohitKannada.ttf'},
-      {'name': 'Mallige', 'file': 'Mallige.ttf'},
-      {'name': 'Tunga', 'file': 'Tunga.ttf'},
-      {'name': 'BalooTamma2-Regular', 'file': 'BalooTamma2-Regular.ttf'},
-      {'name': 'NotoSansKannada-Regular', 'file': 'NotoSansKannada-Regular.ttf'},
-      {'name': 'AnekKannada-Bold', 'file': 'AnekKannada-Bold.ttf'},
-      {'name': 'AnekKannada-Regular', 'file': 'AnekKannada-Regular.ttf'},
-      {'name': 'PlaywriteVNGuides-Regular', 'file': 'PlaywriteVNGuides-Regular.ttf'},
-      {'name': 'Nudi-01-e', 'file': 'Nudi-01-e.ttf'},
+      {'name': 'NotoSansKannada', 'file': 'NotoSansKannada-VariableFont_wdth,wght.ttf'},
+      {'name': 'BalooTamma2', 'file': 'BalooTamma2-VariableFont_wght.ttf'},
+      {'name': 'AnekKannada', 'file': 'AnekKannada-VariableFont_wdth,wght.ttf'},
     ];
 
     showDialog(
