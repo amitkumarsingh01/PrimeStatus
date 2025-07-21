@@ -397,7 +397,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
-              final double textX = textXBase + 12;
+              // Add 20 to textXBase if userName is long
+              final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
 
               return SizedBox(
                 width: width,

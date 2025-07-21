@@ -2584,7 +2584,7 @@ Widget _buildAdminFeedTab() {
           CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
           CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
           CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
-          CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
+          // CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
           SizedBox(height: 24),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -2941,73 +2941,96 @@ Widget _buildAdminFeedTab() {
 
   void _showEditFieldDialog(String title, String currentValue, String fieldName, {bool isPhone = false, bool isMultiline = false, bool isDate = false}) {
     final controller = TextEditingController(text: currentValue);
+    int? maxLength;
+    String? errorText;
+    if (fieldName == 'name') maxLength = 25;
+    if (fieldName == 'address') maxLength = 20;
+    if (fieldName == 'phoneNumber') maxLength = 10;
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit $title'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: title,
-                  hintText: isPhone ? 'Enter 10 digit number' : null,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Edit $title'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: title,
+                    hintText: isPhone ? 'Enter 10 digit number' : null,
+                    errorText: errorText,
+                    counterText: maxLength != null ? '${controller.text.length}/$maxLength' : null,
+                  ),
+                  keyboardType: isPhone ? TextInputType.phone : null,
+                  maxLines: isMultiline ? 3 : 1,
+                  maxLength: maxLength,
+                  inputFormatters: isPhone ? [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ] : null,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      if (maxLength != null && value.length > maxLength!) {
+                        errorText = 'Maximum $maxLength characters allowed';
+                      } else {
+                        errorText = null;
+                      }
+                    });
+                  },
                 ),
-                keyboardType: isPhone ? TextInputType.phone : null,
-                maxLines: isMultiline ? 3 : 1,
-                inputFormatters: isPhone ? [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ] : null,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Validate phone number
-              if (isPhone && controller.text.length != 10) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Validate phone number
+                if (isPhone && controller.text.length != 10) {
+                  setDialogState(() {
+                    errorText = 'Phone number must be 10 digits';
+                  });
+                  return;
+                }
+                if (maxLength != null && controller.text.length > maxLength) {
+                  setDialogState(() {
+                    errorText = 'Maximum $maxLength characters allowed';
+                  });
+                  return;
+                }
+                // Update specific field
+                switch (fieldName) {
+                  case 'name':
+                    await _updateUserDetails(name: controller.text);
+                    break;
+                  case 'phoneNumber':
+                    await _updateUserDetails(phoneNumber: controller.text);
+                    break;
+                  case 'address':
+                    await _updateUserDetails(address: controller.text);
+                    break;
+                  case 'city':
+                    await _updateUserDetails(city: controller.text);
+                    break;
+                  case 'dateOfBirth':
+                    await _updateUserDetails(dateOfBirth: controller.text);
+                    break;
+                }
+                Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Phone number must be 10 digits')),
+                  SnackBar(content: Text('$title updated successfully')),
                 );
-                return;
-              }
-              
-              // Update specific field
-              switch (fieldName) {
-                case 'name':
-                  await _updateUserDetails(name: controller.text);
-                  break;
-                case 'phoneNumber':
-                  await _updateUserDetails(phoneNumber: controller.text);
-                  break;
-                case 'address':
-                  await _updateUserDetails(address: controller.text);
-                  break;
-                case 'city':
-                  await _updateUserDetails(city: controller.text);
-                  break;
-                case 'dateOfBirth':
-                  await _updateUserDetails(dateOfBirth: controller.text);
-                  break;
-              }
-              
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$title updated successfully')),
-              );
-            },
-            child: Text('Save'),
-          ),
-        ],
+              },
+              child: Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

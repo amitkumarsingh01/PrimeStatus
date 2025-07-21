@@ -317,9 +317,10 @@ class LocalMediaProcessingService {
           // Use different formulas for 1080x1080 vs others
           bool isSquare = width == 1080 && height == 1080;
           // 1080x1080: use original, else use alternate
-          final double textX = isSquare
+          final double textXBase = isSquare
               ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + 8
               : (((textSettings['x'] ?? 50) / 100 * width) / 1.96);
+          final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
           final double textY = isSquare
               ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10
               : (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10;

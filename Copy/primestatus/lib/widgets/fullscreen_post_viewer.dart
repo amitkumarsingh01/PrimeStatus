@@ -1710,7 +1710,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                 final double aspectRatio = frameSize['width'] / frameSize['height'];
                 final double height = width / aspectRatio;
 
-                final double textX = (textSettings['x'] ?? 50) / 100 * width;
+                final double textXBase = (textSettings['x'] ?? 50) / 100 * width;
                 final double textY = (textSettings['y'] ?? 90) / 100 * height;
                 final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
                 final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
@@ -1719,6 +1719,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                 final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
                 final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
                 final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+                final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
 
                 return SizedBox(
                   width: width,
