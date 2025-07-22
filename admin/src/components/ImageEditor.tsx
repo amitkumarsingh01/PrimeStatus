@@ -282,7 +282,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [textSettings, setTextSettings] = useState({
-    text: userName,
+    text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ', // Default to 'username'
     x: 50,
     y: 90,
     font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
@@ -292,7 +292,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     backgroundColor: '#000000',
   });
   const [addressSettings, setAddressSettings] = useState({
-    text: '',
+    text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ', // Default to 'address'
     x: 50,
     y: 80,
     font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
@@ -303,7 +303,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     enabled: false,
   });
   const [phoneSettings, setPhoneSettings] = useState({
-    text: '',
+    text: '9876543210', // Default to '965871230'
     x: 50,
     y: 85,
     font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
@@ -652,6 +652,9 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                       fontWeight: 'bold',
                       backgroundColor: textSettings.hasBackground ? textSettings.backgroundColor : 'transparent',
                       textShadow: textSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                      whiteSpace: 'nowrap', // Force single line
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}
                     onMouseDown={() => handleMouseDown('text')}
                   >
@@ -672,6 +675,9 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                         fontWeight: 'bold',
                         backgroundColor: addressSettings.hasBackground ? addressSettings.backgroundColor : 'transparent',
                         textShadow: addressSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                        whiteSpace: 'nowrap', // Force single line
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                       }}
                       onMouseDown={() => handleMouseDown('address')}
                     >
@@ -693,6 +699,9 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                         fontWeight: 'bold',
                         backgroundColor: phoneSettings.hasBackground ? phoneSettings.backgroundColor : 'transparent',
                         textShadow: phoneSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                        whiteSpace: 'nowrap', // Force single line
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                       }}
                       onMouseDown={() => handleMouseDown('phone')}
                     >

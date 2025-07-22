@@ -331,9 +331,10 @@ class LocalMediaProcessingService {
               ? (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 22
               : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 23;
           final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
-          final double addressX = isSquare
+          final double addressXBase = isSquare
               ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 14
               : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) + 10;
+          final double addressX = userAddress.length > 15 ? addressXBase + 50 : addressXBase;
           final double addressY = isSquare
               ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 11
               : (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 12;

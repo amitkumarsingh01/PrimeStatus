@@ -2493,7 +2493,7 @@ Widget _buildAdminFeedTab() {
                         'Designation',
                         userAddress,
                         Icons.location_on,
-                        onTap: () => _showEditFieldDialog('Address', userAddress, 'address', isMultiline: true),
+                        onTap: () => _showEditFieldDialog('Designation', userAddress, 'address', isMultiline: true),
                       ),
                       _buildUserDataCard(
                         'Phone Number',
@@ -2944,7 +2944,7 @@ Widget _buildAdminFeedTab() {
     int? maxLength;
     String? errorText;
     if (fieldName == 'name') maxLength = 25;
-    if (fieldName == 'address') maxLength = 20;
+    if (fieldName == 'address') maxLength = 40;
     if (fieldName == 'phoneNumber') maxLength = 10;
     
     showDialog(

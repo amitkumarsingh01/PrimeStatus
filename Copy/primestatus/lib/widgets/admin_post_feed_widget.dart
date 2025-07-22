@@ -393,13 +393,13 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
               final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
               final double profileSize = (profileSettings['size'] ?? 80).toDouble();
-              final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+              final double addressXBase = (addressSettings['x'] ?? 50) / 100 * width;
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
               // Add 20 to textXBase if userName is long
               final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
-
+              final double addressX = userAddress.length > 15 ? addressXBase + 50 : addressXBase;
               return SizedBox(
                 width: width,
                 height: height,
