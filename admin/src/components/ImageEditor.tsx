@@ -286,7 +286,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const portraitDefaults = {
     textSettings: {
       text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ',
-      x: 29.25,
+      x: 33.25,
       y: 84.87999877929687,
       font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
       fontSize: 16,
@@ -296,7 +296,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     },
     addressSettings: {
       text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ',
-      x: 29,
+      x: 34,
       y: 91.47999877929688,
       font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
       fontSize: 12,
@@ -329,7 +329,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const squareDefaults = {
     textSettings: {
       text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ',
-      x: 32,
+      x: 36,
       y: 86.5999984741211,
       font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
       fontSize: 19,
@@ -339,7 +339,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     },
     addressSettings: {
       text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ',
-      x: 31.75,
+      x: 36.75,
       y: 94.8499984741211,
       font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
       fontSize: 13,
