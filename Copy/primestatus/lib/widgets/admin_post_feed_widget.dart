@@ -388,6 +388,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double width = constraints.maxWidth;
               final double aspectRatio = frameSize['width'] / frameSize['height'];
               final double height = width / aspectRatio;
+
               final double textXBase = (textSettings['x'] ?? 50) / 100 * width;
               final double textY = (textSettings['y'] ?? 90) / 100 * height;
               final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
@@ -397,9 +398,11 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
-              // Add 20 to textXBase if userName is long
-              final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
-              final double addressX = userAddress.length > 15 ? addressXBase + 50 : addressXBase;
+              final double textX = userName.length > 15 ? textXBase + 10 : textXBase;
+              // final double addressX = userAddress.length > 15 ? addressXBase + 25 : addressXBase;
+              final double addressX = userAddress.length > 15 ? addressXBase + 35 : addressXBase;
+
+
               return SizedBox(
                 width: width,
                 height: height,
@@ -446,7 +449,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                               userName.length > 15 ? userName : userName,
                               style: TextStyle(
                                 fontFamily: getFontFamily(textSettings['font']) ?? 'Arial',
-                                fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.6 : 1.0),
+                                fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.9 : 1.0),
                                 color: _parseColor(textSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -473,7 +476,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                               userAddress.length > 15 ? userAddress : userAddress,
                               style: TextStyle(
                                 fontFamily: getFontFamily(addressSettings['font']) ?? 'Arial',
-                                fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.6 : 1.0),
+                                fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.9 : 1.0),
                                 color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -500,7 +503,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                               userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                               style: TextStyle(
                                 fontFamily: getFontFamily(phoneSettings['font']) ?? 'Arial',
-                                fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
+                                fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
                                 color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -2521,15 +2524,18 @@ class AdminPostFeedWidgetHelpers {
             final double width = constraints.maxWidth;
             final double aspectRatio = frameSize['width'] / frameSize['height'];
             final double height = width / aspectRatio;
-            final double textX = (textSettings['x'] ?? 50) / 100 * width;
+
+            final double textXBase = (textSettings['x'] ?? 50) / 100 * width;
             final double textY = (textSettings['y'] ?? 90) / 100 * height;
             final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
             final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
             final double profileSize = (profileSettings['size'] ?? 80).toDouble();
-            final double addressX = (addressSettings['x'] ?? 50) / 100 * width;
+            final double addressXBase = (addressSettings['x'] ?? 50) / 100 * width;
             final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
             final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
             final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+            final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
+            final double addressX = userAddress.length > 15 ? addressXBase + 45 : addressXBase;
 
             return SizedBox(
               width: width,
@@ -2574,7 +2580,7 @@ class AdminPostFeedWidgetHelpers {
                             userName.length > 15 ? userName : userName,
                             style: TextStyle(
                               fontFamily: textSettings['font'] ?? 'Arial',
-                              fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.6 : 1.0),
+                              fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 1 : 1.0),
                               color: parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -2600,7 +2606,7 @@ class AdminPostFeedWidgetHelpers {
                             userAddress.length > 15 ? userAddress : userAddress,
                             style: TextStyle(
                               fontFamily: addressSettings['font'] ?? 'Arial',
-                              fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.6 : 1.0),
+                              fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 1 : 1.0),
                               color: parseColor(addressSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -2622,11 +2628,11 @@ class AdminPostFeedWidgetHelpers {
                                   borderRadius: BorderRadius.circular(8),
                                 )
                               : null,
-                          child: Text(
+                          child: Text(  
                             userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                             style: TextStyle(
                               fontFamily: phoneSettings['font'] ?? 'Arial',
-                              fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
+                              fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 1 : 1.0),
                               color: parseColor(phoneSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),

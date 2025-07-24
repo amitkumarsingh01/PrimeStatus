@@ -320,7 +320,7 @@ class LocalMediaProcessingService {
           final double textXBase = isSquare
               ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + 8
               : (((textSettings['x'] ?? 50) / 100 * width) / 1.96);
-          final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
+          final double textX = userName.length > 15 ? textXBase + 6 : textXBase;
           final double textY = isSquare
               ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10
               : (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10;
@@ -329,12 +329,12 @@ class LocalMediaProcessingService {
               : (((profileSettings['x'] ?? 20) / 100 * width) / 1.96) + 15;
           final double profileY = isSquare
               ? (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 22
-              : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 23;
+              : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) - 0;
           final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
           final double addressXBase = isSquare
               ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 14
-              : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) + 10;
-          final double addressX = userAddress.length > 15 ? addressXBase + 50 : addressXBase;
+              : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 10;
+          final double addressX = userAddress.length > 15 ? addressXBase + 49 : addressXBase;
           final double addressY = isSquare
               ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 11
               : (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 12;
@@ -374,7 +374,7 @@ class LocalMediaProcessingService {
                             userName.length > 15 ? userName : userName,
                             style: TextStyle(
                               fontFamily: getFontFamily(textSettings['font']),
-                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.6 : 1.0),
+                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.9 : 1.0),
                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -401,7 +401,7 @@ class LocalMediaProcessingService {
                             userAddress.length > 15 ? userAddress : userAddress,
                             style: TextStyle(
                               fontFamily: getFontFamily(addressSettings['font']),
-                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.6 : 1.0),
+                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.9 : 1.0),
                               color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -428,7 +428,7 @@ class LocalMediaProcessingService {
                             userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                             style: TextStyle(
                               fontFamily: getFontFamily(phoneSettings['font']),
-                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
+                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
                               color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -439,11 +439,11 @@ class LocalMediaProcessingService {
                   // Profile photo overlay
                   if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                     Positioned(
-                      left: profileX - (profileSize * 1.1) / 2 - 20,
-                      top: profileY - (profileSize * 1.1) / 2 - 27,
+                      left: profileX - (profileSize * 1.1) / 2 - 34,
+                      top: profileY - (profileSize * 1.1) / 2 - 33,
                       child: Container(
-                        width: profileSize * 1.1,
-                        height: profileSize * 1.1,
+                        width: profileSize * 1.35,
+                        height: profileSize * 1.35,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(
                             profileSettings['shape'] == 'circle'

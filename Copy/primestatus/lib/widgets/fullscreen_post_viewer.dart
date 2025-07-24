@@ -1720,7 +1720,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                 final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
                 final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
                 final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
-                final double addressX = userAddress.length > 15 ? addressXBase + 50 : addressXBase;
+                final double addressX = userAddress.length > 15 ? addressXBase + 45 : addressXBase;
 
                 return SizedBox(
                   width: width,
@@ -1765,7 +1765,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                                 userName.length > 15 ? userName : userName,
                                 style: TextStyle(
                                   fontFamily: getFontFamily(textSettings['font']),
-                                  fontSize: ((textSettings['fontSize'] ?? 24).toDouble()) * (userName.length > 15 ? 0.6 : 1.0),
+                                  fontSize: ((textSettings['fontSize'] ?? 24).toDouble()) * (userName.length > 15 ? 0.9 : 1.0),
                                   color: _parseColor(textSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1791,7 +1791,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                                 userAddress.length > 15 ? userAddress : userAddress,
                                 style: TextStyle(
                                   fontFamily: getFontFamily(addressSettings['font']),
-                                  fontSize: ((addressSettings['fontSize'] ?? 18).toDouble()) * (userAddress.length > 15 ? 0.6 : 1.0),
+                                  fontSize: ((addressSettings['fontSize'] ?? 18).toDouble()) * (userAddress.length > 15 ? 0.9 : 1.0),
                                   color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1817,7 +1817,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                                 userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                                 style: TextStyle(
                                   fontFamily: getFontFamily(phoneSettings['font']),
-                                  fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble()) * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
+                                  fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble()) * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
                                   color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
                                   fontWeight: FontWeight.bold,
                                 ),

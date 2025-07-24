@@ -281,46 +281,117 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string }[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-  const [textSettings, setTextSettings] = useState({
-    text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ', // Default to 'username'
-    x: 50,
-    y: 90,
-    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
-    fontSize: 24,
-    color: '#ffffff',
-    hasBackground: true,
-    backgroundColor: '#000000',
-  });
-  const [addressSettings, setAddressSettings] = useState({
-    text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ', // Default to 'address'
-    x: 50,
-    y: 80,
-    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
-    fontSize: 18,
-    color: '#ffffff',
-    hasBackground: true,
-    backgroundColor: '#000000',
-    enabled: false,
-  });
-  const [phoneSettings, setPhoneSettings] = useState({
-    text: '9876543210', // Default to '965871230'
-    x: 50,
-    y: 85,
-    font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
-    fontSize: 18,
-    color: '#ffffff',
-    hasBackground: true,
-    backgroundColor: '#000000',
-    enabled: false,
-  });
-  const [profileSettings, setProfileSettings] = useState({
-    x: 20,
-    y: 20,
-    shape: 'circle' as 'circle' | 'square',
-    size: 80,
-    hasBackground: false,
-    enabled: false,
-  });
+
+  // Default settings for 1080x1350 (Portrait)
+  const portraitDefaults = {
+    textSettings: {
+      text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ',
+      x: 29.25,
+      y: 84.87999877929687,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 16,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+    },
+    addressSettings: {
+      text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ',
+      x: 29,
+      y: 91.47999877929688,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 12,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: true,
+    },
+    phoneSettings: {
+      text: '9876543210',
+      x: 45,
+      y: 85,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 18,
+      color: '#ffffff',
+      hasBackground: true,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
+    profileSettings: {
+      x: 83.25,
+      y: 85.87999877929687,
+      shape: 'square' as 'circle' | 'square',
+      size: 100,
+      hasBackground: false,
+      enabled: true,
+    },
+  };
+  // Default settings for 1080x1080 (Square)
+  const squareDefaults = {
+    textSettings: {
+      text: 'ಶ್ರೀ ಆನಂದಕುಮಾರ ಪ್ಯಾಟಿ',
+      x: 32,
+      y: 86.5999984741211,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 19,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+    },
+    addressSettings: {
+      text: 'ಅಧ್ಯಕ್ಷರು, ಆವಿಷ್ಕಾರ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ ಸುರಪುರ',
+      x: 31.75,
+      y: 94.8499984741211,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 13,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: true,
+    },
+    phoneSettings: {
+      text: '9876543210',
+      x: 21,
+      y: 68.3499984741211,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 18,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
+    profileSettings: {
+      x: 85.75,
+      y: 86.0999984741211,
+      shape: 'square' as 'circle' | 'square',
+      size: 104,
+      hasBackground: false,
+      enabled: true,
+    },
+  };
+
+  // Pick defaults based on frameSize
+  function getDefaults() {
+    if (frameSize.width === 1080 && frameSize.height === 1350) return portraitDefaults;
+    if (frameSize.width === 1080 && frameSize.height === 1080) return squareDefaults;
+    // fallback to portrait
+    return portraitDefaults;
+  }
+
+  // State for settings
+  const [textSettings, setTextSettings] = useState(getDefaults().textSettings);
+  const [addressSettings, setAddressSettings] = useState(getDefaults().addressSettings);
+  const [phoneSettings, setPhoneSettings] = useState(getDefaults().phoneSettings);
+  const [profileSettings, setProfileSettings] = useState(getDefaults().profileSettings);
+
+  // Update settings if frameSize changes
+  useEffect(() => {
+    const defaults = getDefaults();
+    setTextSettings(defaults.textSettings);
+    setAddressSettings(defaults.addressSettings);
+    setPhoneSettings(defaults.phoneSettings);
+    setProfileSettings(defaults.profileSettings);
+  }, [frameSize.width, frameSize.height, language]);
+
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [isDraggingAddress, setIsDraggingAddress] = useState(false);
   const [isDraggingPhone, setIsDraggingPhone] = useState(false);
@@ -847,6 +918,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                       className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="Enter address"
                     />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Size: {addressSettings.fontSize}px</label>
                     <input
                       type="range"
                       min="10"
@@ -942,6 +1014,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                       className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="Enter phone number"
                     />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Size: {phoneSettings.fontSize}px</label>
                     <input
                       type="range"
                       min="10"
