@@ -929,30 +929,6 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
   // Download functionality (ported from fullscreen_post_viewer.dart)
   Future<void> _downloadImage(Map<String, dynamic> post) async {
-    final currentUser = _userService.currentUser;
-    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-    final userUsageType = homeScreenState?.userUsageType ?? '';
-    if (currentUser != null) {
-      final hasSubscription = await SubscriptionService().hasActiveSubscription(currentUser.uid);
-      if (!hasSubscription) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PostSubscriptionScreen(
-              post: post,
-              userUsageType: userUsageType,
-              userName: homeScreenState?.userName ?? '',
-              userProfilePhotoUrl: homeScreenState?.userProfilePhotoUrl,
-              userAddress: homeScreenState?.userAddress ?? '',
-              userPhoneNumber: homeScreenState?.userPhoneNumber ?? '',
-              userCity: homeScreenState?.userCity ?? '',
-              userEmail: currentUser.email ?? '',
-            ),
-          ),
-        );
-        return;
-      }
-    }
     if (mounted) {
       setState(() {
         _isProcessingShare = true;

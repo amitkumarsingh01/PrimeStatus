@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, X, Type, Move, Circle, Square, Palette, Eye, EyeOff, MapPin, Phone, Tag, MapPin as MapPinIcon } from 'lucide-react';
+import { Save, X, Type, Move, Circle, Square, Palette, Eye, EyeOff, MapPin, Phone, Tag, MapPin as MapPinIcon, Bell } from 'lucide-react';
 import { db, uploadMediaFile } from '../firebase';
 import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 
@@ -281,6 +281,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string }[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [sendNotification, setSendNotification] = useState(false);
 
   // Default settings for 1080x1350 (Portrait)
   const portraitDefaults = {
@@ -528,9 +529,40 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
     try {
-      await addDoc(collection(db, 'admin_posts'), postData);
-      alert('Post saved to Firestore!');
+      // Save the post to Firestore
+      const docRef = await addDoc(collection(db, 'admin_posts'), postData);
+      
+      // If notification is enabled, create a notification document for automatic sending
+      if (sendNotification) {
+        const notificationData = {
+          title: 'New Post Available!',
+          body: `Check out the latest post by PrimeStatus`,
+          imageUrl: mainImageUrl,
+          postId: docRef.id,
+          adminName: userName,
+          categories: selectedCategoryNames,
+          regions: selectedRegions,
+          language: language,
+          topic: 'all_users', // Topic to send to
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          fcmData: {
+            postId: docRef.id,
+            adminName: userName,
+            imageUrl: mainImageUrl,
+            click_action: 'FLUTTER_NOTIFICATION_CLICK'
+          }
+        };
+        
+        await addDoc(collection(db, 'pending_notifications'), notificationData);
+        console.log('Notification document created. Will be sent automatically.');
+        alert('Post saved! Notification will be sent automatically to all users.');
+      } else {
+        alert('Post saved to Firestore!');
+      }
+      
       onSave?.(postData);
     } catch (e) {
       alert('Error saving post: ' + e);
@@ -594,6 +626,40 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
           
           {/* Left Panel - Categories & Regions */}
           <div className="col-span-3 space-y-4 overflow-y-auto">
+            {/* Notification Settings */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
+                <Bell className="h-5 w-5 mr-2 text-purple-400" />
+                Notification
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    id="sendNotification"
+                    checked={sendNotification}
+                    onChange={(e) => setSendNotification(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="sendNotification" className="text-sm text-gray-700 group-hover:text-black transition-colors cursor-pointer">
+                    Send notification to all users
+                  </label>
+                </div>
+                {sendNotification && (
+                  <div className="mt-3 p-3 bg-purple-500/10 rounded-lg">
+                    <p className="text-xs text-purple-600">
+                      <strong>Notification Preview:</strong><br/>
+                      Title: "New Post Available!"<br/>
+                      Body: "Check out the latest post by PrimeStatus"<br/>
+                      Image: Will include the post image<br/>
+                      <br/>
+                      <strong>Note:</strong> Notification will be sent automatically to all users
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Categories */}
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
               <h3 className="text-lg font-semibold text-black mb-4 flex items-center">

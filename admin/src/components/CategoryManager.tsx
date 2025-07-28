@@ -89,12 +89,56 @@ export default function CategoryManager() {
       
       console.log('Fetched categories:', fetchedCategories.map(c => ({ name: c.nameEn, position: c.position })));
       
-      // Check if dynamic categories exist in Firestore, if not add them
+      // Check if dynamic categories exist in Firestore
       const existingDynamicCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isDynamic);
       const dynamicCategories = getDynamicCategories();
       
+      // Clean up duplicate dynamic categories first
+      const timeCategories = existingDynamicCategories.filter(cat => cat.type === 'time');
+      const dayCategories = existingDynamicCategories.filter(cat => cat.type === 'day');
+      
+      if (timeCategories.length > 1 || dayCategories.length > 1) {
+        console.log('Found duplicate dynamic categories, cleaning up...');
+        const batch = writeBatch(db);
+        
+        // Keep only the first time category and first day category, delete the rest
+        if (timeCategories.length > 1) {
+          timeCategories.slice(1).forEach(cat => {
+            const categoryRef = doc(db, 'categories', cat.id);
+            batch.delete(categoryRef);
+            console.log(`Deleting duplicate time category: ${cat.nameEn}`);
+          });
+        }
+        
+        if (dayCategories.length > 1) {
+          dayCategories.slice(1).forEach(cat => {
+            const categoryRef = doc(db, 'categories', cat.id);
+            batch.delete(categoryRef);
+            console.log(`Deleting duplicate day category: ${cat.nameEn}`);
+          });
+        }
+        
+        await batch.commit();
+        console.log('Duplicate dynamic categories cleaned up');
+        
+        // Fetch categories again to get the cleaned list
+        const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+        fetchedCategories = updatedQuerySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          nameEn: docSnap.data().nameEn || '',
+          nameKn: docSnap.data().nameKn || '',
+          position: docSnap.data().position ?? 0,
+          isFixed: docSnap.data().isFixed || false,
+          isDynamic: docSnap.data().isDynamic || false,
+          type: docSnap.data().type || '',
+        }));
+      }
+      
+      // Re-check dynamic categories after cleanup
+      const cleanedDynamicCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isDynamic);
+      
       // Check if we need to create dynamic categories (only if they don't exist at all)
-      if (existingDynamicCategories.length === 0) {
+      if (cleanedDynamicCategories.length === 0) {
         console.log('Creating dynamic categories in Firestore:', dynamicCategories.map(c => c.nameEn));
         const batch = writeBatch(db);
         
@@ -131,7 +175,7 @@ export default function CategoryManager() {
         let hasUpdates = false;
         
         dynamicCategories.forEach((dynamicCat) => {
-          const existingCat = existingDynamicCategories.find(cat => cat.type === dynamicCat.type);
+          const existingCat = cleanedDynamicCategories.find(cat => cat.type === dynamicCat.type);
           if (existingCat && (existingCat.nameEn !== dynamicCat.nameEn || existingCat.nameKn !== dynamicCat.nameKn)) {
             const categoryRef = doc(db, 'categories', existingCat.id);
             batch.update(categoryRef, {
@@ -457,6 +501,72 @@ export default function CategoryManager() {
     }
   };
 
+  const cleanupDuplicateDynamicCategories = async () => {
+    if (!window.confirm('This will remove duplicate dynamic categories (time/day greetings) and keep only one of each type. Continue?')) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get all categories from Firestore
+      const querySnapshot = await getDocs(collection(db, 'categories'));
+      const allCategories = querySnapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        nameEn: docSnap.data().nameEn || '',
+        nameKn: docSnap.data().nameKn || '',
+        position: docSnap.data().position ?? 0,
+        isFixed: docSnap.data().isFixed || false,
+        isDynamic: docSnap.data().isDynamic || false,
+        type: docSnap.data().type || '',
+      }));
+
+      // Find dynamic categories
+      const dynamicCategories = allCategories.filter(cat => cat.isFixed && cat.isDynamic);
+      const timeCategories = dynamicCategories.filter(cat => cat.type === 'time');
+      const dayCategories = dynamicCategories.filter(cat => cat.type === 'day');
+
+      const categoriesToDelete: string[] = [];
+
+      // Keep only the first time category, delete the rest
+      if (timeCategories.length > 1) {
+        timeCategories.slice(1).forEach(cat => {
+          categoriesToDelete.push(cat.id);
+        });
+      }
+
+      // Keep only the first day category, delete the rest
+      if (dayCategories.length > 1) {
+        dayCategories.slice(1).forEach(cat => {
+          categoriesToDelete.push(cat.id);
+        });
+      }
+
+      if (categoriesToDelete.length > 0) {
+        // Delete duplicate dynamic categories
+        const batch = writeBatch(db);
+        categoriesToDelete.forEach(categoryId => {
+          const categoryRef = doc(db, 'categories', categoryId);
+          batch.delete(categoryRef);
+        });
+        await batch.commit();
+
+        setSuccess(`Cleaned up ${categoriesToDelete.length} duplicate dynamic categories!`);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setSuccess('No duplicate dynamic categories found!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+
+      // Refresh the categories list
+      fetchCategories();
+    } catch (e) {
+      console.error('Error cleaning up dynamic categories:', e);
+      setError('Failed to cleanup duplicate dynamic categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePositionChange = async () => {
     if (!selectedCategory || newPosition === '' || newPosition < 0 || newPosition >= categories.length) {
       setError('Please select a category and enter a valid position (0-' + (categories.length - 1) + ')');
@@ -570,6 +680,23 @@ export default function CategoryManager() {
     }
   };
 
+  const forceRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // First clean up any duplicate dynamic categories
+      await cleanupDuplicateDynamicCategories();
+      // Then fetch fresh data
+      await fetchCategories();
+      setSuccess('Categories refreshed and cleaned up!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      setError('Failed to refresh categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #fff5f0 0%, #f8f4ff 50%, #fff0e6 100%)' }}>
       <div className="max-w-7xl mx-auto">
@@ -617,6 +744,12 @@ export default function CategoryManager() {
                   <span>Categories at the top appear first in mobile app</span>
                 </li>
               </ul>
+            </div>
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> If you see duplicate dynamic categories (like "Good Monday" and "Good Thursday" at the same time), 
+                click "Cleanup Dynamic Duplicates" or "Refresh" to fix this issue. Dynamic categories should automatically update based on current time and day.
+              </p>
             </div>
           </div>
 
@@ -707,6 +840,22 @@ export default function CategoryManager() {
                       title="Reset to alphabetical order"
                     >
                       Reset Order
+                    </button>
+                    <button
+                      onClick={cleanupDuplicateDynamicCategories}
+                      className="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 transition-all"
+                      disabled={loading}
+                      title="Remove duplicate dynamic categories"
+                    >
+                      Cleanup Dynamic Duplicates
+                    </button>
+                    <button
+                      onClick={forceRefresh}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-all"
+                      disabled={loading}
+                      title="Force refresh categories"
+                    >
+                      Refresh
                     </button>
                     <div className="text-sm text-gray-500">
                       {categories.length} categories
