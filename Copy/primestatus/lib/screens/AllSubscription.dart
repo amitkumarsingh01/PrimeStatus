@@ -74,11 +74,20 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   Future<void> _initiatePayment(SubscriptionPlan plan) async {
+    print('🚀 [SUBSCRIPTION] Starting payment for plan: ${plan.title}');
+    print('📋 [SUBSCRIPTION] Plan details:');
+    print('   - Plan ID: ${plan.id}');
+    print('   - Plan Title: ${plan.title}');
+    print('   - Amount: ₹${plan.price}');
+    print('   - Duration: ${plan.duration} days');
+    print('   - Usage Type: ${widget.userUsageType}');
+    
     setState(() {
       _isProcessingPayment = true;
     });
 
     try {
+      print('🔄 [SUBSCRIPTION] Calling PaymentService.initiatePayment...');
       await PaymentService.initiatePayment(
         planId: plan.id,
         planTitle: plan.title,
@@ -88,37 +97,74 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         userName: widget.userName,
         userEmail: widget.userEmail,
         userPhone: widget.userPhone,
+        onPaymentStatusChanged: (bool isSuccessful) {
+          print('📞 [SUBSCRIPTION] Payment status callback received: $isSuccessful');
+          // This callback will be called when payment status changes
+          if (isSuccessful) {
+            print('🎉 [SUBSCRIPTION] Payment successful - showing success message');
+            // Payment successful
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('🎉 Payment successful! Your subscription has been activated.'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'View Profile',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    print('👤 [SUBSCRIPTION] User tapped View Profile');
+                    // Navigate back to profile/home screen
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            );
+          } else {
+            print('⏰ [SUBSCRIPTION] Payment timeout - showing timeout message');
+            // Payment timeout or failed
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Payment verification timeout. Please check your payment status manually.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 8),
+                action: SnackBarAction(
+                  label: 'Verify Manually',
+                  textColor: Colors.white,
+                  onPressed: () => _showPaymentVerificationDialog(),
+                ),
+              ),
+            );
+          }
+        },
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment gateway opened in browser. Please complete the payment and return to the app.'),
-          duration: Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Verify Payment',
-            onPressed: () => _showPaymentVerificationDialog(),
-          ),
-        ),
-      );
+      print('✅ [SUBSCRIPTION] Payment initiated successfully - showing info message');
+      _showPaymentInstructionsDialog();
     } catch (e) {
+      print('❌ [SUBSCRIPTION] Payment initiation failed: $e');
       String errorMessage = 'Payment initiation failed';
       String? paymentUrl;
       
       if (e.toString().contains('Payment URL launch failed')) {
+        print('⚠️ [SUBSCRIPTION] Payment URL launch failed');
         errorMessage = 'Could not open payment page automatically';
         // Extract URL from error message if available
         final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(e.toString());
         if (urlMatch != null) {
           paymentUrl = urlMatch.group(0);
+          print('🔗 [SUBSCRIPTION] Extracted payment URL: $paymentUrl');
         }
       } else if (e.toString().contains('Could not launch payment URL')) {
+        print('⚠️ [SUBSCRIPTION] Could not launch payment URL');
         errorMessage = 'Unable to open payment gateway';
         // Try to extract URL from the error message
         final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(e.toString());
         if (urlMatch != null) {
           paymentUrl = urlMatch.group(0);
+          print('🔗 [SUBSCRIPTION] Extracted payment URL: $paymentUrl');
         }
       } else {
+        print('❌ [SUBSCRIPTION] Generic payment initiation error');
         errorMessage = 'Payment initiation failed: ${e.toString().replaceAll('Exception: ', '')}';
       }
       
@@ -134,11 +180,119 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ) : null,
         ),
       );
-    } finally {
-      setState(() {
-        _isProcessingPayment = false;
-      });
+          } finally {
+        print('🔄 [SUBSCRIPTION] Payment processing completed - updating UI state');
+        setState(() {
+          _isProcessingPayment = false;
+        });
+      }
     }
+
+  void _showPaymentInstructionsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Payment Instructions'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment gateway has been opened in your browser. Please follow these steps:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            _buildInstructionStep('1', 'Complete the payment in your browser'),
+            _buildInstructionStep('2', 'After successful payment, close the browser and return to this app'),
+            _buildInstructionStep('3', 'You\'ll receive a notification when payment is confirmed'),
+            _buildInstructionStep('4', 'Your subscription will be activated automatically'),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '💡 Tip:',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'You can close the app and return later. You\'ll get a notification when payment is confirmed!',
+                    style: TextStyle(fontSize: 12, color: Colors.blue[600]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showPaymentVerificationDialog();
+            },
+            child: Text('Manual Verification'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Got It'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionStep(String number, String text) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPaymentVerificationDialog({String? paymentUrl}) {

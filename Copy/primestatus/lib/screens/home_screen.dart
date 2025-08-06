@@ -6,10 +6,12 @@ import '../widgets/common_widgets.dart';
 import '../widgets/admin_post_feed_widget.dart';
 import '../widgets/user_posts_widget.dart';
 import 'quote_editor_screen.dart';
+import 'AllSubscription.dart';
 import 'package:primestatus/services/user_service.dart';
 import 'package:primestatus/services/quote_service.dart';
 import 'package:primestatus/services/background_removal_service.dart';
 import 'package:primestatus/services/category_service.dart';
+import 'package:primestatus/services/payment_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -21,13 +23,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:primestatus/widgets/fullscreen_post_viewer.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'dart:typed_data';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   @override
   HomeScreenState createState() => HomeScreenState();
 }
 
-class HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   bool isLoggedIn = false;
   String userName = '';
@@ -91,6 +94,22 @@ class HomeScreenState extends State<HomeScreen> {
     _setQuoteOfTheDay();
     _checkAuthState();
     _fetchCategories();
+    
+    // Listen for app lifecycle changes
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    if (state == AppLifecycleState.resumed) {
+      print('🔄 [LIFECYCLE] App resumed - checking payment status');
+      // Check for pending payments when app resumes
+      PaymentService.checkPaymentsOnAppResume();
+    }
   }
 
   void _setQuoteOfTheDay() {
@@ -145,8 +164,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchUserDetails() async {
     if (_currentUser == null) {
-      // If no authenticated user, clear user data and return
-      _clearUserData();
+      print('_fetchUserDetails: No current user');
       return;
     }
     
@@ -176,6 +194,103 @@ class HomeScreenState extends State<HomeScreen> {
       // If there's an error, clear user data
       _clearUserData();
     }
+  }
+
+  /// Refresh user subscription data (call this after payment completion)
+  Future<void> refreshUserSubscription() async {
+    print('🔄 [HOME] Refreshing user subscription data...');
+    if (_currentUser == null) {
+      print('❌ [HOME] refreshUserSubscription: No current user');
+      return;
+    }
+    
+    try {
+      print('👤 [HOME] Fetching user data for: ${_currentUser!.uid}');
+      Map<String, dynamic>? userData = await _userService.getUserData(_currentUser!.uid);
+      if (userData != null) {
+        final oldSubscription = userSubscription;
+        setState(() {
+          userSubscription = userData['subscription'] ?? '';
+        });
+        print('✅ [HOME] User subscription refreshed: $oldSubscription → $userSubscription');
+      } else {
+        print('⚠️ [HOME] No user data found');
+      }
+    } catch (e) {
+      print('❌ [HOME] Error refreshing user subscription: $e');
+    }
+  }
+
+  /// Get detailed subscription information for display
+  String _getSubscriptionDisplayText() {
+    if (userSubscription.isEmpty || userSubscription == 'Free') {
+      return 'Free Plan';
+    }
+    
+    // For now, return the subscription type
+    // You can enhance this to show more details like plan name, expiry date, etc.
+    return userSubscription;
+  }
+
+  /// Get subscription status with color indicator
+  Widget _getSubscriptionStatusWidget() {
+    if (userSubscription.isEmpty || userSubscription == 'Free') {
+      return Row(
+        children: [
+          Icon(Icons.star_border, color: Colors.grey, size: 16),
+          SizedBox(width: 4),
+          Text(
+            'Free Plan',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      );
+    }
+    
+    return Row(
+      children: [
+        Icon(Icons.star, color: Colors.amber, size: 16),
+        SizedBox(width: 4),
+        Text(
+          userSubscription,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.green[700],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Navigate to subscription screen
+  void _navigateToSubscription() {
+    print('🚀 [HOME] Navigating to subscription screen...');
+    print('📋 [HOME] User details for subscription:');
+    print('   - Usage Type: $userUsageType');
+    print('   - Name: $userName');
+    print('   - Email: $userEmail');
+    print('   - Phone: $userPhoneNumber');
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SubscriptionPlansScreen(
+          userUsageType: userUsageType,
+          userName: userName,
+          userEmail: userEmail,
+          userPhone: userPhoneNumber,
+        ),
+      ),
+    ).then((_) {
+      print('🔄 [HOME] Returning from subscription screen - refreshing data');
+      // Refresh subscription data when returning from subscription screen
+      refreshUserSubscription();
+    });
   }
 
   Future<void> _fetchUserProfilePhotos() async {
@@ -2561,11 +2676,56 @@ Widget _buildAdminFeedTab() {
                         Icons.location_on,
                         onTap: () => _showStateSelectionDialog(),
                       ),
-                      _buildUserDataCard(
-                        'Subscription',
-                        userSubscription.isNotEmpty ? userSubscription : 'Free',
-                        Icons.star,
-                        isEditable: false, // Subscription cannot be changed
+                      // Custom subscription card with enhanced display
+                      Card(
+                        margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.deepOrange, size: 20),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Subscription',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    _getSubscriptionStatusWidget(),
+                                  ],
+                                ),
+                              ),
+                              if (userSubscription.isEmpty || userSubscription == 'Free')
+                                GestureDetector(
+                                  onTap: () => _navigateToSubscription(),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Upgrade',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -3179,6 +3339,7 @@ Widget _buildAdminFeedTab() {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _quoteController.dispose();
     super.dispose();
   }
