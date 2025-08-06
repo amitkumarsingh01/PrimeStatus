@@ -55,28 +55,63 @@ class PaymentService {
         throw Exception('Payment URL is empty!');
       }
 
-      // Launch payment URL in browser
-      if (await canLaunchUrl(Uri.parse(paymentUrl))) {
-        await launchUrl(
-          Uri.parse(paymentUrl),
+      // Launch payment URL in browser with better error handling
+      final uri = Uri.parse(paymentUrl);
+      
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(
+          uri,
           mode: LaunchMode.externalApplication,
         );
         
-        // Save payment attempt to Firestore
-        await _savePaymentAttempt(
-          userId: user.uid,
-          planId: planId,
-          planTitle: planTitle,
-          amount: amount,
-          duration: duration,
-          usageType: userUsageType,
-          paymentUrl: paymentUrl,
-        );
+        if (launched) {
+          // Save payment attempt to Firestore
+          await _savePaymentAttempt(
+            userId: user.uid,
+            planId: planId,
+            planTitle: planTitle,
+            amount: amount,
+            duration: duration,
+            usageType: userUsageType,
+            paymentUrl: paymentUrl,
+          );
+        } else {
+          throw Exception('Failed to launch payment URL. Please try again.');
+        }
       } else {
-        throw Exception('Could not launch payment URL: $paymentUrl');
+        // Try alternative launch methods
+        try {
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          );
+          
+          if (launched) {
+            // Save payment attempt to Firestore
+            await _savePaymentAttempt(
+              userId: user.uid,
+              planId: planId,
+              planTitle: planTitle,
+              amount: amount,
+              duration: duration,
+              usageType: userUsageType,
+              paymentUrl: paymentUrl,
+            );
+          } else {
+            throw Exception('Could not launch payment URL. Please check your browser settings.');
+          }
+        } catch (e) {
+          // If all launch methods fail, return the URL for manual opening
+          throw Exception('Payment URL launch failed: $e. Please try opening the URL manually: $paymentUrl');
+        }
       }
     } catch (e) {
-      throw Exception('Payment initiation failed: $e');
+      // If the error contains a URL, preserve it for manual opening
+      if (e.toString().contains('http')) {
+        throw e; // Re-throw to preserve the URL in the error message
+      } else {
+        throw Exception('Payment initiation failed: $e');
+      }
     }
   }
 
@@ -116,10 +151,23 @@ class PaymentService {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         print('Razorpay payment link response: $responseData');
-        return responseData['short_url'] ?? responseData['payment_link'];
+        
+        // Check for the payment URL in different possible fields
+        String? paymentUrl = responseData['short_url'] ?? 
+                           responseData['payment_link'] ?? 
+                           responseData['url'] ??
+                           responseData['hosted_page_url'];
+        
+        if (paymentUrl == null || paymentUrl.isEmpty) {
+          throw Exception('No payment URL received from Razorpay. Response: $responseData');
+        }
+        
+        return paymentUrl;
       } else {
         print('Razorpay error: ${response.body}');
-        throw Exception('Payment link creation failed: ${response.statusCode} - ${response.body}');
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['error']?['description'] ?? errorData['error']?['message'] ?? 'Unknown error';
+        throw Exception('Payment link creation failed: $errorMessage');
       }
     } catch (e) {
       throw Exception('Direct Razorpay integration failed: $e');
@@ -366,6 +414,25 @@ class PaymentService {
       }
     } catch (e) {
       print('Error checking pending payments: $e');
+    }
+  }
+
+  /// Debug method to test URL launching
+  static Future<bool> testUrlLaunch(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      print('Testing URL launch for: $url');
+      print('Can launch URL: ${await canLaunchUrl(uri)}');
+      
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        print('URL launch result: $launched');
+        return launched;
+      }
+      return false;
+    } catch (e) {
+      print('URL launch test failed: $e');
+      return false;
     }
   }
 } 

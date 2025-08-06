@@ -3430,7 +3430,7 @@ Widget _buildAdminFeedTab() {
             '5. Your Rights:\n'
             '• You can request deletion or correction of your data.\n'
             '• You may revoke consent anytime by uninstalling the app.\n\n'
-            'For any privacy-related concerns, contact us at: support@primestatus.app'
+            'For any privacy-related concerns, contact us at: support@primestatusapp.com'
           ),
         ),
         actions: [

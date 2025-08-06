@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/payment_service.dart';
 
 class SubscriptionPlan {
@@ -100,10 +101,37 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         ),
       );
     } catch (e) {
+      String errorMessage = 'Payment initiation failed';
+      String? paymentUrl;
+      
+      if (e.toString().contains('Payment URL launch failed')) {
+        errorMessage = 'Could not open payment page automatically';
+        // Extract URL from error message if available
+        final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(e.toString());
+        if (urlMatch != null) {
+          paymentUrl = urlMatch.group(0);
+        }
+      } else if (e.toString().contains('Could not launch payment URL')) {
+        errorMessage = 'Unable to open payment gateway';
+        // Try to extract URL from the error message
+        final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(e.toString());
+        if (urlMatch != null) {
+          paymentUrl = urlMatch.group(0);
+        }
+      } else {
+        errorMessage = 'Payment initiation failed: ${e.toString().replaceAll('Exception: ', '')}';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Payment initiation failed: $e'),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 8),
+          action: paymentUrl != null ? SnackBarAction(
+            label: 'Open Manually',
+            textColor: Colors.white,
+            onPressed: () => _showPaymentUrlDialog(paymentUrl!),
+          ) : null,
         ),
       );
     } finally {
@@ -113,7 +141,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     }
   }
 
-  void _showPaymentVerificationDialog() {
+  void _showPaymentVerificationDialog({String? paymentUrl}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -121,13 +149,37 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           children: [
             Icon(Icons.payment, color: Colors.blue),
             SizedBox(width: 8),
-            Text('Verify Payment'),
+            Text('Payment Verification'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (paymentUrl != null) ...[
+              Text(
+                'Payment page could not be opened automatically. Please use the link below:',
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SelectableText(
+                  paymentUrl,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[700],
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
             Text(
               'If you have completed the payment, please enter the payment details to verify:',
               style: TextStyle(fontSize: 14),
@@ -155,6 +207,18 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
+          if (paymentUrl != null)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _openPaymentUrlManually(paymentUrl);
+              },
+              child: Text('Open Payment Page'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
@@ -169,6 +233,94 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         ],
       ),
     );
+  }
+
+  void _showPaymentUrlDialog(String url) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Payment Link'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'The payment page could not be opened automatically. Please use one of the options below:',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: SelectableText(
+                url,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue[700],
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'You can copy this link and paste it in your browser, or use the button below to try opening it again.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _openPaymentUrlManually(url);
+            },
+            child: Text('Try Opening Again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPaymentUrlManually(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to open URL. Please copy and paste this URL in your browser: $url'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 10),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error opening URL: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _verifyPaymentManually() async {
