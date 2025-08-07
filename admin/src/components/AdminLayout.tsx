@@ -8,8 +8,9 @@ import VideoEditor from './VideoEditor';
 import NewImageEditor from './NewImageEditor';
 import CategoryManager from './CategoryManager';
 import Payment from './Payment';
+import ShareLink from './ShareLink';
 
-type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment';
+type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link';
 
 export default function AdminLayout() {
   const [activePage, setActivePage] = useState<AdminPage>('existing-posts');
@@ -74,6 +75,8 @@ export default function AdminLayout() {
         return <CategoryManager />;
       case 'payment':
         return <Payment />;
+      case 'share-link':
+        return <ShareLink />;
       default:
         return <AdminDashboard onOpenImageEditor={openEditor} />;
     }

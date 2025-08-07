@@ -19,11 +19,15 @@ import 'onboarding/login_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:primestatus/widgets/fullscreen_post_viewer.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'dart:typed_data';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -40,6 +44,12 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String userReligion = '';
   String userState = '';
   String userSubscription = '';
+  String subscriptionPlanTitle = '';
+  String subscriptionPlanId = '';
+  DateTime? subscriptionStartDate;
+  DateTime? subscriptionEndDate;
+  String subscriptionStatus = '';
+  double subscriptionAmount = 0.0;
   String? userProfilePhotoUrl;
   String userDob = '';
   String userPhoneNumber = '';
@@ -108,7 +118,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       print('🔄 [LIFECYCLE] App resumed - checking payment status');
       // Check for pending payments when app resumes
-      PaymentService.checkPaymentsOnAppResume();
+      PaymentService.checkPendingPayments();
     }
   }
 
@@ -211,8 +221,27 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final oldSubscription = userSubscription;
         setState(() {
           userSubscription = userData['subscription'] ?? '';
+          subscriptionPlanTitle = userData['subscriptionPlanTitle'] ?? '';
+          subscriptionPlanId = userData['subscriptionPlanId'] ?? '';
+          subscriptionStatus = userData['subscriptionStatus'] ?? '';
+          subscriptionAmount = (userData['subscriptionAmount'] ?? 0.0).toDouble();
+          
+          // Parse dates
+          if (userData['subscriptionStartDate'] != null) {
+            subscriptionStartDate = (userData['subscriptionStartDate'] as Timestamp).toDate();
+          }
+          if (userData['subscriptionEndDate'] != null) {
+            subscriptionEndDate = (userData['subscriptionEndDate'] as Timestamp).toDate();
+          }
         });
         print('✅ [HOME] User subscription refreshed: $oldSubscription → $userSubscription');
+        print('📋 [HOME] Subscription details:');
+        print('   - Plan Title: $subscriptionPlanTitle');
+        print('   - Plan ID: $subscriptionPlanId');
+        print('   - Status: $subscriptionStatus');
+        print('   - Amount: ₹$subscriptionAmount');
+        print('   - Start Date: $subscriptionStartDate');
+        print('   - End Date: $subscriptionEndDate');
       } else {
         print('⚠️ [HOME] No user data found');
       }
@@ -232,7 +261,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return userSubscription;
   }
 
-  /// Get subscription status with color indicator
+  /// Get subscription status with detailed information
   Widget _getSubscriptionStatusWidget() {
     if (userSubscription.isEmpty || userSubscription == 'Free') {
       return Row(
@@ -251,20 +280,717 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
     
-    return Row(
+    // Show detailed subscription information
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.star, color: Colors.amber, size: 16),
-        SizedBox(width: 4),
-        Text(
-          userSubscription,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[700],
-          ),
+        // Main subscription status
+        Row(
+          children: [
+            Icon(Icons.star, color: Colors.amber, size: 16),
+            SizedBox(width: 4),
+            Text(
+              subscriptionPlanTitle.isNotEmpty ? subscriptionPlanTitle : userSubscription,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.green[700],
+              ),
+            ),
+          ],
         ),
+        SizedBox(height: 2),
+        // Subscription details
+        if (subscriptionEndDate != null) ...[
+          Text(
+            'Expires: ${_formatDate(subscriptionEndDate!)}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+        if (subscriptionAmount > 0) ...[
+          Text(
+            'Amount: ₹${subscriptionAmount.toStringAsFixed(0)}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+        if (subscriptionStatus.isNotEmpty) ...[
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: subscriptionStatus == 'active' ? Colors.green[100] : Colors.orange[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              subscriptionStatus.toUpperCase(),
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                color: subscriptionStatus == 'active' ? Colors.green[700] : Colors.orange[700],
+              ),
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  /// Format date for display
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = date.difference(now);
+    
+    if (difference.inDays < 0) {
+      return 'Expired';
+    } else if (difference.inDays == 0) {
+      return 'Expires today';
+    } else if (difference.inDays == 1) {
+      return 'Expires tomorrow';
+    } else if (difference.inDays < 7) {
+      return 'Expires in ${difference.inDays} days';
+    } else if (difference.inDays < 30) {
+      return 'Expires in ${(difference.inDays / 7).round()} weeks';
+    } else {
+      return 'Expires ${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  /// Show detailed subscription information dialog
+  void _showSubscriptionDetails() {
+    if (userSubscription.isEmpty || userSubscription == 'Free') {
+      _navigateToSubscription();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.star, color: Colors.amber),
+            SizedBox(width: 8),
+            Text('Subscription Details'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Plan',
+              (userSubscription.toLowerCase() == 'paid' || userSubscription.toLowerCase() == 'freemium')
+                ? 'Premium'
+                : (userSubscription.toLowerCase() == 'free' ? 'Free' : userSubscription)
+            ),
+            _buildDetailRow('Status', subscriptionStatus.isNotEmpty ? subscriptionStatus.toUpperCase() : 'ACTIVE'),
+            if (subscriptionAmount > 0) _buildDetailRow('Amount', '₹${subscriptionAmount.toStringAsFixed(0)}'),
+            if (subscriptionStartDate != null) _buildDetailRow('Start Date', _formatFullDate(subscriptionStartDate!)),
+            if (subscriptionEndDate != null) _buildDetailRow('End Date', _formatFullDate(subscriptionEndDate!)),
+            if (subscriptionEndDate != null) ...[
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _getExpiryColor().withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _getExpiryColor().withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time, color: _getExpiryColor(), size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _formatDate(subscriptionEndDate!),
+                        style: TextStyle(
+                          color: _getExpiryColor(),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _checkPaymentStatus(),
+            icon: Icon(Icons.refresh, size: 16),
+            label: Text('Check Payment'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          if (subscriptionEndDate != null && subscriptionEndDate!.isBefore(DateTime.now().add(Duration(days: 7))))
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _navigateToSubscription();
+              },
+              child: Text('Renew'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Build a detail row for the subscription dialog
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Format full date for display
+  String _formatFullDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  /// Get color based on expiry status
+  Color _getExpiryColor() {
+    if (subscriptionEndDate == null) return Colors.grey;
+    
+    final now = DateTime.now();
+    final difference = subscriptionEndDate!.difference(now);
+    
+    if (difference.inDays < 0) {
+      return Colors.red;
+    } else if (difference.inDays < 7) {
+      return Colors.orange;
+    } else {
+      return Colors.green;
+    }
+  }
+
+  /// Check payment status from SharedPreferences
+  Future<void> _checkPaymentStatus() async {
+    try {
+      // Get payment ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final paymentId = prefs.getString('last_payment_id');
+      
+      if (paymentId == null || paymentId.isEmpty) {
+        _showPaymentStatusDialog('No payment ID found', 'No recent payment found to check.');
+        return;
+      }
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Checking payment status...'),
+            ],
+          ),
+        ),
+      );
+
+      // Make API call to check payment status
+      final response = await http.post(
+        Uri.parse('https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'paymentId': paymentId}),
+      );
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final success = responseData['success'] as bool? ?? false;
+        final status = responseData['status'] as String? ?? 'unknown';
+        
+        String message = 'Payment Status: $status\n\nResponse: ${response.body}';
+        
+        if (success && status == 'paid') {
+          message = '✅ Payment Successful!\n\nStatus: $status\n\nYour subscription has been activated.';
+          
+          // Update user subscription status from free to paid
+          await _updateSubscriptionToPaid(paymentId);
+          
+          // Refresh user data to update subscription status
+          await refreshUserData();
+        } else if (success) {
+          message = '⏳ Payment Status: $status\n\nResponse: ${response.body}';
+        } else {
+          message = '❌ Payment check failed\n\nResponse: ${response.body}';
+        }
+        
+        _showPaymentStatusDialog('Payment Status', message);
+      } else {
+        _showPaymentStatusDialog('Error', 'Failed to check payment status. HTTP ${response.statusCode}\n\nResponse: ${response.body}');
+      }
+    } catch (e) {
+      // Close loading dialog if it's still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      _showPaymentStatusDialog('Error', 'Error checking payment status: $e');
+    }
+  }
+
+  /// Update user subscription status to paid
+  Future<void> _updateSubscriptionToPaid(String paymentId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('❌ [PAYMENT] No user logged in');
+        return;
+      }
+
+      // Get payment attempt details from Firestore
+      final paymentAttempts = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('paymentAttempts')
+          .where('paymentId', isEqualTo: paymentId)
+          .limit(1)
+          .get();
+
+      if (paymentAttempts.docs.isNotEmpty) {
+        final paymentData = paymentAttempts.docs.first.data();
+        final planTitle = paymentData['planTitle'] as String? ?? 'Premium';
+        final amount = paymentData['amount'] as double? ?? 0.0;
+        final duration = paymentData['duration'] as int? ?? 30;
+        
+        // Calculate subscription end date
+        final startDate = DateTime.now();
+        final endDate = startDate.add(Duration(days: duration));
+        
+        // Update user subscription in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'subscription': 'paid',
+          'subscriptionPlanTitle': planTitle,
+          'subscriptionAmount': amount,
+          'subscriptionStartDate': Timestamp.fromDate(startDate),
+          'subscriptionEndDate': Timestamp.fromDate(endDate),
+          'subscriptionStatus': 'active',
+          'lastPaymentId': paymentId,
+        });
+
+        // Update payment attempt status
+        await paymentAttempts.docs.first.reference.update({
+          'status': 'completed',
+          'completedAt': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ [PAYMENT] User subscription updated to paid successfully');
+        print('   Plan: $planTitle');
+        print('   Amount: ₹$amount');
+        print('   Duration: $duration days');
+        print('   End Date: $endDate');
+      } else {
+        print('❌ [PAYMENT] No payment attempt found for payment ID: $paymentId');
+      }
+    } catch (e) {
+      print('❌ [PAYMENT] Error updating subscription to paid: $e');
+    }
+  }
+
+  /// Show payment status dialog
+  void _showPaymentStatusDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 8),
+            Text(title),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(message),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment ID:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    FutureBuilder<SharedPreferences>(
+                      future: SharedPreferences.getInstance(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(snapshot.data!.getString('last_payment_id') ?? 'Not found');
+                        }
+                        return Text('Loading...');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _checkPaymentStatus();
+            },
+            child: Text('Check Again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show share link dialog
+  void _showShareLinkDialog() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Loading share link...'),
+            ],
+          ),
+        ),
+      );
+
+      // Fetch share link from Firestore
+      final shareLinkDoc = await FirebaseFirestore.instance
+          .collection('settings')
+          .doc('shareLink')
+          .get();
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      String shareLink = '';
+      if (shareLinkDoc.exists) {
+        shareLink = shareLinkDoc.data()?['url'] ?? '';
+      }
+
+      // If no share link found, use default
+      if (shareLink.isEmpty) {
+        shareLink = 'https://play.google.com/store/apps/details?id=com.primestatus.app';
+      }
+
+      // Show share link dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.share, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Share App'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Share PrimeStatus with your friends and family!',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'App Link:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    SelectableText(
+                      shareLink,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Features you can share:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              SizedBox(height: 8),
+              _buildFeatureItem('📱', 'Beautiful status posts'),
+              _buildFeatureItem('🎨', 'Custom text and designs'),
+              _buildFeatureItem('📅', 'Daily greetings'),
+              _buildFeatureItem('🌟', 'Premium features'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _shareApp(shareLink);
+              },
+              icon: Icon(Icons.share, size: 16),
+              label: Text('Share'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to load share link. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// Build feature item for share dialog
+  Widget _buildFeatureItem(String icon, String text) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(icon, style: TextStyle(fontSize: 16)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Share app using system share
+  Future<void> _shareApp(String shareLink) async {
+    try {
+      final text = '''
+🌟 Download PrimeStatus - The Ultimate Status App!
+
+📱 Create beautiful status posts
+🎨 Customize with your own text and designs  
+📅 Get daily greetings and updates
+🌟 Access premium features
+
+Download now: $shareLink
+
+#PrimeStatus #StatusApp #Share
+''';
+
+      // Use share_plus to open system share dialog
+      await Share.share(
+        text,
+        subject: 'Download PrimeStatus - The Ultimate Status App!',
+      );
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Share dialog opened successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Error sharing app: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to open share dialog: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Open share link in browser
+  Future<void> _openShareLink(String shareLink) async {
+    try {
+      final uri = Uri.parse(shareLink);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Could not launch URL');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open link'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  /// Show share app dialog
+  void _showShareAppDialog() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Loading share link...'),
+            ],
+          ),
+        ),
+      );
+
+      // Fetch share link from Firestore
+      final shareLinkDoc = await FirebaseFirestore.instance
+          .collection('settings')
+          .doc('shareLink')
+          .get();
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      String shareLink = '';
+      if (shareLinkDoc.exists) {
+        shareLink = shareLinkDoc.data()?['url'] ?? '';
+      }
+
+      // If no share link found, use default
+      if (shareLink.isEmpty) {
+        shareLink = 'https://play.google.com/store/apps/details?id=com.primestatus.app';
+      }
+
+      // Share the app using system share dialog
+      await _shareApp(shareLink);
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to load share link. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   /// Navigate to subscription screen
@@ -2169,23 +2895,23 @@ Widget _buildAdminFeedTab() {
           Expanded(
             child: AdminPostFeedWidget(
               selectedCategories: _selectedCategories.toList(),
-              onPostTap: (posts, initialIndex) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FullscreenPostViewer(
-                      posts: posts,
-                      initialIndex: initialIndex,
-                      userUsageType: userUsageType,
-                      userName: userName,
-                      userProfilePhotoUrl: userProfilePhotoUrl,
-                      userAddress: userAddress,
-                      userPhoneNumber: userPhoneNumber,
-                      userCity: userCity,
-                    ),
-                  ),
-                );
-              },
+              // onPostTap: (posts, initialIndex) {
+              //   Navigator.push(
+              //     context,
+              //     MaterialPageRoute(
+              //       builder: (context) => FullscreenPostViewer(
+              //         posts: posts,
+              //         initialIndex: initialIndex,
+              //         userUsageType: userUsageType,
+              //         userName: userName,
+              //         userProfilePhotoUrl: userProfilePhotoUrl,
+              //         userAddress: userAddress,
+              //         userPhoneNumber: userPhoneNumber,
+              //         userCity: userCity,
+              //       ),
+              //     ),
+              //   );
+              // },
             ),
           ),
         ],
@@ -2277,7 +3003,7 @@ Widget _buildAdminFeedTab() {
 
             SizedBox(height: 32),
             // CommonWidgets.buildProfileOption('Premium Features', Icons.star, () => _showPremiumDialog()),
-            // CommonWidgets.buildProfileOption('Share App', Icons.share, () => CommonWidgets.showComingSoonSnackBar(context)),
+            CommonWidgets.buildProfileOption('Share App', Icons.share, () => _showShareAppDialog()),
             // CommonWidgets.buildProfileOption('Rate Us', Icons.thumb_up, () => CommonWidgets.showComingSoonSnackBar(context)),
             // CommonWidgets.buildProfileOption('Help & Support', Icons.help, () => CommonWidgets.showComingSoonSnackBar(context)),
             CommonWidgets.buildProfileOption('About', Icons.info, () => _showAboutDialog()),
@@ -2681,49 +3407,55 @@ Widget _buildAdminFeedTab() {
                         margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                         elevation: 2,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.star, color: Colors.deepOrange, size: 20),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Subscription',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w500,
+                        child: InkWell(
+                          onTap: () => _showSubscriptionDetails(),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.star, color: Colors.deepOrange, size: 20),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Subscription',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    _getSubscriptionStatusWidget(),
-                                  ],
-                                ),
-                              ),
-                              if (userSubscription.isEmpty || userSubscription == 'Free')
-                                GestureDetector(
-                                  onTap: () => _navigateToSubscription(),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'Upgrade',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[700],
-                                      ),
-                                    ),
+                                      SizedBox(height: 2),
+                                      _getSubscriptionStatusWidget(),
+                                    ],
                                   ),
                                 ),
-                            ],
+                                if (userSubscription.isEmpty || userSubscription == 'Free')
+                                  GestureDetector(
+                                    onTap: () => _navigateToSubscription(),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[100],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'Upgrade',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -2744,6 +3476,7 @@ Widget _buildAdminFeedTab() {
           CommonWidgets.buildProfileOption('Privacy Policy', Icons.privacy_tip, () => _showPrivacyPolicyDialog()),
           CommonWidgets.buildProfileOption('Terms and Conditions', Icons.description, () => _showTermsDialog()),
           CommonWidgets.buildProfileOption('Refund Policy', Icons.monetization_on, () => _showRefundDialog()),
+          CommonWidgets.buildProfileOption('Share Link', Icons.share, () => _showShareLinkDialog()),
           // CommonWidgets.buildProfileOption('Multi Font', Icons.font_download, () => _showMultiFontDialog()),
           SizedBox(height: 24),
           Container(

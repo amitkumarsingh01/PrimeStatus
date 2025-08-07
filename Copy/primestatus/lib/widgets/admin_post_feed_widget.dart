@@ -23,7 +23,9 @@ import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../services/subscription_service.dart';
+import '../services/payment_service.dart';
 import '../screens/postsubscription.dart';
+import '../screens/AllSubscription.dart';
 import '../services/local_media_processing_service.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -121,10 +123,17 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   
   // Debounce timer for search/filter operations
   Timer? _debounceTimer;
+  
+  // Payment status polling
+  Timer? _paymentPollingTimer;
+  int _pollingAttempts = 0;
+  static const int maxPollingAttempts = 120; // 20 minutes (120 * 10 seconds)
+  static const Duration pollingInterval = Duration(seconds: 10);
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _paymentPollingTimer?.cancel();
     _imageCache.clear();
     super.dispose();
   }
@@ -778,8 +787,209 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     );
   }
 
+  // Check if user has free subscription
+  Future<bool> _isFreeUser() async {
+    final currentUser = _userService.currentUser;
+    if (currentUser == null) return true;
+    
+    try {
+      final subscription = await PaymentService.getUserSubscription(currentUser.uid);
+      if (subscription == null) return true;
+      
+      final subscriptionType = subscription['subscription'] as String?;
+      return subscriptionType == 'Free' || subscriptionType == 'free';
+    } catch (e) {
+      print('Error checking subscription type: $e');
+      return true; // Default to free if error
+    }
+  }
+
+  // Start payment status polling
+  void _startPaymentPolling(String paymentId) async {
+    print('🔄 [PAYMENT POLLING] Starting payment status polling for payment ID: $paymentId');
+    _pollingAttempts = 0;
+    _paymentPollingTimer?.cancel();
+    
+    // Test network connectivity first
+    print('🌐 [PAYMENT POLLING] Testing network connectivity...');
+    try {
+      final testResponse = await http.get(Uri.parse('https://www.google.com'));
+      print('✅ [PAYMENT POLLING] Network connectivity test passed: ${testResponse.statusCode}');
+    } catch (e) {
+      print('❌ [PAYMENT POLLING] Network connectivity test failed: $e');
+    }
+    
+    // Add a small delay before starting polling to avoid immediate network issues
+    Future.delayed(Duration(seconds: 2), () {
+      _paymentPollingTimer = Timer.periodic(pollingInterval, (timer) async {
+        _pollingAttempts++;
+        print('🔄 [PAYMENT POLLING] Attempt $_pollingAttempts/$maxPollingAttempts - Checking payment status...');
+        
+        try {
+          final isPaid = await _checkPaymentStatus(paymentId);
+          if (isPaid) {
+            print('✅ [PAYMENT POLLING] Payment confirmed! Stopping polling.');
+            _stopPaymentPolling();
+            _showPaymentSuccessMessage();
+            _refreshUserData();
+            return;
+          }
+          
+          if (_pollingAttempts >= maxPollingAttempts) {
+            print('⏰ [PAYMENT POLLING] Max polling attempts reached. Stopping polling.');
+            _stopPaymentPolling();
+            _showPaymentTimeoutMessage();
+            return;
+          }
+        } catch (e) {
+          print('❌ [PAYMENT POLLING] Error checking payment status: $e');
+          // Don't stop polling on network errors, only on max attempts
+          if (_pollingAttempts >= maxPollingAttempts) {
+            _stopPaymentPolling();
+            _showPaymentTimeoutMessage();
+          }
+        }
+      });
+    });
+  }
+
+  // Stop payment status polling
+  void _stopPaymentPolling() {
+    _paymentPollingTimer?.cancel();
+    _paymentPollingTimer = null;
+    _pollingAttempts = 0;
+    print('🛑 [PAYMENT POLLING] Payment polling stopped.');
+  }
+
+  // Check payment status via Firebase Functions
+  Future<bool> _checkPaymentStatus(String paymentId) async {
+    try {
+      print('📤 [PAYMENT POLLING] Sending request to check payment status...');
+      print('   URL: https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus');
+      print('   Method: POST');
+      print('   Body: ${jsonEncode({'paymentId': paymentId})}');
+      
+      final response = await http.post(
+        Uri.parse('https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'paymentId': paymentId}),
+      );
+
+      print('📥 [PAYMENT POLLING] Response received:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          final status = responseData['status'];
+          print('📊 [PAYMENT POLLING] Payment status: $status');
+          return status == 'paid';
+        }
+      }
+      return false;
+    } catch (e) {
+      print('❌ [PAYMENT POLLING] Error checking payment status: $e');
+      print('❌ [PAYMENT POLLING] Error type: ${e.runtimeType}');
+      if (e.toString().contains('SocketException')) {
+        print('❌ [PAYMENT POLLING] This is a network connectivity issue');
+      }
+      return false;
+    }
+  }
+
+  // Show payment success message
+  void _showPaymentSuccessMessage() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '🎉 Payment successful! Your subscription has been activated.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+
+  // Show payment timeout message
+  void _showPaymentTimeoutMessage() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Payment verification timeout. Please check your subscription status manually.',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 8),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          action: SnackBarAction(
+            label: 'Refresh',
+            textColor: Colors.white,
+            onPressed: () => _refreshUserData(),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Refresh user data to update subscription status
+  Future<void> _refreshUserData() async {
+    try {
+      final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+      if (homeScreenState != null) {
+        await homeScreenState.refreshUserData();
+        print('✅ [PAYMENT POLLING] User data refreshed successfully');
+      }
+    } catch (e) {
+      print('❌ [PAYMENT POLLING] Error refreshing user data: $e');
+    }
+  }
+
   // WhatsApp specific sharing (ported from fullscreen_post_viewer.dart)
   Future<void> _shareToWhatsApp(String mediaUrl, Map<String, dynamic> post) async {
+    // Check if user has free subscription
+    final isFree = await _isFreeUser();
+    if (isFree) {
+      // User is free, show subscription page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubscriptionPlansScreen(
+            userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? 'Personal',
+            userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User',
+            userEmail: _userService.currentUser?.email ?? '',
+            userPhone: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
+          ),
+        ),
+      );
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isProcessingShare = true;
@@ -929,6 +1139,24 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
 
   // Download functionality (ported from fullscreen_post_viewer.dart)
   Future<void> _downloadImage(Map<String, dynamic> post) async {
+    // Check if user has free subscription
+    final isFree = await _isFreeUser();
+    if (isFree) {
+      // User is free, show subscription page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubscriptionPlansScreen(
+            userUsageType: context.findAncestorStateOfType<HomeScreenState>()?.userUsageType ?? 'Personal',
+            userName: context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User',
+            userEmail: _userService.currentUser?.email ?? '',
+            userPhone: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
+          ),
+        ),
+      );
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isProcessingShare = true;
@@ -1941,24 +2169,24 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       final index = postIndex >= 0 ? postIndex : 0;
       
       // Navigate to fullscreen viewer
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FullscreenPostViewer(
-            posts: posts,
-            initialIndex: index,
-            userUsageType: homeScreenState.userUsageType ?? '',
-            userName: homeScreenState.userName ?? 'User',
-            userProfilePhotoUrl: homeScreenState.userProfilePhotoUrl,
-            userAddress: homeScreenState.userAddress ?? '',
-            userPhoneNumber: homeScreenState.userPhoneNumber ?? '',
-            userCity: homeScreenState.userCity ?? '',
-          ),
-        ),
-      ).then((_) {
-        // Resume video controllers when returning from fullscreen
-        VideoControllerManager().setFullscreenMode(false);
-      });
+      // Navigator.push(
+      //   context,
+      //   MaterialPageRoute(
+      //     builder: (context) => FullscreenPostViewer(
+      //       posts: posts,
+      //       initialIndex: index,
+      //       userUsageType: homeScreenState.userUsageType ?? '',
+      //       userName: homeScreenState.userName ?? 'User',
+      //       userProfilePhotoUrl: homeScreenState.userProfilePhotoUrl,
+      //       userAddress: homeScreenState.userAddress ?? '',
+      //       userPhoneNumber: homeScreenState.userPhoneNumber ?? '',
+      //       userCity: homeScreenState.userCity ?? '',
+      //     ),
+      //   ),
+      // ).then((_) {
+      //   // Resume video controllers when returning from fullscreen
+      //   VideoControllerManager().setFullscreenMode(false);
+      // });
     });
   }
 

@@ -1884,17 +1884,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   Expanded(
                     flex: 35,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen(
-                            userUsageType: userUsageType,
-                            userName: userName,
-                            userEmail: userEmail,
-                            userPhone: userPhoneNumber,
-                          )),
-                        );
-                      },
+                      onPressed: onShare,
                       icon: const Icon(Icons.share, color: Colors.white),
                       label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
@@ -1909,17 +1899,7 @@ class AdminPostFullScreenCard extends StatelessWidget {
                   Expanded(
                     flex: 35,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => SubscriptionPlansScreen(
-                            userUsageType: userUsageType,
-                            userName: userName,
-                            userEmail: userEmail,
-                            userPhone: userPhoneNumber,
-                          )),
-                        );
-                      },
+                      onPressed: onDownload,
                       icon: const Icon(Icons.download, color: Colors.white),
                       label: const Text('Download', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/payment_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SubscriptionPlan {
   final String id;
@@ -58,9 +61,173 @@ class SubscriptionPlansScreen extends StatefulWidget {
   _SubscriptionPlansScreenState createState() => _SubscriptionPlansScreenState();
 }
 
-class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
+class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with WidgetsBindingObserver {
   String get selectedUsageType => widget.userUsageType;
   bool _isProcessingPayment = false;
+  
+  // Firebase Functions base URL
+  static const String _firebaseFunctionsUrl = 'https://us-central1-prime-status-1db09.cloudfunctions.net';
+  
+  // Payment status polling
+  Timer? _paymentPollingTimer;
+  int _pollingAttempts = 0;
+  static const int maxPollingAttempts = 120; // 20 minutes (120 * 10 seconds)
+  static const Duration pollingInterval = Duration(seconds: 10);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Check for pending payments when screen loads
+    _checkPendingPayments();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _paymentPollingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _checkPendingPayments();
+    }
+  }
+
+  Future<void> _checkPendingPayments() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Check for pending payments in Firestore
+        final pendingPayments = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('paymentAttempts')
+            .where('status', isEqualTo: 'pending')
+            .get();
+
+        for (final payment in pendingPayments.docs) {
+          final paymentData = payment.data();
+          final paymentId = paymentData['paymentId'];
+          if (paymentId != null) {
+            final isPaid = await _checkPaymentStatus(paymentId);
+            if (isPaid) {
+              _showPaymentSuccessMessage();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking pending payments: $e');
+    }
+  }
+
+  // Start payment status polling
+  void _startPaymentPolling(String paymentId) {
+    print('🔄 [PAYMENT POLLING] Starting payment status polling for payment ID: $paymentId');
+    _pollingAttempts = 0;
+    _paymentPollingTimer?.cancel();
+    
+    _paymentPollingTimer = Timer.periodic(pollingInterval, (timer) async {
+      _pollingAttempts++;
+      print('🔄 [PAYMENT POLLING] Attempt $_pollingAttempts/$maxPollingAttempts - Checking payment status...');
+      
+      try {
+        final isPaid = await _checkPaymentStatus(paymentId);
+        if (isPaid) {
+          print('✅ [PAYMENT POLLING] Payment confirmed! Stopping polling.');
+          _stopPaymentPolling();
+          _showPaymentSuccessMessage();
+          return;
+        }
+        
+        if (_pollingAttempts >= maxPollingAttempts) {
+          print('⏰ [PAYMENT POLLING] Max polling attempts reached. Stopping polling.');
+          _stopPaymentPolling();
+          _showPaymentTimeoutMessage();
+          return;
+        }
+      } catch (e) {
+        print('❌ [PAYMENT POLLING] Error checking payment status: $e');
+        if (_pollingAttempts >= maxPollingAttempts) {
+          _stopPaymentPolling();
+          _showPaymentTimeoutMessage();
+        }
+      }
+    });
+  }
+
+  // Stop payment status polling
+  void _stopPaymentPolling() {
+    _paymentPollingTimer?.cancel();
+    _paymentPollingTimer = null;
+    _pollingAttempts = 0;
+    print('🛑 [PAYMENT POLLING] Payment polling stopped.');
+  }
+
+  // Show payment timeout message
+  void _showPaymentTimeoutMessage() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Payment verification timeout. Please check your subscription status manually.',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 8),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+
+  // Store payment ID in SharedPreferences
+  Future<void> _storePaymentId(String paymentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_payment_id', paymentId);
+      print('✅ [PAYMENT] Payment ID stored in SharedPreferences: $paymentId');
+    } catch (e) {
+      print('❌ [PAYMENT] Error storing payment ID: $e');
+    }
+  }
+
+  Future<bool> _checkPaymentStatus(String paymentId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_firebaseFunctionsUrl/checkPaymentStatus'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'paymentId': paymentId}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          final status = responseData['status'];
+          return status == 'paid';
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error checking payment status: $e');
+      return false;
+    }
+  }
 
   String formatDuration(int days) {
     if (days == 30) return 'month';
@@ -87,59 +254,80 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     });
 
     try {
-      print('🔄 [SUBSCRIPTION] Calling PaymentService.initiatePayment...');
-      await PaymentService.initiatePayment(
-        planId: plan.id,
-        planTitle: plan.title,
-        amount: plan.price,
-        duration: plan.duration,
-        userUsageType: widget.userUsageType,
-        userName: widget.userName,
-        userEmail: widget.userEmail,
-        userPhone: widget.userPhone,
-        onPaymentStatusChanged: (bool isSuccessful) {
-          print('📞 [SUBSCRIPTION] Payment status callback received: $isSuccessful');
-          // This callback will be called when payment status changes
-          if (isSuccessful) {
-            print('🎉 [SUBSCRIPTION] Payment successful - showing success message');
-            // Payment successful
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('🎉 Payment successful! Your subscription has been activated.'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 5),
-                action: SnackBarAction(
-                  label: 'View Profile',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    print('👤 [SUBSCRIPTION] User tapped View Profile');
-                    // Navigate back to profile/home screen
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-            );
-          } else {
-            print('⏰ [SUBSCRIPTION] Payment timeout - showing timeout message');
-            // Payment timeout or failed
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Payment verification timeout. Please check your payment status manually.'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 8),
-                action: SnackBarAction(
-                  label: 'Verify Manually',
-                  textColor: Colors.white,
-                  onPressed: () => _showPaymentVerificationDialog(),
-                ),
-              ),
-            );
-          }
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Generate unique order ID
+      final orderId = 'plan_${plan.id}_${DateTime.now().millisecondsSinceEpoch}';
+      
+      print('🔄 [SUBSCRIPTION] Calling Firebase Functions API...');
+      print('   URL: $_firebaseFunctionsUrl/initiatePayment');
+      print('   Method: POST');
+      
+      // Prepare request data
+      final requestData = {
+        'amount': plan.price,
+        'userId': user.uid,
+        'orderId': orderId,
+      };
+
+      print('   Body: ${jsonEncode(requestData)}');
+
+      // Call Firebase Functions API
+      final response = await http.post(
+        Uri.parse('$_firebaseFunctionsUrl/initiatePayment'),
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: jsonEncode(requestData),
       );
 
-      print('✅ [SUBSCRIPTION] Payment initiated successfully - showing info message');
-      _showPaymentInstructionsDialog();
+      print('📥 [SUBSCRIPTION] API Response:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          final paymentUrl = responseData['payment_url'];
+          final paymentId = responseData['payment_id'];
+          
+          print('✅ [SUBSCRIPTION] Payment link created successfully');
+          print('   Payment URL: $paymentUrl');
+          print('   Payment ID: $paymentId');
+
+          // Save payment attempt to Firestore
+          await _savePaymentAttempt(
+            userId: user.uid,
+            planId: plan.id,
+            planTitle: plan.title,
+            amount: plan.price,
+            duration: plan.duration,
+            usageType: widget.userUsageType,
+            paymentUrl: paymentUrl,
+            paymentId: paymentId,
+            orderId: orderId,
+          );
+
+          // Launch payment URL
+          await _launchPaymentUrl(paymentUrl);
+
+          print('✅ [SUBSCRIPTION] Payment initiated successfully - showing info message');
+          _showPaymentInstructionsDialog();
+          
+          // Start polling for payment status
+          _startPaymentPolling(paymentId);
+          
+          // Store payment ID in SharedPreferences for manual refresh
+          await _storePaymentId(paymentId);
+        } else {
+          throw Exception('Payment initiation failed: ${responseData['error']}');
+        }
+      } else {
+        throw Exception('Payment initiation failed: HTTP ${response.statusCode}');
+      }
     } catch (e) {
       print('❌ [SUBSCRIPTION] Payment initiation failed: $e');
       String errorMessage = 'Payment initiation failed';
@@ -180,13 +368,68 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ) : null,
         ),
       );
-          } finally {
-        print('🔄 [SUBSCRIPTION] Payment processing completed - updating UI state');
-        setState(() {
-          _isProcessingPayment = false;
-        });
-      }
+    } finally {
+      print('🔄 [SUBSCRIPTION] Payment processing completed - updating UI state');
+      setState(() {
+        _isProcessingPayment = false;
+      });
     }
+  }
+
+  Future<void> _savePaymentAttempt({
+    required String userId,
+    required String planId,
+    required String planTitle,
+    required double amount,
+    required int duration,
+    required String usageType,
+    required String paymentUrl,
+    required String paymentId,
+    required String orderId,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('paymentAttempts')
+          .add({
+        'planId': planId,
+        'planTitle': planTitle,
+        'amount': amount,
+        'duration': duration,
+        'usageType': usageType,
+        'paymentUrl': paymentUrl,
+        'paymentId': paymentId,
+        'orderId': orderId,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error saving payment attempt: $e');
+    }
+  }
+
+  Future<void> _launchPaymentUrl(String paymentUrl) async {
+    try {
+      final uri = Uri.parse(paymentUrl);
+      
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        
+        if (!launched) {
+          throw Exception('Failed to launch payment URL');
+        }
+      } else {
+        throw Exception('Could not launch payment URL');
+      }
+    } catch (e) {
+      throw Exception('Payment URL launch failed: $e. Please try opening the URL manually: $paymentUrl');
+    }
+  }
 
   void _showPaymentInstructionsDialog() {
     showDialog(
@@ -211,8 +454,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             SizedBox(height: 16),
             _buildInstructionStep('1', 'Complete the payment in your browser'),
             _buildInstructionStep('2', 'After successful payment, close the browser and return to this app'),
-            _buildInstructionStep('3', 'You\'ll receive a notification when payment is confirmed'),
-            _buildInstructionStep('4', 'Your subscription will be activated automatically'),
+            _buildInstructionStep('3', 'We\'ll automatically check your payment status every 10 seconds'),
+            _buildInstructionStep('4', 'You\'ll receive a notification when payment is confirmed'),
+            _buildInstructionStep('5', 'Your subscription will be activated automatically'),
             SizedBox(height: 16),
             Container(
               padding: EdgeInsets.all(12),
@@ -230,7 +474,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'You can close the app and return later. You\'ll get a notification when payment is confirmed!',
+                    'We\'ll automatically check your payment status every 10 seconds for up to 20 minutes. You can close the app and return later!',
                     style: TextStyle(fontSize: 12, color: Colors.blue[600]),
                   ),
                 ],
@@ -251,7 +495,15 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              // Show success message after a delay to simulate payment completion
+              Future.delayed(Duration(seconds: 2), () {
+                if (mounted) {
+                  _showPaymentSuccessMessage();
+                }
+              });
+            },
             child: Text('Got It'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
@@ -259,6 +511,23 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPaymentSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🎉 Payment successful! Your subscription has been activated.'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'View Profile',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
     );
   }

@@ -40,6 +40,7 @@ dependencies:
   
   # Authentication
   google_sign_in: ^6.1.6
+  shared_preferences: ^2.5.3
   
   # UI & Media
   image_picker: ^1.0.4
