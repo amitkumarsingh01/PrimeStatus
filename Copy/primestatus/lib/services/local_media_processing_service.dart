@@ -439,15 +439,15 @@ class LocalMediaProcessingService {
                   // Profile photo overlay
                   if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                     Positioned(
-                      left: profileX - (profileSize * 1.1) / 2 - 34,
-                      top: profileY - (profileSize * 1.1) / 2 - 33,
+                      left: profileX - (profileSize * 1.1) / 2 - 48,
+                      top: profileY - (profileSize * 1.1) / 2 - 47,
                       child: Container(
-                        width: profileSize * 1.35,
-                        height: profileSize * 1.35,
+                        width: profileSize * 1.37,
+                        height: profileSize * 1.37,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(
                             profileSettings['shape'] == 'circle'
-                                ? (profileSize * 1.1) / 2
+                                ? (profileSize * 1.37) / 2
                                 : 8,
                           ),
                           child: CachedNetworkImage(

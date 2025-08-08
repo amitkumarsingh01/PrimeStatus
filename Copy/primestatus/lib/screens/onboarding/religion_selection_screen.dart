@@ -66,7 +66,7 @@ class ReligionSelectionScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 32),
                   SizedBox(
-                    width: 400,
+                    width: 300,
                     child: GridView.builder(
                       shrinkWrap: true,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

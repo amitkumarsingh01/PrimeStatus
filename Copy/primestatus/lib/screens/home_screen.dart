@@ -134,9 +134,13 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     
     if (state == AppLifecycleState.resumed) {
-      print('🔄 [LIFECYCLE] App resumed - checking payment status');
+      print('🔄 [LIFECYCLE] App resumed - checking payment status and refreshing subscription');
       // Check for pending payments when app resumes
       PaymentService.checkPendingPayments();
+      // Refresh user subscription data when app resumes
+      if (_currentUser != null) {
+        refreshUserSubscription();
+      }
     }
   }
 
@@ -2361,10 +2365,17 @@ Widget _buildHomeTab() {
                             backgroundColor: Colors.grey.shade200,
                           ),
                         )
-                      : IconButton(
-                          icon: Icon(Icons.login, size: 20),
-                          onPressed: _showLoginDialog,
-                          color: Colors.white,
+                      : GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.grey.shade200,
+                            child: Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                         ),
                 ),
               ],
@@ -3024,11 +3035,11 @@ Widget _buildAdminFeedTab() {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              'Sign in to save your designs',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            // SizedBox(height: 8),
+            // Text(
+            //   'Sign in to save your designs',
+            //   style: TextStyle(color: Colors.grey[600]),
+            // ),
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: _showLoginDialog,

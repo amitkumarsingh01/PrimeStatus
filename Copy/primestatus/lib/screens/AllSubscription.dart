@@ -336,7 +336,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
           await _launchPaymentUrl(paymentUrl);
 
           print('✅ [SUBSCRIPTION] Payment initiated successfully - showing info message');
-          _showPaymentInstructionsDialog();
+          // _showPaymentInstructionsDialog();
           
           // Start polling for payment status
           _startPaymentPolling(paymentId);
@@ -541,16 +541,25 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
       SnackBar(
         content: Text('🎉 Payment successful! Your subscription has been activated.'),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 0),
+        duration: Duration(seconds: 3),
         action: SnackBarAction(
           label: 'View Profile',
           textColor: Colors.white,
           onPressed: () {
+            // Return to home screen and refresh subscription status
             Navigator.pop(context);
+            // The home screen will automatically refresh when it becomes active
           },
         ),
       ),
     );
+    
+    // Automatically return to home screen after a short delay
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    });
   }
 
   Widget _buildInstructionStep(String number, String text) {
