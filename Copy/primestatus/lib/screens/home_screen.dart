@@ -97,6 +97,24 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return category['nameEn'] as String? ?? 'Unknown';
   }
 
+  // Helper method to get English category name for filtering/searching
+  String _getEnglishCategoryName(Map<String, dynamic> category) {
+    return category['nameEn'] as String? ?? 'Unknown';
+  }
+
+  // Helper method to get English category name from display name (reverse mapping)
+  String _getEnglishCategoryNameFromDisplay(String displayName) {
+    // Find the category that matches the display name
+    for (var category in _firebaseCategories) {
+      final categoryName = _getCategoryName(category);
+      if (categoryName == displayName) {
+        return _getEnglishCategoryName(category);
+      }
+    }
+    // If not found, return the display name as is (fallback)
+    return displayName;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -502,7 +520,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Get payment ID from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final paymentId = prefs.getString('last_payment_id');
-      
+      print('🧾 [PAYMENT] Loaded last payment ID from SharedPreferences: $paymentId');
       if (paymentId == null || paymentId.isEmpty) {
         _showPaymentStatusDialog('No payment ID found', 'No recent payment found to check.');
         return;
@@ -523,7 +541,8 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       );
 
-      // Make API call to check payment status
+      // Make API call to check payment status (Frontend POST)
+      print('📤 [PAYMENT] (Frontend) POST /checkPaymentStatus with paymentId: $paymentId');
       final response = await http.post(
         Uri.parse('https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus'),
         headers: {
@@ -536,6 +555,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Navigator.pop(context);
 
       if (response.statusCode == 200) {
+        print('📥 [PAYMENT] (Frontend) Response: ${response.statusCode} ${response.body}');
         final responseData = jsonDecode(response.body);
         final success = responseData['success'] as bool? ?? false;
         final status = responseData['status'] as String? ?? 'unknown';
@@ -543,13 +563,13 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         String message = 'Payment Status: $status\n\nResponse: ${response.body}';
         
         if (success && status == 'paid') {
-          message = '✅ Payment Successful!\n\nStatus: $status\n\nYour subscription has been activated.';
+          // message = '✅ Payment Successful!\n\nStatus: $status\n\nYour subscription has been activated.';
           
           // Update user subscription status from free to paid
           await _updateSubscriptionToPaid(paymentId);
           
           // Refresh user data to update subscription status
-          await refreshUserData();
+          await refreshUserSubscription();
         } else if (success) {
           message = '⏳ Payment Status: $status\n\nResponse: ${response.body}';
         } else {
@@ -1332,14 +1352,20 @@ Download now: $shareLink
     } else {
       _filteredCategories = _firebaseCategories.where((category) {
         final categoryName = _getCategoryName(category);
-        return categoryName.toLowerCase().contains(query.toLowerCase());
+        final englishCategoryName = _getEnglishCategoryName(category);
+        // Search in both display name and English name
+        return categoryName.toLowerCase().contains(query.toLowerCase()) ||
+               englishCategoryName.toLowerCase().contains(query.toLowerCase());
       }).toList();
     }
   }
 
   void _selectCategoryFromSearch(String categoryName) {
+    // Convert display name to English category name for filtering
+    final englishCategoryName = _getEnglishCategoryNameFromDisplay(categoryName);
+    
     setState(() {
-      _selectedCategories = {categoryName};
+      _selectedCategories = {englishCategoryName};
       _isSearchActive = false;
     });
     
@@ -1816,21 +1842,33 @@ Widget _buildHomeTab() {
                           ),
                         )
                       : GestureDetector(
-                          onTap: _showLoginDialog,
-                          child: Container(
-                            height: 36,
-                            width: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
+                          onTap: () => setState(() => _selectedIndex = 4),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.grey.shade200,
                             child: Icon(
                               Icons.person_outline,
                               size: 20,
-                              color: Colors.black87,
+                              color: Colors.grey[600],
                             ),
                           ),
-                        ),
+                        )
+                      // : GestureDetector(
+                      //     onTap: _showLoginDialog,
+                      //     child: Container(
+                      //       height: 36,
+                      //       width: 36,
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.white.withOpacity(0.9),
+                      //         borderRadius: BorderRadius.circular(18),
+                      //       ),
+                      //       child: Icon(
+                      //         Icons.person_outline,
+                      //         size: 20,
+                      //         color: Colors.black87,
+                      //       ),
+                      //     ),
+                      //   ),
                 ],
               ),
               
@@ -2811,7 +2849,7 @@ Widget _buildAdminFeedTab() {
       body: Column(
         children: [
           Container(
-            height: 120,
+            height: 125,
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -2859,12 +2897,13 @@ Widget _buildAdminFeedTab() {
                             // Show Firebase categories
                             ..._firebaseCategories.map((category) {
                               final categoryName = _getCategoryName(category);
-                              final isSelected = _selectedCategories.contains(categoryName);
+                              final englishCategoryName = _getEnglishCategoryName(category);
+                              final isSelected = _selectedCategories.contains(englishCategoryName);
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    // Single select: always replace the selection with the tapped category
-                                    _selectedCategories = {categoryName};
+                                    // Single select: always replace the selection with the English category name for filtering
+                                    _selectedCategories = {englishCategoryName};
                                   });
                                 },
                                 child: Container(
@@ -3554,7 +3593,9 @@ Widget _buildAdminFeedTab() {
   }
 
   void _showCategoryQuotes(String category) {
-    final categoryQuotes = QuoteData.quotes[category] ?? [];
+    // Convert display name to English category name for fetching quotes
+    final englishCategoryName = _getEnglishCategoryNameFromDisplay(category);
+    final categoryQuotes = QuoteData.quotes[englishCategoryName] ?? [];
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

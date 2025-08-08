@@ -28,6 +28,7 @@ import '../screens/postsubscription.dart';
 import '../screens/AllSubscription.dart';
 import '../services/local_media_processing_service.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Global video controller manager
 class VideoControllerManager {
@@ -557,7 +558,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               children: [
                 // WhatsApp Share Button - 45%
                 Expanded(
-                  flex: 45,
+                  flex: 50,
                   child: ElevatedButton.icon(
                     onPressed: () => _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post),
                     icon: const Icon(Icons.share, color: Colors.white),
@@ -573,7 +574,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 const SizedBox(width: 8),
                 // Download Button - 45%
                 Expanded(
-                  flex: 45,
+                  flex: 50,
                   child: ElevatedButton.icon(
                     onPressed: () => _downloadImage(post),
                     icon: const Icon(Icons.download, color: Colors.white),
@@ -588,20 +589,20 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 ),
                 const SizedBox(width: 8),
                 // Change Profile Photo Button - 10%
-                Expanded(
-                  flex: 10,
-                  child: ElevatedButton(
-                    onPressed: () => _showProfilePhotoDialog(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[600],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    child: const Icon(Icons.edit, color: Colors.white),
-                  ),
-                ),
+                // Expanded(
+                //   flex: 10,
+                //   child: ElevatedButton(
+                //     onPressed: () => _showProfilePhotoDialog(),
+                //     style: ElevatedButton.styleFrom(
+                //       backgroundColor: Colors.orange[600],
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(8),
+                //       ),
+                //       padding: const EdgeInsets.all(8),
+                //     ),
+                //     child: const Icon(Icons.edit, color: Colors.white),
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -864,7 +865,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
   // Check payment status via Firebase Functions
   Future<bool> _checkPaymentStatus(String paymentId) async {
     try {
-      print('📤 [PAYMENT POLLING] Sending request to check payment status...');
+      print('📤 [PAYMENT] (Frontend) Sending POST to check payment status...');
       print('   URL: https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus');
       print('   Method: POST');
       print('   Body: ${jsonEncode({'paymentId': paymentId})}');
@@ -877,7 +878,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         body: jsonEncode({'paymentId': paymentId}),
       );
 
-      print('📥 [PAYMENT POLLING] Response received:');
+      print('📥 [PAYMENT] (Frontend) Response received:');
       print('   Status Code: ${response.statusCode}');
       print('   Response Body: ${response.body}');
 
@@ -891,11 +892,28 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
       }
       return false;
     } catch (e) {
-      print('❌ [PAYMENT POLLING] Error checking payment status: $e');
-      print('❌ [PAYMENT POLLING] Error type: ${e.runtimeType}');
+      print('❌ [PAYMENT] (Frontend) Error checking payment status: $e');
+      print('❌ [PAYMENT] (Frontend) Error type: ${e.runtimeType}');
       if (e.toString().contains('SocketException')) {
-        print('❌ [PAYMENT POLLING] This is a network connectivity issue');
+        print('❌ [PAYMENT] (Frontend) This is a network connectivity issue');
       }
+      return false;
+    }
+  }
+
+  // Frontend-only helper: read last payment id from SharedPreferences and POST
+  Future<bool> _checkPaymentStatusFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final paymentId = prefs.getString('last_payment_id');
+      print('🧾 [PAYMENT] Loaded last payment ID from SharedPreferences: $paymentId');
+      if (paymentId == null || paymentId.isEmpty) {
+        print('⚠️ [PAYMENT] No last payment ID found in SharedPreferences');
+        return false;
+      }
+      return await _checkPaymentStatus(paymentId);
+    } catch (e) {
+      print('❌ [PAYMENT] Error reading payment ID from SharedPreferences: $e');
       return false;
     }
   }

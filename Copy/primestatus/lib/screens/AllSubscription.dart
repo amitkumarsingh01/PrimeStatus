@@ -115,7 +115,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
           if (paymentId != null) {
             final isPaid = await _checkPaymentStatus(paymentId);
             if (isPaid) {
-              _showPaymentSuccessMessage();
+              // _showPaymentSuccessMessage();
             }
           }
         }
@@ -135,8 +135,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
       _pollingAttempts++;
       print('🔄 [PAYMENT POLLING] Attempt $_pollingAttempts/$maxPollingAttempts - Checking payment status...');
       
-      try {
-        final isPaid = await _checkPaymentStatus(paymentId);
+        try {
+          // Frontend-only: still check by posting from app (same endpoint)
+          final isPaid = await _checkPaymentStatus(paymentId);
         if (isPaid) {
           print('✅ [PAYMENT POLLING] Payment confirmed! Stopping polling.');
           _stopPaymentPolling();
@@ -225,6 +226,26 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
       return false;
     } catch (e) {
       print('Error checking payment status: $e');
+      return false;
+    }
+  }
+
+  // Frontend-only helper: read paymentId from SharedPreferences and POST from the app
+  Future<bool> _checkPaymentStatusFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final paymentId = prefs.getString('last_payment_id');
+      print('🧾 [PAYMENT] Loaded last payment ID from SharedPreferences: $paymentId');
+      if (paymentId == null || paymentId.isEmpty) {
+        print('⚠️ [PAYMENT] No last payment ID found in SharedPreferences');
+        return false;
+      }
+      print('📤 [PAYMENT] (Frontend) POST /checkPaymentStatus with paymentId: $paymentId');
+      final isPaid = await _checkPaymentStatus(paymentId);
+      print('📊 [PAYMENT] (Frontend) Status for $paymentId: ${isPaid ? 'paid' : 'pending'}');
+      return isPaid;
+    } catch (e) {
+      print('❌ [PAYMENT] Error reading payment ID from SharedPreferences: $e');
       return false;
     }
   }
@@ -520,7 +541,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
       SnackBar(
         content: Text('🎉 Payment successful! Your subscription has been activated.'),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 5),
+        duration: Duration(seconds: 0),
         action: SnackBarAction(
           label: 'View Profile',
           textColor: Colors.white,

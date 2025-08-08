@@ -8,7 +8,7 @@ interface SubscriptionPlan {
   subtitle: string;
   price: number;
   duration: number; // Duration in days
-  usageType: 'Personal' | 'Business';
+  usageType: 'Personal';
   isActive: boolean;
   createdAt: Date;
 }
@@ -18,7 +18,7 @@ export default function Payment() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [selectedUsageType, setSelectedUsageType] = useState<'Personal' | 'Business'>('Personal');
+  const [selectedUsageType, setSelectedUsageType] = useState<'Personal'>('Personal');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -26,7 +26,7 @@ export default function Payment() {
     price: '',
     duration: '30', // Default to 30 days
     customDuration: '',
-    usageType: 'Personal' as 'Personal' | 'Business',
+    usageType: 'Personal' as 'Personal',
     isActive: true,
   });
 
@@ -123,7 +123,7 @@ export default function Payment() {
     }
   };
 
-  const filteredPlans = plans.filter(plan => plan.usageType === selectedUsageType);
+  const filteredPlans = plans.filter(plan => plan.usageType === 'Personal');
 
   // Helper function to format duration in days to readable format
   const formatDuration = (days: number): string => {
@@ -152,40 +152,8 @@ export default function Payment() {
           {/* Header */}
           <div className="text-center mb-8">
             <img src="/assets/logo.png" alt="Logo" className="h-24 w-24 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Subscription Plans Management</h1>
-            <p className="text-gray-600">Manage pricing and plans for Personal and Business users</p>
-          </div>
-
-          {/* Usage Type Tabs */}
-          <div className="mb-8">
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => setSelectedUsageType('Personal')}
-                className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  selectedUsageType === 'Personal'
-                    ? 'bg-gradient-to-r from-orange-500 to-purple-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                  <span>Personal Plans</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setSelectedUsageType('Business')}
-                className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  selectedUsageType === 'Business'
-                    ? 'bg-gradient-to-r from-orange-500 to-purple-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  <span>Business Plans</span>
-                </div>
-              </button>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Subscription Plan Management</h1>
+            <p className="text-gray-600">Manage pricing and plans for your users</p>
           </div>
 
           {/* Add New Plan Button */}
@@ -200,7 +168,7 @@ export default function Payment() {
                   price: '',
                   duration: '30',
                   customDuration: '',
-                  usageType: selectedUsageType,
+                  usageType: 'Personal',
                   isActive: true,
                 });
               }}
@@ -209,7 +177,7 @@ export default function Payment() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span className="font-semibold">Add New {selectedUsageType} Plan</span>
+              <span className="font-semibold">Add New Subscription Plan</span>
             </button>
           </div>
 
@@ -221,8 +189,8 @@ export default function Payment() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No {selectedUsageType} plans found</h3>
-              <p className="text-gray-500">Create your first {selectedUsageType.toLowerCase()} plan to get started</p>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No subscription plans found</h3>
+              <p className="text-gray-500">Create your first subscription plan to get started</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -291,7 +259,7 @@ export default function Payment() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
               <h3 className="font-semibold mb-2">Dynamic Pricing</h3>
-              <p className="text-sm opacity-90">Set different prices for Personal and Business users</p>
+              <p className="text-sm opacity-90">Set different prices for your users</p>
             </div>
             <div className="text-white p-6 rounded-xl" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}>
               <svg className="h-8 w-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,13 +291,12 @@ export default function Payment() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {editingPlan ? 'Edit Subscription Plan' : 'Create New Plan'}
+                {editingPlan ? 'Edit Subscription Plan' : 'Create New Subscription Plan'}
               </h2>
               <p className="text-gray-600">
                 {editingPlan ? 'Update the plan details below' : 'Fill in the details to create a new subscription plan'}
               </p>
             </div>
-            
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
               <div>
@@ -345,7 +312,6 @@ export default function Payment() {
                   required
                 />
               </div>
-
               {/* Subtitle */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -355,12 +321,11 @@ export default function Payment() {
                   type="text"
                   value={formData.subtitle}
                   onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                  placeholder="e.g., Perfect for personal use, Best value for businesses"
+                  placeholder="e.g., Perfect for personal use, Best value for users"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                   required
                 />
               </div>
-
               {/* Price and Duration Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -400,7 +365,6 @@ export default function Payment() {
                   </select>
                 </div>
               </div>
-
               {/* Custom Duration Input */}
               {formData.duration === 'custom' && (
                 <div>
@@ -418,22 +382,8 @@ export default function Payment() {
                   />
                 </div>
               )}
-
-              {/* Usage Type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  User Type *
-                </label>
-                <select
-                  value={formData.usageType}
-                  onChange={(e) => setFormData({ ...formData, usageType: e.target.value as 'Personal' | 'Business' })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                >
-                  <option value="Personal">Personal Users</option>
-                  <option value="Business">Business Users</option>
-                </select>
-              </div>
-
+              {/* Usage Type (hidden) */}
+              <input type="hidden" value="Personal" />
               {/* Active Status */}
               <div className="flex items-center p-4 bg-gray-50 rounded-xl">
                 <input
@@ -447,7 +397,6 @@ export default function Payment() {
                   Make this plan active and available to users
                 </label>
               </div>
-
               {/* Action Buttons */}
               <div className="flex space-x-4 pt-6">
                 <button
