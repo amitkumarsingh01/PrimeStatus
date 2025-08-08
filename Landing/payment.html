@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -44,4 +44,59 @@
         <p>Your payment is completed.<br> You can now close this browser window and enjoy the app!</p>
     </div>
 </body>
-</html> 
+</html>  -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Completed</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f7fafc;
+    }
+    .container {
+      background: #fff;
+      padding: 2rem 3rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+    h1 {
+      color: #38a169;
+      margin-bottom: 1rem;
+    }
+    p {
+      color: #2d3748;
+      font-size: 1.2rem;
+    }
+    .icon {
+      font-size: 3rem;
+      color: #38a169;
+      margin-bottom: 1rem;
+    }
+  </style>
+  <script>
+    // Redirect to your app after short delay
+    setTimeout(() => {
+      window.location.href = "myapp://payment-success";
+    }, 1500); // 1.5 seconds delay for user to see the message
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">&#10003;</div>
+    <h1>Payment Completed</h1>
+    <p>Your payment is completed.<br> You will be redirected shortly to the app...</p>
+  </div>
+</body>
+</html>

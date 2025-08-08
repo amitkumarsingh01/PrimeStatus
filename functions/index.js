@@ -325,7 +325,7 @@ exports.initiatePayment = functions.https.onRequest((req, res) => {
         },
         notify: { sms: true, email: true },
         reminder_enable: true,
-        callback_url: "https://www.primestatusapp.com/payment.html",
+        callback_url: "https://www.primestatusapp.com/paymentdone.html",
         callback_method: "get"
       });
 
