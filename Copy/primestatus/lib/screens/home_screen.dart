@@ -61,6 +61,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Map<String, dynamic>> userProfilePhotos = []; // List to store multiple profile photos (now as maps)
   bool _isProcessingPhoto = false;
   
+  // Timer for periodic payment status check
+  Timer? _paymentCheckTimer;
+  
   final UserService _userService = UserService();
   final QuoteService _quoteService = QuoteService();
   final BackgroundRemovalService _bgRemovalService = BackgroundRemovalService();
@@ -125,6 +128,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     
     // Listen for app lifecycle changes
     WidgetsBinding.instance.addObserver(this);
+    
+    // Start periodic payment status check timer
+    _startPaymentCheckTimer();
   }
 
 
@@ -141,6 +147,12 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (_currentUser != null) {
         refreshUserSubscription();
       }
+      // Restart the payment check timer when app resumes
+      _startPaymentCheckTimer();
+    } else if (state == AppLifecycleState.paused) {
+      print('⏸️ [LIFECYCLE] App paused - stopping payment check timer');
+      // Stop the timer when app is paused
+      _stopPaymentCheckTimer();
     }
   }
 
@@ -148,6 +160,29 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final allQuotes = QuoteData.quotes.values.expand((list) => list).toList();
     final random = Random();
     quoteOfTheDay = allQuotes[random.nextInt(allQuotes.length)];
+  }
+
+  /// Start the periodic payment status check timer
+  void _startPaymentCheckTimer() {
+    // Cancel existing timer if any
+    _stopPaymentCheckTimer();
+    
+    // Start new timer that fires every 10 seconds
+    _paymentCheckTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      print('⏰ [TIMER] Periodic payment status check triggered');
+      if (mounted) {
+        _checkPaymentStatusSilent();
+      }
+    });
+    
+    print('🚀 [TIMER] Payment check timer started - will check every 10 seconds');
+  }
+
+  /// Stop the periodic payment status check timer
+  void _stopPaymentCheckTimer() {
+    _paymentCheckTimer?.cancel();
+    _paymentCheckTimer = null;
+    print('⏹️ [TIMER] Payment check timer stopped');
   }
 
   Future<void> _fetchCategories() async {
@@ -526,7 +561,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final paymentId = prefs.getString('last_payment_id');
       print('🧾 [PAYMENT] Loaded last payment ID from SharedPreferences: $paymentId');
       if (paymentId == null || paymentId.isEmpty) {
-        _showPaymentStatusDialog('No payment ID found', 'No recent payment found to check.');
+        // _showPaymentStatusDialog('No payment ID found', 'No recent payment found to check.');
         return;
       }
 
@@ -580,9 +615,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           message = '❌ Payment check failed\n\nResponse: ${response.body}';
         }
         
-        _showPaymentStatusDialog('Payment Status', message);
-      } else {
-        _showPaymentStatusDialog('Error', 'Failed to check payment status. HTTP ${response.statusCode}\n\nResponse: ${response.body}');
+      //   _showPaymentStatusDialog('Payment Status', message);
+      // } else {
+      //   _showPaymentStatusDialog('Error', 'Failed to check payment status. HTTP ${response.statusCode}\n\nResponse: ${response.body}');
       }
     } catch (e) {
       // Close loading dialog if it's still open
@@ -590,6 +625,52 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         Navigator.pop(context);
       }
       _showPaymentStatusDialog('Error', 'Error checking payment status: $e');
+    }
+  }
+
+  /// Check payment status silently (for timer calls) - no dialogs
+  Future<void> _checkPaymentStatusSilent() async {
+    try {
+      // Get payment ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final paymentId = prefs.getString('last_payment_id');
+      
+      if (paymentId == null || paymentId.isEmpty) {
+        // print('🧾 [TIMER] No payment ID found for silent check');
+        return;
+      }
+
+      print('📤 [TIMER] Silent payment status check for paymentId: $paymentId');
+      
+      // Make API call to check payment status (Frontend POST)
+      final response = await http.post(
+        Uri.parse('https://us-central1-prime-status-1db09.cloudfunctions.net/checkPaymentStatus'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'paymentId': paymentId}),
+      );
+
+      if (response.statusCode == 200) {
+        print('📥 [TIMER] Silent check response: ${response.statusCode} ${response.body}');
+        final responseData = jsonDecode(response.body);
+        final success = responseData['success'] as bool? ?? false;
+        final status = responseData['status'] as String? ?? 'unknown';
+        
+        if (success && status == 'paid') {
+          print('✅ [TIMER] Payment successful - updating subscription');
+          // Update user subscription status from free to paid
+          await _updateSubscriptionToPaid(paymentId);
+          // Refresh user data to update subscription status
+          await refreshUserSubscription();
+        } else {
+          print('⏳ [TIMER] Payment status: $status');
+        }
+      } else {
+        print('❌ [TIMER] Silent check failed. HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [TIMER] Error in silent payment check: $e');
     }
   }
 
@@ -3458,7 +3539,7 @@ Widget _buildAdminFeedTab() {
                         elevation: 2,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: InkWell(
-                          onTap: () => _showSubscriptionDetails(),
+                          onTap: () => _checkPaymentStatus(),
                           borderRadius: BorderRadius.circular(12),
                           child: Padding(
                             padding: EdgeInsets.all(12),
@@ -4125,6 +4206,7 @@ Widget _buildAdminFeedTab() {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopPaymentCheckTimer(); // Stop the timer when disposing
     _quoteController.dispose();
     super.dispose();
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:primestatus/Auth/SecurityWrapper.dart';
 import 'package:primestatus/screens/onboarding/splash_screen.dart';
 // Assuming your FirebaseConfig is just a wrapper for Firebase.initializeApp()
 // import 'services/firebase_config.dart'; 
@@ -116,14 +117,16 @@ class QuoteCraftApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Prime Status',
-      theme: ThemeData(
-        primarySwatch: Colors.deepOrange,
-        scaffoldBackgroundColor: Colors.white,
+    return SecurityWrapper(
+      child: MaterialApp(
+        title: 'Prime Status',
+        theme: ThemeData(
+          primarySwatch: Colors.deepOrange,
+          scaffoldBackgroundColor: Colors.white,
+        ),
+        home: const SplashScreen(),
+        debugShowCheckedModeBanner: false,
       ),
-      home: const SplashScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }

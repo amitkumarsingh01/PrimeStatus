@@ -345,6 +345,10 @@ class LocalMediaProcessingService {
               ? ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 8
               : ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13;
           
+          // For video overlays, move the profile image 10px left and up
+          final double imageOffsetX = isForVideo ? -10.0 : 0.0;
+          final double imageOffsetY = isForVideo ? -10.0 : 0.0;
+
 
           return SizedBox(
             width: width,
@@ -439,8 +443,8 @@ class LocalMediaProcessingService {
                   // Profile photo overlay
                   if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
                     Positioned(
-                      left: profileX - (profileSize * 1.1) / 2 - 48,
-                      top: profileY - (profileSize * 1.1) / 2 - 47,
+                      left: profileX - (profileSize * 1.1) / 2 - 48 + imageOffsetX,
+                      top: profileY - (profileSize * 1.1) / 2 - 47 + imageOffsetY,
                       child: Container(
                         width: profileSize * 1.37,
                         height: profileSize * 1.37,
