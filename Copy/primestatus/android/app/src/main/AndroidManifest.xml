@@ -10,7 +10,35 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_OTHERS" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <!-- Package queries for sharing - replaces QUERY_ALL_PACKAGES -->
+    <queries>
+        <!-- WhatsApp -->
+        <package android:name="com.whatsapp" />
+        <!-- Instagram -->
+        <package android:name="com.instagram.android" />
+        <!-- Facebook -->
+        <package android:name="com.facebook.katana" />
+        <!-- Twitter -->
+        <package android:name="com.twitter.android" />
+        <!-- Telegram -->
+        <package android:name="org.telegram.messenger" />
+        <!-- Gmail -->
+        <package android:name="com.google.android.gm" />
+        <!-- General sharing intent -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
     
     <application
         android:label="Prime Status"
@@ -28,6 +56,7 @@
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
+              android:value="Developed by Amit Kumar Singh"
               />
 
             <intent-filter>

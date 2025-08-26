@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:primestatus/Auth/SecurityWrapper.dart';
 import 'package:primestatus/screens/onboarding/splash_screen.dart';
+
 // Assuming your FirebaseConfig is just a wrapper for Firebase.initializeApp()
 // import 'services/firebase_config.dart'; 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -34,6 +35,8 @@ void main() async {
 
     // Step 3: Initialize Firebase Messaging
     await _initFirebaseMessaging();
+
+
   } catch (e) {
     print('Firebase initialization/setup failed: $e');
   }
@@ -112,6 +115,8 @@ Future<void> _initFirebaseMessaging() async {
   });
 }
 
+
+
 class QuoteCraftApp extends StatelessWidget {
   const QuoteCraftApp({super.key});
 
@@ -129,4 +134,16 @@ class QuoteCraftApp extends StatelessWidget {
       ),
     );
   }
+  // @override
+  // Widget build(BuildContext context) {
+  //   return MaterialApp(
+  //     title: 'Prime Status',
+  //     theme: ThemeData(
+  //       primarySwatch: Colors.deepOrange,
+  //       scaffoldBackgroundColor: Colors.white,
+  //     ),
+  //     home: const SplashScreen(),
+  //     debugShowCheckedModeBanner: false,
+  //   );
+  // }
 }

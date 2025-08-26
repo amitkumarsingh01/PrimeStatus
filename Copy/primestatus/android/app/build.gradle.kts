@@ -41,8 +41,8 @@ android {
         applicationId = "com.aksmlibts.primestatus"
         minSdk = 24
         targetSdk = 34
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 4
+        versionName = "1.3"
         multiDexEnabled = true
     }
 

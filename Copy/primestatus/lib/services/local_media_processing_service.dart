@@ -346,8 +346,8 @@ class LocalMediaProcessingService {
               : ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13;
           
           // For video overlays, move the profile image 10px left and up
-          final double imageOffsetX = isForVideo ? -10.0 : 0.0;
-          final double imageOffsetY = isForVideo ? -10.0 : 0.0;
+          final double imageOffsetX = isForVideo ? 6.0 : 7.0;
+          final double imageOffsetY = isForVideo ? 4.0 : 7.0;
 
 
           return SizedBox(

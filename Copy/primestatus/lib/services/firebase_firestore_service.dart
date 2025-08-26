@@ -9,6 +9,7 @@ class FirebaseFirestoreService {
   CollectionReference get _usersCollection => _firestore.collection('users');
   CollectionReference get _quotesCollection => _firestore.collection('quotes');
   CollectionReference get _userQuotesCollection => _firestore.collection('user_quotes');
+  CollectionReference get _loginTypeCollection => _firestore.collection('login_types');
 
   // User operations
   Future<void> createUser({
@@ -282,6 +283,40 @@ class FirebaseFirestoreService {
       };
     } catch (e) {
       throw 'Failed to get user stats: $e';
+    }
+  }
+
+  // Simple LoginType operations
+  Future<void> setLoginType(bool loginType) async {
+    try {
+      await _loginTypeCollection.doc('loginType').set({
+        'loginType': loginType,
+      });
+      print('🔧 LoginType set to: ${loginType ? "✅ TRUE" : "❌ FALSE"}');
+    } catch (e) {
+      print('💥 Failed to set loginType: $e');
+      throw 'Failed to set loginType: $e';
+    }
+  }
+
+  Future<bool> getLoginType() async {
+    try {
+      DocumentSnapshot doc = await _loginTypeCollection.doc('loginType').get();
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        bool value = data['loginType'] ?? true;
+        print('📖 LoginType found in Firestore: ${value ? "✅ TRUE" : "❌ FALSE"}');
+        return value;
+      }
+      // If document doesn't exist, create it with default value true and return true
+      print('🆕 LoginType document not found, creating with default value TRUE');
+      await setLoginType(true);
+      return true;
+    } catch (e) {
+      print('💥 Error getting loginType: $e');
+      print('🔄 Defaulting to TRUE (normal auth flow)');
+      // On error, default to true (normal auth flow)
+      return true;
     }
   }
 } 

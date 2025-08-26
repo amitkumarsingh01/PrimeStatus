@@ -522,7 +522,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                         ),
                       ),
                     // Profile photo overlay (current user) - with background removal
-                    if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl!.isNotEmpty)
+                    if (profileSettings['enabled'] == true && userProfilePhotoUrl != null && userProfilePhotoUrl.isNotEmpty)
                       Positioned(
                         left: profileX - profileSize / 2,
                         top: profileY - profileSize / 2,
@@ -535,7 +535,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                                   ? profileSize / 2
                                   : 8,
                             ),
-                            child: _buildProfilePhoto(userProfilePhotoUrl!),
+                            child: _buildProfilePhoto(userProfilePhotoUrl),
                           ),
                         ),
                       ),
@@ -2428,6 +2428,7 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   late String _controllerKey;
+  bool _isMuted = true;
 
   @override
   void initState() {
@@ -2437,7 +2438,7 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
     VideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
-      _controller.setVolume(1.0); // Always sound on
+      _controller.setVolume(_isMuted ? 0.0 : 1.0);
       _controller.play();
       setState(() {});
     });
@@ -2470,9 +2471,38 @@ class _Base64VideoPlayerState extends State<_Base64VideoPlayer> {
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
+            return Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: _controller.value.aspectRatio,
+                  child: VideoPlayer(_controller),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isMuted = !_isMuted;
+                        _controller.setVolume(_isMuted ? 0.0 : 1.0);
+                      });
+                    },
+                    child: Container
+                    (
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             );
           } else {
             return Center(child: CircularProgressIndicator(color: Colors.blue));
@@ -2496,6 +2526,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   late String _controllerKey;
+  bool _isMuted = true;
 
   @override
   void initState() {
@@ -2505,7 +2536,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
     VideoControllerManager().registerController(_controllerKey, _controller);
     _initializeVideoPlayerFuture = _controller.initialize().then((_) {
       _controller.setLooping(true);
-      _controller.setVolume(1.0); // Always sound on
+      _controller.setVolume(_isMuted ? 0.0 : 1.0);
       _controller.play();
       setState(() {});
     });
@@ -2538,9 +2569,38 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
+            return Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: _controller.value.aspectRatio,
+                  child: VideoPlayer(_controller),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isMuted = !_isMuted;
+                        _controller.setVolume(_isMuted ? 0.0 : 1.0);
+                      });
+                    },
+                    child: Container
+                    (
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             );
           } else {
             return Center(child: CircularProgressIndicator(color: Colors.blue));
