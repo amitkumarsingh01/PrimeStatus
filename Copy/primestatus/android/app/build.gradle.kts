@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.aksmlibts.primestatus"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -40,9 +40,9 @@ android {
     defaultConfig {
         applicationId = "com.aksmlibts.primestatus"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 5
-        versionName = "1.4"
+        targetSdk = 36
+        versionCode = 6
+        versionName = "1.5"
         multiDexEnabled = true
     }
 
