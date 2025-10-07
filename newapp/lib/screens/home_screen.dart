@@ -205,6 +205,20 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _filteredCategories = allCategories; // Initialize filtered categories
         _isLoadingCategories = false;
       });
+      
+      // Debug: Check for highlighted categories
+      final highlightedCategories = allCategories.where((cat) => cat['isHighlighted'] == true).toList();
+      print('🌟 [DEBUG] Total categories: ${allCategories.length}');
+      print('🌟 [DEBUG] Highlighted categories: ${highlightedCategories.length}');
+      highlightedCategories.forEach((cat) {
+        print('🌟 [DEBUG] Highlighted: ${cat['nameEn']} (isHighlighted: ${cat['isHighlighted']})');
+      });
+      
+      // Debug: Show all categories with their highlight status
+      print('🌟 [DEBUG] All categories:');
+      allCategories.forEach((cat) {
+        print('  - ${cat['nameEn']}: isHighlighted=${cat['isHighlighted']}');
+      });
     } catch (e) {
       print('Error fetching categories: $e');
       setState(() {
@@ -1228,22 +1242,32 @@ Download now: $shareLink
 
   // Custom image cropping dialog using crop_your_image
   Future<File?> _showCropDialog(File imageFile) async {
+    print('🖼️ [CROP_DIALOG] Starting crop dialog for image: ${imageFile.path}');
     final cropController = CropController();
     bool cropping = false;
+    bool isCancelled = false; // Add flag to track cancellation
+    bool dialogClosed = false; // Add flag to track if dialog is closed
     Uint8List? croppedData;
 
     return await showDialog<File?>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.crop, color: Colors.deepOrange),
-              SizedBox(width: 8),
-              Text('Crop Profile Photo'),
-            ],
-          ),
+      barrierDismissible: true, // Allow dismissing by tapping outside
+      builder: (context) => WillPopScope(
+        onWillPop: () async {
+          print('🔙 [CROP_DIALOG] Back button pressed - setting cancelled flag');
+          isCancelled = true; // Set cancellation flag
+          dialogClosed = true; // Mark dialog as closed
+          return true; // Allow pop
+        },
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.crop, color: Colors.deepOrange),
+                SizedBox(width: 8),
+                Text('Crop Profile Photo'),
+              ],
+            ),
           content: Container(
             width: double.maxFinite,
             height: 400,
@@ -1294,16 +1318,32 @@ Download now: $shareLink
                           );
                         }),
                         onCropped: (result) async {
+                          print('✂️ [CROP_DIALOG] onCropped callback triggered');
+                          print('🚫 [CROP_DIALOG] isCancelled flag: $isCancelled');
+                          print('🚪 [CROP_DIALOG] dialogClosed flag: $dialogClosed');
+                          
+                          // Check if user cancelled or dialog is closed before processing
+                          if (isCancelled || dialogClosed) {
+                            print('❌ [CROP_DIALOG] User cancelled or dialog closed - stopping processing');
+                            setDialogState(() => cropping = false);
+                            return; // Exit early if cancelled
+                          }
+                          
+                          print('✅ [CROP_DIALOG] Processing crop result...');
                           try {
                             if (result is CropSuccess) {
+                              print('🎉 [CROP_DIALOG] Crop successful - processing image');
                               croppedData = result.croppedImage;
                               final tempDir = Directory.systemTemp;
                               final tempFile = File(
                                 '${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png',
                               );
+                              print('💾 [CROP_DIALOG] Writing cropped image to: ${tempFile.path}');
                               await tempFile.writeAsBytes(croppedData!);
+                              print('🚀 [CROP_DIALOG] Closing dialog with cropped file');
                               Navigator.pop(context, tempFile);
                             } else if (result is CropFailure) {
+                              print('💥 [CROP_DIALOG] Crop failed: ${result.cause}');
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -1321,6 +1361,7 @@ Download now: $shareLink
                               );
                             }
                           } catch (e) {
+                            print('🔥 [CROP_DIALOG] Exception during crop processing: $e');
                             showDialog(
                               context: context,
                               builder: (context) => AlertDialog(
@@ -1335,6 +1376,7 @@ Download now: $shareLink
                               ),
                             );
                           }
+                          print('🔄 [CROP_DIALOG] Setting cropping state to false');
                           setDialogState(() => cropping = false);
                         },
                       ),
@@ -1350,15 +1392,57 @@ Download now: $shareLink
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // TextButton(
-                    //   onPressed: () => Navigator.pop(context),
-                    //   child: Text('Cancel'),
-                    // ),
+                    TextButton.icon(
+                      onPressed: () {
+                        print('❌ [CROP_DIALOG] Cancel button pressed!');
+                        print('🚫 [CROP_DIALOG] Setting isCancelled = true');
+                        isCancelled = true; // Set cancellation flag
+                        print('🚪 [CROP_DIALOG] Setting dialogClosed = true');
+                        dialogClosed = true; // Mark dialog as closed
+                        print('🔄 [CROP_DIALOG] Setting cropping = false');
+                        setDialogState(() => cropping = false); // Force stop cropping state
+                        
+                        // Force close with multiple approaches
+                        print('🚀 [CROP_DIALOG] Attempting to close dialog...');
+                        try {
+                          Navigator.of(context).pop(null);
+                          print('✅ [CROP_DIALOG] Dialog closed successfully with normal pop');
+                        } catch (e) {
+                          print('⚠️ [CROP_DIALOG] Normal pop failed: $e');
+                          // If normal pop fails, try alternative
+                          try {
+                            Navigator.of(context, rootNavigator: true).pop(null);
+                            print('✅ [CROP_DIALOG] Dialog closed successfully with root navigator pop');
+                          } catch (e2) {
+                            print('💥 [CROP_DIALOG] Root navigator pop also failed: $e2');
+                          }
+                        }
+                      },
+                      icon: Icon(Icons.close),
+                      label: Text('Cancel'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[600],
+                      ),
+                    ),
                     ElevatedButton.icon(
-                      onPressed: cropping
+                      onPressed: (cropping || isCancelled || dialogClosed)
                           ? null
-                          : () {
+                          : () async {
+                              print('✂️ [CROP_DIALOG] Crop button pressed!');
+                              print('🔄 [CROP_DIALOG] Setting cropping = true');
                               setDialogState(() => cropping = true);
+                              print('🚀 [CROP_DIALOG] Starting crop operation...');
+                              
+                              // Add a small delay to allow cancellation
+                              await Future.delayed(Duration(milliseconds: 100));
+                              
+                              // Check if cancelled during delay
+                              if (isCancelled || dialogClosed) {
+                                print('❌ [CROP_DIALOG] Cancelled during delay - stopping crop');
+                                setDialogState(() => cropping = false);
+                                return;
+                              }
+                              
                               cropController.crop();
                             },
                       icon: Icon(Icons.crop),
@@ -1373,6 +1457,7 @@ Download now: $shareLink
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -1458,18 +1543,49 @@ Download now: $shareLink
                               final category = _filteredCategories[index];
                               final categoryName = _getCategoryName(category);
                               if (categoryName == null) return SizedBox.shrink();
+                              final isHighlighted = category['isHighlighted'] == true;
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: Colors.deepOrange.shade100,
+                                  backgroundColor: isHighlighted 
+                                      ? Colors.red.shade100 
+                                      : Colors.deepOrange.shade100,
                                   child: Icon(
                                     _getCategoryIcon(categoryName),
-                                    color: Colors.deepOrange,
+                                    color: isHighlighted 
+                                        ? Colors.white 
+                                        : Colors.deepOrange,
                                     size: 20,
                                   ),
                                 ),
-                                title: Text(
-                                  categoryName,
-                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      categoryName,
+                                      style: TextStyle(
+                                        fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w600,
+                                        color: isHighlighted ? Colors.white : null,
+                                      ),
+                                    ),
+                                    if (isHighlighted) ...[
+                                      SizedBox(width: 8),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade600,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.red.shade400),
+                                        ),
+                                        child: Text(
+                                          'HIGHLIGHTED',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 // subtitle: Text('${QuoteData.quotes[categoryName]?.length ?? 0} quotes'),
                                 onTap: () {
@@ -1568,35 +1684,39 @@ Download now: $shareLink
       if (city != null) updateData['city'] = city;
       if (businessCategory != null) updateData['businessCategory'] = businessCategory;
 
+      // Single Firebase call - much faster!
       await _userService.updateUserData(_currentUser!.uid, updateData);
 
-      // Also update the profile if name is provided
-      if (name != null) {
-        await _userService.updateProfile(uid: _currentUser!.uid, name: name);
-      }
+      // Update local state immediately for instant UI update
+      setState(() {
+        if (name != null) userName = name;
+        if (language != null) userLanguage = language;
+        if (usageType != null) userUsageType = usageType;
+        if (religion != null) userReligion = religion;
+        if (state != null) userState = state;
+        if (phoneNumber != null) userPhoneNumber = phoneNumber;
+        if (address != null) userAddress = address;
+        if (dateOfBirth != null) userDob = dateOfBirth;
+        if (city != null) userCity = city;
+        if (businessCategory != null) userBusinessCategory = businessCategory;
+      });
 
-      // Refresh user data to update UI
-      await _fetchUserDetails();
+      // Show success message
+      String fieldName = '';
+      if (name != null) fieldName = 'Name';
+      else if (language != null) fieldName = 'Language';
+      else if (usageType != null) fieldName = 'Usage Type';
+      else if (religion != null) fieldName = 'Religion';
+      else if (state != null) fieldName = 'State';
+      else if (phoneNumber != null) fieldName = 'Phone Number';
+      else if (address != null) fieldName = 'Address';
+      else if (dateOfBirth != null) fieldName = 'Date of Birth';
+      else if (city != null) fieldName = 'City';
+      else if (businessCategory != null) fieldName = 'Business Category';
 
-      // Refresh categories if language changed to update UI
-      if (language != null) {
-        // Trigger UI rebuild with new language
-        setState(() {});
-      }
-
-      // Show success message for usage type change
-      if (usageType != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Usage type changed to $usageType')),
-        );
-      }
-
-      // Show success message for language change
-      if (language != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Language changed to $language')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$fieldName updated successfully!')),
+      );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -1628,9 +1748,13 @@ Download now: $shareLink
         // Use the new crop_your_image dialog
         File? croppedImageFile;
         final croppedFile = await _showCropDialog(imageFile);
+        print('📸 [PHOTO_PROCESS] Crop dialog returned: ${croppedFile?.path ?? "null"}');
+        
         if (croppedFile != null) {
+          print('✅ [PHOTO_PROCESS] Using cropped image: ${croppedFile.path}');
           croppedImageFile = croppedFile;
         } else {
+          print('❌ [PHOTO_PROCESS] User cancelled cropping, using original image: ${imageFile.path}');
           // User cancelled cropping, use original image
           croppedImageFile = imageFile;
         }
@@ -1706,25 +1830,34 @@ Download now: $shareLink
         // Use the new crop_your_image dialog
         File? croppedImageFile;
         final croppedFile = await _showCropDialog(imageFile);
+        print('📸 [PHOTO_PROCESS] Crop dialog returned: ${croppedFile?.path ?? "null"}');
+        
         if (croppedFile != null) {
+          print('✅ [PHOTO_PROCESS] Using cropped image: ${croppedFile.path}');
           croppedImageFile = croppedFile;
         } else {
+          print('❌ [PHOTO_PROCESS] User cancelled cropping, using original image: ${imageFile.path}');
           // User cancelled cropping, use original image
           croppedImageFile = imageFile;
         }
 
         if (croppedImageFile != null) {
+          print('🚀 [PHOTO_PROCESS] Starting photo upload...');
           // Upload original
           String downloadUrl = await _userService.uploadProfilePhoto(
             croppedImageFile,
             _currentUser!.uid,
           );
+          print('✅ [PHOTO_PROCESS] Photo uploaded successfully: $downloadUrl');
           // Remove background and upload processed image
+          print('🎨 [PHOTO_PROCESS] Starting background removal...');
           String? processedUrl = await _bgRemovalService.removeBackground(
             croppedImageFile,
           );
+          print('🎨 [PHOTO_PROCESS] Background removal result: ${processedUrl ?? "null"}');
           String? downloadUrlNoBg;
           if (processedUrl != null) {
+            print('💾 [PHOTO_PROCESS] Processing background-removed image...');
             final response = await http.get(Uri.parse(processedUrl));
             if (response.statusCode == 200) {
               final tempDir = Directory.systemTemp;
@@ -2348,6 +2481,12 @@ Download now: $shareLink
               final category = nonBusinessCategories[index];
               final categoryName = _getCategoryName(category);
               if (categoryName == null) return SizedBox.shrink();
+              final isHighlighted = category['isHighlighted'] == true;
+              
+              // Debug: Log highlighted categories in featured section
+              if (isHighlighted) {
+                print('🌟 [FEATURED] Highlighted category found: $categoryName (isHighlighted: ${category['isHighlighted']})');
+              }
               return Container(
                 width:
                     MediaQuery.of(context).size.width /
@@ -2355,47 +2494,132 @@ Download now: $shareLink
                 margin: EdgeInsets.only(right: 12),
                 child: Column(
                   children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors:
-                              AppConstants.categoryColors[index %
-                                  AppConstants.categoryColors.length],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppConstants
-                                .categoryColors[index %
-                                    AppConstants.categoryColors.length][0]
-                                .withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
+                    isHighlighted
+                        ? Container(
+                            width: 60,
+                            height: 60,
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: Duration(seconds: 3),
+                              builder: (context, value, child) {
+                                // Create color animation from red to blue to red
+                                Color color1, color2;
+                                if (value < 0.5) {
+                                  // First half: red to blue
+                                  final progress = value * 2;
+                                  color1 = Color.lerp(Colors.red, Colors.blue, progress)!;
+                                  color2 = Color.lerp(Colors.red.shade700, Colors.blue.shade700, progress)!;
+                                } else {
+                                  // Second half: blue to red
+                                  final progress = (value - 0.5) * 2;
+                                  color1 = Color.lerp(Colors.blue, Colors.red, progress)!;
+                                  color2 = Color.lerp(Colors.blue.shade700, Colors.red.shade700, progress)!;
+                                }
+                                
+                                return Transform.scale(
+                                  scale: 0.9 + (0.1 * (0.5 - (value - 0.5).abs())),
+                                  child: Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [color1, color2],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: color1.withOpacity(0.6),
+                                          blurRadius: 20,
+                                          spreadRadius: 3,
+                                          offset: Offset(0, 0),
+                                        ),
+                                        BoxShadow(
+                                          color: color2.withOpacity(0.4),
+                                          blurRadius: 30,
+                                          spreadRadius: 6,
+                                          offset: Offset(0, 0),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      _getCategoryIcon(categoryName),
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        : AnimatedContainer(
+                            duration: Duration(milliseconds: 300),
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: AppConstants.categoryColors[index %
+                                    AppConstants.categoryColors.length],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppConstants
+                                      .categoryColors[index %
+                                          AppConstants.categoryColors.length][0]
+                                      .withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _getCategoryIcon(categoryName),
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        _getCategoryIcon(categoryName),
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
                     SizedBox(height: 6),
                     Text(
                       categoryName,
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        fontSize: isHighlighted ? 12 : 11,
+                        fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w600,
+                        color: isHighlighted ? Colors.white : Colors.black87,
+                        shadows: isHighlighted ? [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ] : null,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (isHighlighted) ...[
+                      SizedBox(height: 2),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade400),
+                        ),
+                        child: Text(
+                          'HIGHLIGHTED',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
@@ -3295,6 +3519,8 @@ Download now: $shareLink
                               final isSelected = _selectedCategories.contains(
                                 englishCategoryName,
                               );
+                              final isHighlighted = category['isHighlighted'] == true;
+                              
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
@@ -3302,36 +3528,68 @@ Download now: $shareLink
                                     _selectedCategories = {englishCategoryName};
                                   });
                                 },
-                                child: Container(
+                                child: AnimatedContainer(
+                                  duration: Duration(milliseconds: 300),
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 10,
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xffd74d02)
-                                        : Colors.white,
+            color: isSelected
+                ? const Color(0xffd74d02)
+                : isHighlighted
+                    ? Colors.red.shade100
+                    : Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      width: 0.5,
-                                      color: const Color.fromARGB(
-                                        255,
-                                        255,
-                                        119,
-                                        34,
-                                      ),
+                                      width: isHighlighted ? 2 : 0.5,
+                                      color: isHighlighted
+                                          ? Colors.red.shade400
+                                          : const Color.fromARGB(255, 255, 119, 34),
                                     ),
+                                    boxShadow: isHighlighted && !isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.red.withOpacity(0.3),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
                                   ),
-                                  child: Text(
-                                    categoryName,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isHighlighted && !isSelected) ...[
+                                        Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: [Colors.red, Colors.blue],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 4),
+                                      ],
+                                      Text(
+                                        categoryName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : isHighlighted
+                                                ? Colors.red.shade800
+                                                : Colors.black,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               );
@@ -4182,8 +4440,52 @@ Download now: $shareLink
                     final category = _firebaseCategories[index];
                     final categoryName = _getCategoryName(category);
                     if (categoryName == null) return SizedBox.shrink();
+                    final isHighlighted = category['isHighlighted'] == true;
                     return ListTile(
-                      title: Text(categoryName),
+                      leading: isHighlighted 
+                          ? Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [Colors.red, Colors.blue],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                            )
+                          : null,
+                      title: Row(
+                        children: [
+                          Text(
+                            categoryName,
+                            style: TextStyle(
+                              fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                              color: isHighlighted ? Colors.white : null,
+                            ),
+                          ),
+                          if (isHighlighted) ...[
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade600,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade400),
+                              ),
+                              child: Text(
+                                'HIGHLIGHTED',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         _showCategoryQuotes(categoryName);

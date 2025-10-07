@@ -710,13 +710,13 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                 <span>Cancel</span>
               </button>
               <div className="flex space-x-3">
-                <button
+              <button
                   onClick={() => handleSave(false)}
-                  className="px-6 py-2 bg-gradient-to-r from-orange-400 to-blue-400 text-black rounded-xl hover:from-orange-500 hover:to-blue-500 transition-all duration-200 flex items-center space-x-2 shadow-lg"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save Post</span>
-                </button>
+                className="px-6 py-2 bg-gradient-to-r from-orange-400 to-blue-400 text-black rounded-xl hover:from-orange-500 hover:to-blue-500 transition-all duration-200 flex items-center space-x-2 shadow-lg"
+              >
+                <Save className="h-4 w-4" />
+                <span>Save Post</span>
+              </button>
                 <button
                   onClick={() => handleSave(true)}
                   disabled={!isScheduled || !scheduledDate || !scheduledTime}

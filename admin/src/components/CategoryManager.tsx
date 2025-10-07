@@ -15,6 +15,7 @@ export default function CategoryManager() {
   const [editNameKn, setEditNameKn] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [newPosition, setNewPosition] = useState<number | ''>('');
+  const [highlightedCategory, setHighlightedCategory] = useState<string | null>(null);
 
   // Helper function to get current time-based greeting
   const getCurrentTimeGreeting = () => {
@@ -163,8 +164,17 @@ export default function CategoryManager() {
         isFixed: docSnap.data().isFixed || false,
         isDynamic: docSnap.data().isDynamic || false,
         isBusiness: docSnap.data().isBusiness || false,
+        isHighlighted: docSnap.data().isHighlighted || false,
         type: docSnap.data().type || '',
       }));
+      
+      // Find and set the highlighted category
+      const highlightedCat = fetchedCategories.find(cat => cat.isHighlighted);
+      if (highlightedCat) {
+        setHighlightedCategory(highlightedCat.id);
+      } else {
+        setHighlightedCategory(null);
+      }
       
       console.log('Fetched categories:', fetchedCategories.map(c => ({ name: c.nameEn, position: c.position })));
       
@@ -479,6 +489,57 @@ export default function CategoryManager() {
       fetchCategories();
     } catch (e) {
       setError('Failed to delete category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHighlight = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // First, remove highlight from any currently highlighted category
+      if (highlightedCategory) {
+        await updateDoc(doc(db, 'categories', highlightedCategory), {
+          isHighlighted: false,
+          updatedAt: new Date()
+        });
+      }
+      
+      // Then highlight the selected category
+      await updateDoc(doc(db, 'categories', id), {
+        isHighlighted: true,
+        updatedAt: new Date()
+      });
+      
+      setHighlightedCategory(id);
+      const categoryName = categories.find(c => c.id === id)?.nameEn || 'Category';
+      setSuccess(`"${categoryName}" is now highlighted! It will glow with animations in the app.`);
+      setTimeout(() => setSuccess(null), 4000);
+      await fetchCategories();
+    } catch (e) {
+      setError('Failed to highlight category: ' + e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveHighlight = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, 'categories', id), {
+        isHighlighted: false,
+        updatedAt: new Date()
+      });
+      
+      const categoryName = categories.find(c => c.id === id)?.nameEn || 'Category';
+      setHighlightedCategory(null);
+      setSuccess(`"${categoryName}" highlight removed! It will no longer glow in the app.`);
+      setTimeout(() => setSuccess(null), 4000);
+      await fetchCategories();
+    } catch (e) {
+      setError('Failed to remove highlight: ' + e);
     } finally {
       setLoading(false);
     }
@@ -866,6 +927,12 @@ export default function CategoryManager() {
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-800">{categories.length}</div>
               <div className="text-sm text-gray-600">Total Categories</div>
+              {highlightedCategory && (
+                <div className="mt-2 flex items-center justify-end space-x-1">
+                  <span className="text-yellow-500">⭐</span>
+                  <span className="text-xs text-yellow-600 font-medium">1 Highlighted</span>
+                </div>
+              )}
             </div>
           </div>
           
@@ -894,6 +961,10 @@ export default function CategoryManager() {
                 <li className="flex items-center">
                   <span className="mr-2">📱</span>
                   <span>Categories at the top appear first in mobile app</span>
+                </li>
+                <li className="flex items-center">
+                  <span className="mr-2">✨</span>
+                  <span>Highlight categories to make them glow in the app</span>
                 </li>
               </ul>
             </div>
@@ -1053,51 +1124,31 @@ export default function CategoryManager() {
                   </ul>
                 </div>
 
-                {/* Business Categories Section */}
-                <div className="mb-6">
-                  <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
-                    <span className="mr-2">🏢</span>
-                    Business Categories
-                  </h4>
-                  <ul className="space-y-2">
-                    {categories.filter(cat => cat.isFixed && cat.isBusiness).map((cat, index) => (
-                      <li
-                        key={cat.id}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200"
-                      >
-                        <div className="flex items-center space-x-3 flex-1">
-                          <div className="text-purple-600 text-sm font-mono bg-purple-100 px-3 py-1 rounded">
-                            #{cat.position + 1}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-900">{cat.nameEn}</span>
-                            <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              🏢 Business Category - For business users
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
-                            Business
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 {/* Regular Categories Section */}
                 <div>
-                  <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
-                    <span className="mr-2">📝</span>
-                    Custom Categories
-                  </h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-md font-semibold text-gray-700 flex items-center">
+                      <span className="mr-2">📝</span>
+                      Custom Categories
+                    </h4>
+                    {highlightedCategory && (
+                      <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-1 rounded-full">
+                        <span className="text-yellow-600">⭐</span>
+                        <span className="text-sm text-yellow-700 font-medium">
+                          {categories.find(c => c.id === highlightedCategory)?.nameEn} is highlighted
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <ul className="space-y-2">
                     {categories.filter(cat => !cat.isFixed).map((cat, index) => (
                       <li
                         key={cat.id}
-                        className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-orange-300 transition-all"
+                        className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                          cat.isHighlighted 
+                            ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 shadow-lg' 
+                            : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-orange-300'
+                        }`}
                       >
                         {editingId === cat.id ? (
                           <div className="flex-1 flex items-center space-x-2">
@@ -1137,8 +1188,16 @@ export default function CategoryManager() {
                                 #{cat.position + 1}
                               </div>
                               <div>
-                                <span className="font-medium text-gray-900">{cat.nameEn}</span>
-                                <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-medium text-gray-900">{cat.nameEn}</span>
+                                  <span className="text-gray-500 text-sm">/ {cat.nameKn}</span>
+                                  {cat.isHighlighted && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      <span className="mr-1">⭐</span>
+                                      HIGHLIGHTED
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className="flex space-x-2">
@@ -1158,6 +1217,27 @@ export default function CategoryManager() {
                               >
                                 <ArrowDown size={14} />
                               </button>
+                              {cat.isHighlighted ? (
+                                <button
+                                  onClick={() => handleRemoveHighlight(cat.id)}
+                                  className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all flex items-center space-x-1"
+                                  disabled={loading}
+                                  title="Remove highlight"
+                                >
+                                  <span>⭐</span>
+                                  <span>Unhighlight</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleHighlight(cat.id)}
+                                  className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all flex items-center space-x-1"
+                                  disabled={loading}
+                                  title="Highlight this category"
+                                >
+                                  <span>✨</span>
+                                  <span>Highlight</span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => startEdit(cat)}
                                 className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center space-x-1"

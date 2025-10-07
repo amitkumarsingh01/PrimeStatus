@@ -19,6 +19,7 @@ class CategoryService {
           'nameKn': data['nameKn'] ?? '',
           'position': data['position'] ?? 0,
           'isBusiness': data['isBusiness'] ?? false,
+          'isHighlighted': data['isHighlighted'] ?? false,
         };
       }).where((category) => 
         !category['isBusiness'] && // Filter out business categories
