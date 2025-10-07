@@ -54,6 +54,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String userAddress = '';
   String userCity = '';
   String userBusinessCategory = '';
+  String userBusinessName = '';
+  String userDesignation = '';
+  String? userBusinessLogoUrl;
   late TextEditingController _quoteController;
   String quoteOfTheDay = '';
   List<String> favoriteQuotes = [];
@@ -280,6 +283,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           userDob = userData['dateOfBirth'] ?? '';
           userCity = userData['city'] ?? '';
           userBusinessCategory = userData['businessCategory'] ?? '';
+          userBusinessName = userData['businessName'] ?? '';
+          userDesignation = userData['designation'] ?? '';
+          userBusinessLogoUrl = userData['businessLogoUrl'];
         });
 
         // Fetch user's profile photos
@@ -1234,9 +1240,13 @@ Download now: $shareLink
       userProfilePhotoUrl = null;
       userPhoneNumber = '';
       userAddress = '';
-      userDob = '';
-      userCity = '';
-      userProfilePhotos = []; // Clear profile photos list
+        userDob = '';
+        userCity = '';
+        userBusinessCategory = '';
+        userBusinessName = '';
+        userDesignation = '';
+        userBusinessLogoUrl = null;
+        userProfilePhotos = []; // Clear profile photos list
     });
   }
 
@@ -1660,9 +1670,12 @@ Download now: $shareLink
     String? phoneNumber,
     String? address,
     String? dateOfBirth,
-    String? city,
-    String? businessCategory,
-  }) async {
+      String? city,
+      String? businessCategory,
+      String? businessName,
+      String? designation,
+      String? businessLogoUrl,
+    }) async {
     if (_currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please sign in to update your profile')),
@@ -1681,10 +1694,13 @@ Download now: $shareLink
       if (phoneNumber != null) updateData['phoneNumber'] = phoneNumber;
       if (address != null) updateData['address'] = address;
       if (dateOfBirth != null) updateData['dateOfBirth'] = dateOfBirth;
-      if (city != null) updateData['city'] = city;
-      if (businessCategory != null) updateData['businessCategory'] = businessCategory;
+        if (city != null) updateData['city'] = city;
+        if (businessCategory != null) updateData['businessCategory'] = businessCategory;
+        if (businessName != null) updateData['businessName'] = businessName;
+        if (designation != null) updateData['designation'] = designation;
+        if (businessLogoUrl != null) updateData['businessLogoUrl'] = businessLogoUrl;
 
-      // Single Firebase call - much faster!
+        // Single Firebase call - much faster!
       await _userService.updateUserData(_currentUser!.uid, updateData);
 
       // Update local state immediately for instant UI update
@@ -1699,6 +1715,9 @@ Download now: $shareLink
         if (dateOfBirth != null) userDob = dateOfBirth;
         if (city != null) userCity = city;
         if (businessCategory != null) userBusinessCategory = businessCategory;
+        if (businessName != null) userBusinessName = businessName;
+        if (designation != null) userDesignation = designation;
+        if (businessLogoUrl != null) userBusinessLogoUrl = businessLogoUrl;
       });
 
       // Show success message
@@ -1713,6 +1732,9 @@ Download now: $shareLink
       else if (dateOfBirth != null) fieldName = 'Date of Birth';
       else if (city != null) fieldName = 'City';
       else if (businessCategory != null) fieldName = 'Business Category';
+      else if (businessName != null) fieldName = 'Business Name';
+      else if (designation != null) fieldName = 'Designation';
+      else if (businessLogoUrl != null) fieldName = 'Business Logo';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$fieldName updated successfully!')),
@@ -4159,13 +4181,12 @@ Download now: $shareLink
                       ),
                       _buildUserDataCard(
                         'Designation',
-                        userAddress,
-                        Icons.location_on,
+                        userDesignation,
+                        Icons.work_outline,
                         onTap: () => _showEditFieldDialog(
                           'Designation',
-                          userAddress,
-                          'address',
-                          isMultiline: true,
+                          userDesignation,
+                          'designation',
                         ),
                       ),
                       _buildUserDataCard(
@@ -4185,14 +4206,47 @@ Download now: $shareLink
                         Icons.email,
                         isEditable: false, // Email cannot be changed
                       ),
-                      // Business category for business users
-                      if (userUsageType == 'Business' || userUsageType == 'ವ್ಯಾಪಾರ')
+                      
+                      // Business fields for business users
+                      if (userUsageType == 'Business' || userUsageType == 'ವ್ಯಾಪಾರ') ...[
+                        _buildUserDataCard(
+                          'Business Name',
+                          userBusinessName,
+                          Icons.business,
+                          onTap: () => _showEditFieldDialog(
+                            'Business Name',
+                            userBusinessName,
+                            'businessName',
+                          ),
+                        ),
+                        _buildUserDataCard(
+                          'Address',
+                          userAddress,
+                          Icons.location_on,
+                          onTap: () => _showEditFieldDialog(
+                            'Address',
+                            userAddress,
+                            'address',
+                            isMultiline: true,
+                          ),
+                        ),
+                        _buildUserDataCard(
+                          'City',
+                          userCity,
+                          Icons.location_city,
+                          onTap: () => _showEditFieldDialog(
+                            'City',
+                            userCity,
+                            'city',
+                          ),
+                        ),
                         _buildUserDataCard(
                           'Business Category',
                           userBusinessCategory.isNotEmpty ? userBusinessCategory : 'Not selected',
                           Icons.category,
                           onTap: () => _showBusinessCategoryDialog(),
                         ),
+                      ],
                       // _buildUserDataCard(
                       //   'Name',
                       //   userName,
@@ -4858,6 +4912,9 @@ Download now: $shareLink
                   case 'name':
                     await _updateUserDetails(name: controller.text);
                     break;
+                  case 'designation':
+                    await _updateUserDetails(designation: controller.text);
+                    break;
                   case 'phoneNumber':
                     await _updateUserDetails(phoneNumber: controller.text);
                     break;
@@ -4866,6 +4923,9 @@ Download now: $shareLink
                     break;
                   case 'city':
                     await _updateUserDetails(city: controller.text);
+                    break;
+                  case 'businessName':
+                    await _updateUserDetails(businessName: controller.text);
                     break;
                   case 'dateOfBirth':
                     await _updateUserDetails(dateOfBirth: controller.text);

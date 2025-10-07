@@ -378,6 +378,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessNameSettings = post['businessNameSettings'] ?? {};
+    final designationSettings = post['designationSettings'] ?? {};
     final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
@@ -387,6 +389,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
     final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
     final String userBusinessCategory = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessCategory ?? '');
+    final String userBusinessName = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '');
+    final String userDesignation = (context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -412,10 +416,16 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
               final double businessCategoryXBase = (businessCategorySettings['x'] ?? 50) / 100 * width;
               final double businessCategoryY = (businessCategorySettings['y'] ?? 75) / 100 * height;
+              final double businessNameXBase = (businessNameSettings['x'] ?? 50) / 100 * width;
+              final double businessNameY = (businessNameSettings['y'] ?? 20) / 100 * height;
+              final double designationXBase = (designationSettings['x'] ?? 50) / 100 * width;
+              final double designationY = (designationSettings['y'] ?? 25) / 100 * height;
               final double textX = userName.length > 15 ? textXBase + 10 : textXBase;
               // final double addressX = userAddress.length > 15 ? addressXBase + 25 : addressXBase;
               final double addressX = userAddress.length > 15 ? addressXBase + 35 : addressXBase;
               final double businessCategoryX = userBusinessCategory.length > 15 ? businessCategoryXBase + 35 : businessCategoryXBase;
+              final double businessNameX = userBusinessName.length > 15 ? businessNameXBase + 35 : businessNameXBase;
+              final double designationX = userDesignation.length > 15 ? designationXBase + 35 : designationXBase;
 
 
               return SizedBox(
@@ -520,6 +530,60 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                                 fontFamily: getFontFamily(phoneSettings['font']) ?? 'Arial',
                                 fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
                                 color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Business name text overlay (for business users)
+                    if (userUsageType == 'Business' && businessNameSettings['enabled'] == true && userBusinessName.isNotEmpty)
+                      Positioned(
+                        left: businessNameX,
+                        top: businessNameY,
+                        child: Transform.translate(
+                          offset: Offset(-0.5 * (businessNameSettings['fontSize'] ?? 14) * (userBusinessName.length / 2), -20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: businessNameSettings['hasBackground'] == true
+                                ? BoxDecoration(
+                                    color: _parseColor(businessNameSettings['backgroundColor'] ?? '#000000'),
+                                    borderRadius: BorderRadius.circular(8),
+                                  )
+                                : null,
+                            child: Text(
+                              userBusinessName.length > 15 ? userBusinessName : userBusinessName,
+                              style: TextStyle(
+                                fontFamily: getFontFamily(businessNameSettings['font']) ?? 'Arial',
+                                fontSize: (businessNameSettings['fontSize'] ?? 14).toDouble() * (userBusinessName.length > 15 ? 0.9 : 1.0),
+                                color: _parseColor(businessNameSettings['color'] ?? '#ffffff'),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Designation text overlay (for personal users)
+                    if (userUsageType == 'Personal' && designationSettings['enabled'] == true && userDesignation.isNotEmpty)
+                      Positioned(
+                        left: designationX,
+                        top: designationY,
+                        child: Transform.translate(
+                          offset: Offset(-0.5 * (designationSettings['fontSize'] ?? 16) * (userDesignation.length / 2), -20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: designationSettings['hasBackground'] == true
+                                ? BoxDecoration(
+                                    color: _parseColor(designationSettings['backgroundColor'] ?? '#000000'),
+                                    borderRadius: BorderRadius.circular(8),
+                                  )
+                                : null,
+                            child: Text(
+                              userDesignation.length > 15 ? userDesignation : userDesignation,
+                              style: TextStyle(
+                                fontFamily: getFontFamily(designationSettings['font']) ?? 'Arial',
+                                fontSize: (designationSettings['fontSize'] ?? 16).toDouble() * (userDesignation.length > 15 ? 0.9 : 1.0),
+                                color: _parseColor(designationSettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2753,6 +2817,8 @@ class AdminPostFeedWidgetHelpers {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessNameSettings = post['businessNameSettings'] ?? {};
+    final designationSettings = post['designationSettings'] ?? {};
     final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
@@ -2762,6 +2828,8 @@ class AdminPostFeedWidgetHelpers {
     final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
     final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
     final String userBusinessCategory = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessCategory ?? '');
+    final String userBusinessName = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '');
+    final String userDesignation = (context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '');
 
     return _buildPostCardStaticInternal(
       context, 
@@ -2771,6 +2839,7 @@ class AdminPostFeedWidgetHelpers {
       profileSettings, 
       addressSettings, 
       phoneSettings,
+      businessNameSettings,
       businessCategorySettings,
       userName,
       userProfilePhotoUrl,
@@ -2779,6 +2848,8 @@ class AdminPostFeedWidgetHelpers {
       userPhoneNumber,
       userCity,
       userBusinessCategory,
+      userBusinessName,
+      userDesignation,
       frameSize,
     );
   }
@@ -2793,12 +2864,16 @@ class AdminPostFeedWidgetHelpers {
     required String userPhoneNumber,
     required String userCity,
     required String userBusinessCategory,
+    required String userBusinessName,
+    required String userDesignation,
   }) {
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
     final textSettings = post['textSettings'] ?? {};
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessNameSettings = post['businessNameSettings'] ?? {};
+    final designationSettings = post['designationSettings'] ?? {};
     final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
 
@@ -2810,6 +2885,7 @@ class AdminPostFeedWidgetHelpers {
       profileSettings, 
       addressSettings, 
       phoneSettings,
+      businessNameSettings,
       businessCategorySettings,
       userName,
       userProfilePhotoUrl,
@@ -2818,6 +2894,8 @@ class AdminPostFeedWidgetHelpers {
       userPhoneNumber,
       userCity,
       userBusinessCategory,
+      userBusinessName,
+      userDesignation,
       frameSize,
     );
   }
@@ -2830,6 +2908,7 @@ class AdminPostFeedWidgetHelpers {
     Map<String, dynamic> profileSettings,
     Map<String, dynamic> addressSettings,
     Map<String, dynamic> phoneSettings,
+    Map<String, dynamic> businessNameSettings,
     Map<String, dynamic> businessCategorySettings,
     String userName,
     String? userProfilePhotoUrl,
@@ -2838,6 +2917,8 @@ class AdminPostFeedWidgetHelpers {
     String userPhoneNumber,
     String userCity,
     String userBusinessCategory,
+    String userBusinessName,
+    String userDesignation,
     Map<String, dynamic> frameSize,
   ) {
 
@@ -2860,9 +2941,12 @@ class AdminPostFeedWidgetHelpers {
             final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
             final double businessCategoryXBase = (businessCategorySettings['x'] ?? 50) / 100 * width;
             final double businessCategoryY = (businessCategorySettings['y'] ?? 75) / 100 * height;
+            final double businessNameXBase = (businessNameSettings['x'] ?? 50) / 100 * width;
+            final double businessNameY = (businessNameSettings['y'] ?? 20) / 100 * height;
             final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
             final double addressX = userAddress.length > 15 ? addressXBase + 45 : addressXBase;
             final double businessCategoryX = userBusinessCategory.length > 15 ? businessCategoryXBase + 35 : businessCategoryXBase;
+            final double businessNameX = userBusinessName.length > 15 ? businessNameXBase + 35 : businessNameXBase;
 
             return SizedBox(
               width: width,
@@ -2961,6 +3045,33 @@ class AdminPostFeedWidgetHelpers {
                               fontFamily: phoneSettings['font'] ?? 'Arial',
                               fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 1 : 1.0),
                               color: parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Business name text overlay (for business users)
+                  if (userUsageType == 'Business' && businessNameSettings['enabled'] == true && userBusinessName.isNotEmpty)
+                    Positioned(
+                      left: businessNameX,
+                      top: businessNameY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (businessNameSettings['fontSize'] ?? 14) * (userBusinessName.length / 2), -20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: businessNameSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: parseColor(businessNameSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userBusinessName.length > 15 ? userBusinessName : userBusinessName,
+                            style: TextStyle(
+                              fontFamily: businessNameSettings['font'] ?? 'Arial',
+                              fontSize: (businessNameSettings['fontSize'] ?? 14).toDouble() * (userBusinessName.length > 15 ? 0.9 : 1.0),
+                              color: parseColor(businessNameSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
                           ),

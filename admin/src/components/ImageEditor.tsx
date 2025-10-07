@@ -321,6 +321,28 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       backgroundColor: '#000000',
       enabled: false,
     },
+    businessNameSettings: {
+      text: 'PrimeStatus Business',
+      x: 50,
+      y: 20,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 14,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
+    designationSettings: {
+      text: 'Software Engineer',
+      x: 50,
+      y: 25,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 16,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
     profileSettings: {
       x: 83.25,
       y: 85.87999877929687,
@@ -364,6 +386,28 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       backgroundColor: '#000000',
       enabled: false,
     },
+    businessNameSettings: {
+      text: 'PrimeStatus Business',
+      x: 50,
+      y: 15,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 16,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
+    designationSettings: {
+      text: 'Software Engineer',
+      x: 50,
+      y: 20,
+      font: language === 'kannada' ? 'NotoSansKannada' : 'Arial',
+      fontSize: 18,
+      color: '#ffffff',
+      hasBackground: false,
+      backgroundColor: '#000000',
+      enabled: false,
+    },
     profileSettings: {
       x: 85.75,
       y: 86.0999984741211,
@@ -386,6 +430,8 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
   const [textSettings, setTextSettings] = useState(getDefaults().textSettings);
   const [addressSettings, setAddressSettings] = useState(getDefaults().addressSettings);
   const [phoneSettings, setPhoneSettings] = useState(getDefaults().phoneSettings);
+  const [businessNameSettings, setBusinessNameSettings] = useState(getDefaults().businessNameSettings);
+  const [designationSettings, setDesignationSettings] = useState(getDefaults().designationSettings);
   const [profileSettings, setProfileSettings] = useState(getDefaults().profileSettings);
 
   // Update settings if frameSize changes
@@ -394,12 +440,16 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     setTextSettings(defaults.textSettings);
     setAddressSettings(defaults.addressSettings);
     setPhoneSettings(defaults.phoneSettings);
+    setBusinessNameSettings(defaults.businessNameSettings);
+    setDesignationSettings(defaults.designationSettings);
     setProfileSettings(defaults.profileSettings);
   }, [frameSize.width, frameSize.height, language]);
 
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [isDraggingAddress, setIsDraggingAddress] = useState(false);
   const [isDraggingPhone, setIsDraggingPhone] = useState(false);
+  const [isDraggingBusinessName, setIsDraggingBusinessName] = useState(false);
+  const [isDraggingDesignation, setIsDraggingDesignation] = useState(false);
   const [isDraggingProfile, setIsDraggingProfile] = useState(false);
 
   useEffect(() => {
@@ -495,10 +545,12 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     fetchCategories();
   }, []);
 
-  const handleMouseDown = (type: 'text' | 'address' | 'phone' | 'profile') => {
+  const handleMouseDown = (type: 'text' | 'address' | 'phone' | 'businessName' | 'designation' | 'profile') => {
     if (type === 'text') setIsDraggingText(true);
     if (type === 'address' && addressSettings.enabled) setIsDraggingAddress(true);
     if (type === 'phone' && phoneSettings.enabled) setIsDraggingPhone(true);
+    if (type === 'businessName' && businessNameSettings.enabled) setIsDraggingBusinessName(true);
+    if (type === 'designation' && designationSettings.enabled) setIsDraggingDesignation(true);
     if (type === 'profile' && profileSettings.enabled) setIsDraggingProfile(true);
   };
 
@@ -518,6 +570,12 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     if (isDraggingPhone && phoneSettings.enabled) {
       setPhoneSettings(prev => ({ ...prev, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }));
     }
+    if (isDraggingBusinessName && businessNameSettings.enabled) {
+      setBusinessNameSettings(prev => ({ ...prev, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }));
+    }
+    if (isDraggingDesignation && designationSettings.enabled) {
+      setDesignationSettings(prev => ({ ...prev, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }));
+    }
     if (isDraggingProfile && profileSettings.enabled) {
       setProfileSettings(prev => ({ ...prev, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }));
     }
@@ -527,6 +585,8 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     setIsDraggingText(false);
     setIsDraggingAddress(false);
     setIsDraggingPhone(false);
+    setIsDraggingBusinessName(false);
+    setIsDraggingDesignation(false);
     setIsDraggingProfile(false);
   };
 
@@ -590,6 +650,16 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       x: phoneSettings.x - 5
     };
 
+    const adjustedBusinessNameSettings = {
+      ...businessNameSettings,
+      x: businessNameSettings.x - 5
+    };
+
+    const adjustedDesignationSettings = {
+      ...designationSettings,
+      x: designationSettings.x - 5
+    };
+
     // Get category names instead of IDs (excluding business categories)
     const selectedCategoryNames = categories
       .filter(cat => selectedCategories.includes(cat.id) && !cat.isBusiness)
@@ -611,6 +681,8 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       textSettings: adjustedTextSettings,
       addressSettings: adjustedAddressSettings,
       phoneSettings: adjustedPhoneSettings,
+      businessNameSettings: adjustedBusinessNameSettings,
+      designationSettings: adjustedDesignationSettings,
       profileSettings,
       adminName: userName,
       adminPhotoUrl: profileSettings.enabled ? '' : '',
@@ -1034,6 +1106,54 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                     </div>
                   )}
                   
+                  {/* Business Name Text Element */}
+                  {businessNameSettings.enabled && (
+                    <div
+                      className="absolute cursor-move select-none px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105"
+                      style={{
+                        left: `${businessNameSettings.x}%`,
+                        top: `${businessNameSettings.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: getFontFamily(businessNameSettings.font),
+                        fontSize: `${businessNameSettings.fontSize}px`,
+                        color: businessNameSettings.color,
+                        fontWeight: 'bold',
+                        backgroundColor: businessNameSettings.hasBackground ? businessNameSettings.backgroundColor : 'transparent',
+                        textShadow: businessNameSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                        whiteSpace: 'nowrap', // Force single line
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                      onMouseDown={() => handleMouseDown('businessName')}
+                    >
+                      {businessNameSettings.text}
+                    </div>
+                  )}
+                  
+                  {/* Designation Text Element */}
+                  {designationSettings.enabled && (
+                    <div
+                      className="absolute cursor-move select-none px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105"
+                      style={{
+                        left: `${designationSettings.x}%`,
+                        top: `${designationSettings.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: getFontFamily(designationSettings.font),
+                        fontSize: `${designationSettings.fontSize}px`,
+                        color: designationSettings.color,
+                        fontWeight: 'bold',
+                        backgroundColor: designationSettings.hasBackground ? designationSettings.backgroundColor : 'transparent',
+                        textShadow: designationSettings.hasBackground ? 'none' : '2px 2px 4px rgba(0,0,0,0.8)',
+                        whiteSpace: 'nowrap', // Force single line
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                      onMouseDown={() => handleMouseDown('designation')}
+                    >
+                      {designationSettings.text}
+                    </div>
+                  )}
+                  
                   {/* Profile Photo Placeholder */}
                   {profileSettings.enabled && (
                     <div
@@ -1328,6 +1448,198 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                         className="w-4 h-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
                       />
                       <label htmlFor="phoneBackground" className="text-sm text-gray-700">Enable Background</label>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Business Name Controls */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
+                <Type className="h-5 w-5 mr-2 text-purple-400" />
+                Business Name
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="enableBusinessName"
+                    checked={businessNameSettings.enabled}
+                    onChange={(e) => setBusinessNameSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="enableBusinessName" className="text-sm text-gray-700 flex items-center">
+                    {businessNameSettings.enabled ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
+                    Enable Business Name
+                  </label>
+                </div>
+                
+                {businessNameSettings.enabled && (
+                  <>
+                    <input
+                      type="text"
+                      value={businessNameSettings.text}
+                      onChange={(e) => setBusinessNameSettings(prev => ({ ...prev, text: e.target.value }))}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Enter business name"
+                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Size: {businessNameSettings.fontSize}px</label>
+                    <input
+                      type="range"
+                      min="10"
+                      max="36"
+                      value={businessNameSettings.fontSize}
+                      onChange={(e) => setBusinessNameSettings(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
+                      className="w-full accent-purple-500"
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font</label>
+                      <select
+                        value={businessNameSettings.font}
+                        onChange={e => setBusinessNameSettings(prev => ({ ...prev, font: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        {language === 'english'
+                          ? ENGLISH_FONTS.map(font => (
+                              <option key={font} value={font}>{font}</option>
+                            ))
+                          : KANNADA_FONT_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.fonts.map(font => (
+                                  <option key={font} value={font}>{font}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                        <input
+                          type="color"
+                          value={businessNameSettings.color}
+                          onChange={e => setBusinessNameSettings(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      {businessNameSettings.hasBackground && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                          <input
+                            type="color"
+                            value={businessNameSettings.backgroundColor}
+                            onChange={e => setBusinessNameSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                            className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id="businessNameBackground"
+                        checked={businessNameSettings.hasBackground}
+                        onChange={(e) => setBusinessNameSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <label htmlFor="businessNameBackground" className="text-sm text-gray-700">Enable Background</label>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Designation Controls */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
+                <Type className="h-5 w-5 mr-2 text-blue-400" />
+                Designation
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="enableDesignation"
+                    checked={designationSettings.enabled}
+                    onChange={(e) => setDesignationSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="enableDesignation" className="text-sm text-gray-700 flex items-center">
+                    {designationSettings.enabled ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
+                    Enable Designation
+                  </label>
+                </div>
+                
+                {designationSettings.enabled && (
+                  <>
+                    <input
+                      type="text"
+                      value={designationSettings.text}
+                      onChange={(e) => setDesignationSettings(prev => ({ ...prev, text: e.target.value }))}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter designation"
+                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Size: {designationSettings.fontSize}px</label>
+                    <input
+                      type="range"
+                      min="10"
+                      max="36"
+                      value={designationSettings.fontSize}
+                      onChange={(e) => setDesignationSettings(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
+                      className="w-full accent-blue-500"
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font</label>
+                      <select
+                        value={designationSettings.font}
+                        onChange={e => setDesignationSettings(prev => ({ ...prev, font: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {language === 'english'
+                          ? ENGLISH_FONTS.map(font => (
+                              <option key={font} value={font}>{font}</option>
+                            ))
+                          : KANNADA_FONT_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.fonts.map(font => (
+                                  <option key={font} value={font}>{font}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                        <input
+                          type="color"
+                          value={designationSettings.color}
+                          onChange={e => setDesignationSettings(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      {designationSettings.hasBackground && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                          <input
+                            type="color"
+                            value={designationSettings.backgroundColor}
+                            onChange={e => setDesignationSettings(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                            className="w-full h-10 bg-white border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id="designationBackground"
+                        checked={designationSettings.hasBackground}
+                        onChange={(e) => setDesignationSettings(prev => ({ ...prev, hasBackground: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor="designationBackground" className="text-sm text-gray-700">Enable Background</label>
                     </div>
                   </>
                 )}

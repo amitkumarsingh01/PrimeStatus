@@ -122,6 +122,59 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: Color(0xFF2C0036)),
                     ),
+                    SizedBox(height: 8),
+                    // Debug: Show current user type and switch button
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Current User Type: ${_onboardingService.usageType ?? 'Not Set'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _onboardingService.usageType = 'Personal';
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _onboardingService.usageType == 'Personal' ? Colors.blue : Colors.grey,
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                ),
+                                child: Text('Personal', style: TextStyle(fontSize: 10)),
+                              ),
+                              SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _onboardingService.usageType = 'Business';
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _onboardingService.usageType == 'Business' ? Colors.orange : Colors.grey,
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                ),
+                                child: Text('Business', style: TextStyle(fontSize: 10)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -152,41 +205,80 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             SizedBox(height: 16),
                             _buildDobField(context, dobLabel, isKannada),
                             SizedBox(height: 16),
+                            
+                            // Debug: Show both fields are available
+                            SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.green.shade200),
+                              ),
+                              child: Text(
+                                '✅ Both Designation AND Address fields are available for ALL users',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            
+                            // Designation Field (for ALL users)
+                            SizedBox(height: 16),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.blue.shade200),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _buildTextField(
+                                controller: _designationController,
+                                label: designationLabel,
+                                icon: Icons.work_outline,
+                              ),
+                            ),
+                            
+                            // Address Field (for ALL users)
+                            SizedBox(height: 16),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.orange.shade200),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _buildTextField(
+                                controller: _addressController,
+                                label: addressLabel,
+                                icon: Icons.home,
+                              ),
+                            ),
+                            
+                            // Phone Field (for ALL users)
+                            SizedBox(height: 16),
                             _buildTextField(
                               controller: _phoneController,
                               label: phoneLabel,
                               icon: Icons.phone,
                               keyboardType: TextInputType.phone,
                             ),
-                            SizedBox(height: 16),
-                            _buildTextField(
-                              controller: _addressController,
-                              label: addressLabel,
-                              icon: Icons.home,
-                            ),
+                            
+                            // City Field (for ALL users)
                             SizedBox(height: 16),
                             _buildTextField(
                               controller: _cityController,
                               label: cityLabel,
                               icon: Icons.location_on,
                             ),
-                            // Conditional fields based on usage type
-                            if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') ...[
-                              SizedBox(height: 16),
-                              _buildTextField(
-                                controller: _designationController,
-                                label: designationLabel,
-                                icon: Icons.work_outline,
-                              ),
-                            ],
-                            if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') ...[
-                              SizedBox(height: 16),
-                              _buildTextField(
-                                controller: _businessNameController,
-                                label: businessNameLabel,
-                                icon: Icons.business,
-                              ),
-                            ],
+                            
+                            // Business Name Field (for ALL users)
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _businessNameController,
+                              label: businessNameLabel,
+                              icon: Icons.business,
+                            ),
                           ],
                         ),
                       ),
@@ -227,26 +319,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         );
                         return;
                       }
-                      if (_phoneController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(phoneEmptyMsg),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      if (_addressController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(addressEmptyMsg),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      // Validate conditional fields
+                      // Validate Personal User Fields
                       if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') {
                         if (_designationController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -259,7 +332,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         }
                       }
                       
+                      // Validate Business User Fields
                       if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') {
+                        if (_addressController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(addressEmptyMsg),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        if (_phoneController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(phoneEmptyMsg),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
                         if (_businessNameController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -292,23 +384,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         }
                         
                         _onboardingService.name = _nameController.text;
-                        // Save additional details to onboarding service
-                        _onboardingService.phoneNumber = _phoneController.text.trim();
-                        _onboardingService.address = _addressController.text.trim();
-                        _onboardingService.city = _cityController.text.trim();
                         if (_selectedDob != null) {
                           _onboardingService.dateOfBirth =
                               '${_selectedDob!.day.toString().padLeft(2, '0')}/${_selectedDob!.month.toString().padLeft(2, '0')}/${_selectedDob!.year}';
                         }
                         
-                        // Save conditional fields
-                        if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') {
-                          _onboardingService.designation = _designationController.text.trim();
-                        }
-                        
-                        if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') {
-                          _onboardingService.businessName = _businessNameController.text.trim();
-                        }
+                        // Save ALL fields for ALL users
+                        _onboardingService.designation = _designationController.text.trim();
+                        _onboardingService.address = _addressController.text.trim();
+                        _onboardingService.phoneNumber = _phoneController.text.trim();
+                        _onboardingService.city = _cityController.text.trim();
+                        _onboardingService.businessName = _businessNameController.text.trim();
                         
                         Navigator.push(
                           context,
