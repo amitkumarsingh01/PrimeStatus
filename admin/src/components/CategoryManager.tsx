@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, writeBatch, que
 import { Edit, Trash2, Settings, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function CategoryManager() {
-  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string; position: number; isFixed?: boolean; isDynamic?: boolean; type?: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string; position: number; isFixed?: boolean; isDynamic?: boolean; isBusiness?: boolean; type?: string }[]>([]);
   const [newCategoryEn, setNewCategoryEn] = useState('');
   const [newCategoryKn, setNewCategoryKn] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,6 +42,84 @@ export default function CategoryManager() {
       { nameEn: 'Good Saturday', nameKn: 'ಶುಭ ಶನಿವಾರ' }
     ];
     return days[new Date().getDay()];
+  };
+
+  // Business categories for business users
+  const getBusinessCategories = () => {
+    return [
+      {
+        id: 'education-training',
+        nameEn: 'Education & Training',
+        nameKn: 'ಶಿಕ್ಷಣ ಮತ್ತು ತರಬೇತಿ',
+        position: 2, // After dynamic categories
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'health-services',
+        nameEn: 'Health & Services',
+        nameKn: 'ಆರೋಗ್ಯ ಮತ್ತು ಸೇವೆಗಳು',
+        position: 3,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'retail-shopping',
+        nameEn: 'Retail & Shopping',
+        nameKn: 'ರಿಟೇಲ್ ಮತ್ತು ಶಾಪಿಂಗ್',
+        position: 4,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'finance-services',
+        nameEn: 'Finance & Services',
+        nameKn: 'ಹಣಕಾಸು ಮತ್ತು ಸೇವೆಗಳು',
+        position: 5,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'travel-ticketing',
+        nameEn: 'Travel & Ticketing',
+        nameKn: 'ಪ್ರಯಾಣ ಮತ್ತು ಟಿಕೆಟಿಂಗ್',
+        position: 6,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'digital-tech',
+        nameEn: 'Digital & Tech',
+        nameKn: 'ಡಿಜಿಟಲ್ ಮತ್ತು ತಂತ್ರಜ್ಞಾನ',
+        position: 7,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'food-lifestyle',
+        nameEn: 'Food & Lifestyle',
+        nameKn: 'ಆಹಾರ ಮತ್ತು ಜೀವನಶೈಲಿ',
+        position: 8,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'online-services',
+        nameEn: 'Online Services',
+        nameKn: 'ಆನ್ಲೈನ್ ಸೇವೆಗಳು',
+        position: 9,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      }
+    ];
   };
 
   // Dynamic greeting categories that change automatically
@@ -84,6 +162,7 @@ export default function CategoryManager() {
         position: docSnap.data().position ?? 0,
         isFixed: docSnap.data().isFixed || false,
         isDynamic: docSnap.data().isDynamic || false,
+        isBusiness: docSnap.data().isBusiness || false,
         type: docSnap.data().type || '',
       }));
       
@@ -92,6 +171,10 @@ export default function CategoryManager() {
       // Check if dynamic categories exist in Firestore
       const existingDynamicCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isDynamic);
       const dynamicCategories = getDynamicCategories();
+      
+      // Check if business categories exist in Firestore
+      const existingBusinessCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isBusiness);
+      const businessCategories = getBusinessCategories();
       
       // Clean up duplicate dynamic categories first
       const timeCategories = existingDynamicCategories.filter(cat => cat.type === 'time');
@@ -167,6 +250,7 @@ export default function CategoryManager() {
           position: docSnap.data().position ?? 0,
           isFixed: docSnap.data().isFixed || false,
           isDynamic: docSnap.data().isDynamic || false,
+          isBusiness: docSnap.data().isBusiness || false,
           type: docSnap.data().type || '',
         }));
       } else {
@@ -203,6 +287,72 @@ export default function CategoryManager() {
             type: docSnap.data().type || '',
           }));
         }
+      }
+      
+      // First, delete all existing business categories to start fresh
+      const businessCategoryNames = businessCategories.map(cat => cat.nameEn);
+      const allExistingBusinessCategories = fetchedCategories.filter(cat => 
+        businessCategoryNames.includes(cat.nameEn) || cat.isBusiness
+      );
+      
+      if (allExistingBusinessCategories.length > 0) {
+        console.log('Deleting existing business categories from Firestore:', allExistingBusinessCategories.map(cat => cat.nameEn));
+        const deleteBatch = writeBatch(db);
+        allExistingBusinessCategories.forEach(cat => {
+          const categoryRef = doc(db, 'categories', cat.id);
+          deleteBatch.delete(categoryRef);
+        });
+        await deleteBatch.commit();
+        console.log('Deleted existing business categories');
+        
+        // Fetch categories again after deletion
+        const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+        fetchedCategories = updatedQuerySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          nameEn: docSnap.data().nameEn || '',
+          nameKn: docSnap.data().nameKn || '',
+          position: docSnap.data().position || 0,
+          isFixed: docSnap.data().isFixed || false,
+          isDynamic: docSnap.data().isDynamic || false,
+          isBusiness: docSnap.data().isBusiness || false,
+          type: docSnap.data().type || '',
+        }));
+      }
+
+      // Now create fresh business categories
+      const currentBusinessCategories = fetchedCategories.filter(cat => cat.isFixed && cat.isBusiness);
+      if (currentBusinessCategories.length === 0) {
+        console.log('Creating fresh business categories in Firestore:', businessCategories.map(c => c.nameEn));
+        const batch = writeBatch(db);
+        
+        businessCategories.forEach((businessCat) => {
+          const newCategoryRef = doc(collection(db, 'categories'));
+          batch.set(newCategoryRef, {
+            nameEn: businessCat.nameEn,
+            nameKn: businessCat.nameKn,
+            position: businessCat.position,
+            isFixed: true,
+            isBusiness: true,
+            type: businessCat.type
+          });
+          console.log(`Creating business category: ${businessCat.nameEn} at position ${businessCat.position}`);
+        });
+        
+        await batch.commit();
+        console.log('Fresh business categories created in Firestore');
+        
+        // Fetch categories again to get the updated list
+        const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+        fetchedCategories = updatedQuerySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          nameEn: docSnap.data().nameEn || '',
+          nameKn: docSnap.data().nameKn || '',
+          position: docSnap.data().position ?? 0,
+          isFixed: docSnap.data().isFixed || false,
+          isDynamic: docSnap.data().isDynamic || false,
+          isBusiness: docSnap.data().isBusiness || false,
+          type: docSnap.data().type || '',
+        }));
       }
       
       // If any categories don't have position, assign them
@@ -415,6 +565,7 @@ export default function CategoryManager() {
         position: docSnap.data().position ?? 0,
         isFixed: docSnap.data().isFixed || false,
         isDynamic: docSnap.data().isDynamic || false,
+        isBusiness: docSnap.data().isBusiness || false,
         type: docSnap.data().type || '',
       }));
 
@@ -517,6 +668,7 @@ export default function CategoryManager() {
         position: docSnap.data().position ?? 0,
         isFixed: docSnap.data().isFixed || false,
         isDynamic: docSnap.data().isDynamic || false,
+        isBusiness: docSnap.data().isBusiness || false,
         type: docSnap.data().type || '',
       }));
 
@@ -894,6 +1046,40 @@ export default function CategoryManager() {
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
                             Dynamic
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Business Categories Section */}
+                <div className="mb-6">
+                  <h4 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
+                    <span className="mr-2">🏢</span>
+                    Business Categories
+                  </h4>
+                  <ul className="space-y-2">
+                    {categories.filter(cat => cat.isFixed && cat.isBusiness).map((cat, index) => (
+                      <li
+                        key={cat.id}
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200"
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="text-purple-600 text-sm font-mono bg-purple-100 px-3 py-1 rounded">
+                            #{cat.position + 1}
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-900">{cat.nameEn}</span>
+                            <span className="ml-2 text-gray-500 text-sm">/ {cat.nameKn}</span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              🏢 Business Category - For business users
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                            Business
                           </span>
                         </div>
                       </li>

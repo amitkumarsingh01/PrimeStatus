@@ -1,4 +1,5 @@
 import 'package:newapp/services/onboarding_service.dart';
+import 'package:newapp/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'religion_selection_screen.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,10 +19,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
+  final _designationController = TextEditingController();
+  final _businessNameController = TextEditingController();
   final _onboardingService = OnboardingService.instance;
+  final _userService = UserService();
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
   DateTime? _selectedDob;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -42,49 +47,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     _cityController.dispose();
+    _designationController.dispose();
+    _businessNameController.dispose();
     super.dispose();
   }
 
-  Widget _buildDataCard(String title, String? value, IconData icon) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.purple, size: 24),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    value ?? 'Not set',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: value != null ? Colors.black87 : Colors.grey[400],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +66,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final addressLabel = isKannada ? 'ವಿಳಾಸ' : 'Address';
     final cityLabel = isKannada ? 'ನಗರ' : 'City';
     final dobLabel = isKannada ? 'ಜನ್ಮ ದಿನಾಂಕ' : 'Date of Birth';
+    final designationLabel = isKannada ? 'ಹುದ್ದೆ' : 'Designation';
+    final businessNameLabel = isKannada ? 'ವ್ಯಾಪಾರದ ಹೆಸರು' : 'Business Name';
+    final profilePicLabel = isKannada ? 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ' : 'Profile Photo';
+    final companyLogoLabel = isKannada ? 'ಕಂಪನಿ ಲೋಗೋ' : 'Company Logo';
     final continueText = isKannada ? 'ಮುಂದುವರಿಸಿ' : 'Continue';
     final nameEmptyMsg = isKannada
         ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ನಮೂದಿಸಿ'
@@ -112,6 +83,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final dobEmptyMsg = isKannada
         ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಜನ್ಮ ದಿನಾಂಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ'
         : 'Please select your date of birth';
+    final designationEmptyMsg = isKannada
+        ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹುದ್ದೆಯನ್ನು ನಮೂದಿಸಿ'
+        : 'Please enter your designation';
+    final businessNameEmptyMsg = isKannada
+        ? 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ವ್ಯಾಪಾರದ ಹೆಸರನ್ನು ನಮೂದಿಸಿ'
+        : 'Please enter your business name';
 
     return Scaffold(
       body: Container(
@@ -153,49 +130,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Profile Photo Section
+                      // Profile Photo/Company Logo Section
                       SizedBox(height: 8),
-                      // Center(
-                      //   child: Stack(
-                      //     children: [
-                      //       CircleAvatar(
-                      //         radius: 60,
-                      //         backgroundColor: Color(0xFFD74D02).withOpacity(0.15),
-                      //         backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                      //         child: _profileImage == null
-                      //             ? Icon(
-                      //                 Icons.person,
-                      //                 size: 60,
-                      //                 color: Color(0xFF2C0036),
-                      //               )
-                      //             : null,
-                      //       ),
-                      //       Positioned(
-                      //         bottom: 0,
-                      //         right: 0,
-                      //         child: GestureDetector(
-                      //           onTap: _pickImage,
-                      //           child: Container(
-                      //             decoration: BoxDecoration(
-                      //               shape: BoxShape.circle,
-                      //               gradient: LinearGradient(
-                      //                 colors: [Color(0xFFD74D02), Color(0xFF2C0036)],
-                      //                 begin: Alignment.topLeft,
-                      //                 end: Alignment.bottomRight,
-                      //               ),
-                      //             ),
-                      //             padding: EdgeInsets.all(8),
-                      //             child: Icon(
-                      //               Icons.camera_alt,
-                      //               color: Colors.white,
-                      //               size: 20,
-                      //             ),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
+                      _buildProfilePhotoSection(
+                        _onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ' 
+                          ? companyLogoLabel 
+                          : profilePicLabel, 
+                        isKannada
+                      ),
                       SizedBox(height: 24),
                       // Name/Phone/Address Input Section
                       Padding(
@@ -228,6 +170,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               label: cityLabel,
                               icon: Icons.location_on,
                             ),
+                            // Conditional fields based on usage type
+                            if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') ...[
+                              SizedBox(height: 16),
+                              _buildTextField(
+                                controller: _designationController,
+                                label: designationLabel,
+                                icon: Icons.work_outline,
+                              ),
+                            ],
+                            if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') ...[
+                              SizedBox(height: 16),
+                              _buildTextField(
+                                controller: _businessNameController,
+                                label: businessNameLabel,
+                                icon: Icons.business,
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -249,7 +208,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: _isUploading ? null : () async {
                       if (_nameController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -286,24 +245,89 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         );
                         return;
                       }
-                      _onboardingService.name = _nameController.text;
-                      // Save additional details to onboarding service
-                      _onboardingService.phoneNumber = _phoneController.text
-                          .trim();
-                      _onboardingService.address = _addressController.text
-                          .trim();
-                      _onboardingService.city = _cityController.text.trim();
-                      if (_selectedDob != null) {
-                        _onboardingService.dateOfBirth =
-                            '${_selectedDob!.day.toString().padLeft(2, '0')}/${_selectedDob!.month.toString().padLeft(2, '0')}/${_selectedDob!.year}';
+                      
+                      // Validate conditional fields
+                      if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') {
+                        if (_designationController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(designationEmptyMsg),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
                       }
-                      // Optionally save phone, address, and dob to onboardingService if needed
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReligionSelectionScreen(),
-                        ),
-                      );
+                      
+                      if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') {
+                        if (_businessNameController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(businessNameEmptyMsg),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      
+                      // Start uploading
+                      setState(() {
+                        _isUploading = true;
+                      });
+                      
+                      try {
+                        // Upload profile photo/company logo if selected
+                        if (_profileImage != null) {
+                          final currentUser = _userService.currentUser;
+                          if (currentUser != null) {
+                            String profilePhotoUrl = await _userService.uploadProfilePhoto(_profileImage!, currentUser.uid);
+                            _onboardingService.profilePhotoUrl = profilePhotoUrl;
+                            
+                            // For business users, also store as business logo URL
+                            if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') {
+                              _onboardingService.businessLogoUrl = profilePhotoUrl;
+                            }
+                          }
+                        }
+                        
+                        _onboardingService.name = _nameController.text;
+                        // Save additional details to onboarding service
+                        _onboardingService.phoneNumber = _phoneController.text.trim();
+                        _onboardingService.address = _addressController.text.trim();
+                        _onboardingService.city = _cityController.text.trim();
+                        if (_selectedDob != null) {
+                          _onboardingService.dateOfBirth =
+                              '${_selectedDob!.day.toString().padLeft(2, '0')}/${_selectedDob!.month.toString().padLeft(2, '0')}/${_selectedDob!.year}';
+                        }
+                        
+                        // Save conditional fields
+                        if (_onboardingService.usageType == 'Personal' || _onboardingService.usageType == 'ವೈಯಕ್ತಿಕ') {
+                          _onboardingService.designation = _designationController.text.trim();
+                        }
+                        
+                        if (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') {
+                          _onboardingService.businessName = _businessNameController.text.trim();
+                        }
+                        
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReligionSelectionScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to upload images: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        setState(() {
+                          _isUploading = false;
+                        });
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
@@ -313,10 +337,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      continueText,
-                      style: TextStyle(fontSize: 16, color: Color(0xFFFAEAC7)),
-                    ),
+                    child: _isUploading
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFAEAC7)),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                isKannada ? 'ಅಪ್ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...' : 'Uploading...',
+                                style: TextStyle(fontSize: 16, color: Color(0xFFFAEAC7)),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            continueText,
+                            style: TextStyle(fontSize: 16, color: Color(0xFFFAEAC7)),
+                          ),
                   ),
                 ),
               ),
@@ -391,6 +434,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
+
   // Custom image cropping dialog using crop_your_image
   Future<File?> _showCropDialog(File imageFile) async {
     final cropController = CropController();
@@ -450,7 +494,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               viewportRect.left + viewportRect.width / 2;
                           final centerY =
                               viewportRect.top + viewportRect.height / 2;
-                          final halfSize = size / 2;
 
                           return Rect.fromCenter(
                             center: Offset(centerX, centerY),
@@ -595,4 +638,67 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
     );
   }
+
+  Widget _buildProfilePhotoSection(String label, bool isKannada) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2C0036),
+            ),
+          ),
+          SizedBox(height: 16),
+          Center(
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Color(0xFFD74D02).withOpacity(0.15),
+                  backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                  child: _profileImage == null
+                      ? Icon(
+                          (_onboardingService.usageType == 'Business' || _onboardingService.usageType == 'ವ್ಯಾಪಾರ') 
+                            ? Icons.business 
+                            : Icons.person,
+                          size: 60,
+                          color: Color(0xFF2C0036),
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFD74D02), Color(0xFF2C0036)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

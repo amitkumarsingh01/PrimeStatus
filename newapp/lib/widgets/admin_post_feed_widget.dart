@@ -378,6 +378,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
     final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
@@ -385,6 +386,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     final String userAddress = (context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '');
     final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
     final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
+    final String userBusinessCategory = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessCategory ?? '');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -408,9 +410,12 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+              final double businessCategoryXBase = (businessCategorySettings['x'] ?? 50) / 100 * width;
+              final double businessCategoryY = (businessCategorySettings['y'] ?? 75) / 100 * height;
               final double textX = userName.length > 15 ? textXBase + 10 : textXBase;
               // final double addressX = userAddress.length > 15 ? addressXBase + 25 : addressXBase;
               final double addressX = userAddress.length > 15 ? addressXBase + 35 : addressXBase;
+              final double businessCategoryX = userBusinessCategory.length > 15 ? businessCategoryXBase + 35 : businessCategoryXBase;
 
 
               return SizedBox(
@@ -515,6 +520,33 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                                 fontFamily: getFontFamily(phoneSettings['font']) ?? 'Arial',
                                 fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
                                 color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Business category text overlay (for business users)
+                    if (userUsageType == 'Business' && businessCategorySettings['enabled'] == true && userBusinessCategory.isNotEmpty)
+                      Positioned(
+                        left: businessCategoryX,
+                        top: businessCategoryY,
+                        child: Transform.translate(
+                          offset: Offset(-0.5 * (businessCategorySettings['fontSize'] ?? 16) * (userBusinessCategory.length / 2), -20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: businessCategorySettings['hasBackground'] == true
+                                ? BoxDecoration(
+                                    color: _parseColor(businessCategorySettings['backgroundColor'] ?? '#000000'),
+                                    borderRadius: BorderRadius.circular(8),
+                                  )
+                                : null,
+                            child: Text(
+                              userBusinessCategory.length > 15 ? userBusinessCategory : userBusinessCategory,
+                              style: TextStyle(
+                                fontFamily: getFontFamily(businessCategorySettings['font']) ?? 'Arial',
+                                fontSize: (businessCategorySettings['fontSize'] ?? 16).toDouble() * (userBusinessCategory.length > 15 ? 0.9 : 1.0),
+                                color: _parseColor(businessCategorySettings['color'] ?? '#ffffff'),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2721,6 +2753,7 @@ class AdminPostFeedWidgetHelpers {
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
     final String userName = (context.findAncestorStateOfType<HomeScreenState>()?.userName ?? 'User');
     final String? userProfilePhotoUrl = (context.findAncestorStateOfType<HomeScreenState>()?.userProfilePhotoUrl);
@@ -2728,6 +2761,7 @@ class AdminPostFeedWidgetHelpers {
     final String userAddress = (context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '');
     final String userPhoneNumber = (context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '');
     final String userCity = (context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '');
+    final String userBusinessCategory = (context.findAncestorStateOfType<HomeScreenState>()?.userBusinessCategory ?? '');
 
     return _buildPostCardStaticInternal(
       context, 
@@ -2737,12 +2771,14 @@ class AdminPostFeedWidgetHelpers {
       profileSettings, 
       addressSettings, 
       phoneSettings,
+      businessCategorySettings,
       userName,
       userProfilePhotoUrl,
       userUsageType,
       userAddress,
       userPhoneNumber,
       userCity,
+      userBusinessCategory,
       frameSize,
     );
   }
@@ -2756,12 +2792,14 @@ class AdminPostFeedWidgetHelpers {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessCategory,
   }) {
     final String imageUrl = post['mainImage'] ?? post['imageUrl'] ?? '';
     final textSettings = post['textSettings'] ?? {};
     final profileSettings = post['profileSettings'] ?? {};
     final addressSettings = post['addressSettings'] ?? {};
     final phoneSettings = post['phoneSettings'] ?? {};
+    final businessCategorySettings = post['businessCategorySettings'] ?? {};
     final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
 
     return _buildPostCardStaticInternal(
@@ -2772,12 +2810,14 @@ class AdminPostFeedWidgetHelpers {
       profileSettings, 
       addressSettings, 
       phoneSettings,
+      businessCategorySettings,
       userName,
       userProfilePhotoUrl,
       userUsageType,
       userAddress,
       userPhoneNumber,
       userCity,
+      userBusinessCategory,
       frameSize,
     );
   }
@@ -2790,12 +2830,14 @@ class AdminPostFeedWidgetHelpers {
     Map<String, dynamic> profileSettings,
     Map<String, dynamic> addressSettings,
     Map<String, dynamic> phoneSettings,
+    Map<String, dynamic> businessCategorySettings,
     String userName,
     String? userProfilePhotoUrl,
     String userUsageType,
     String userAddress,
     String userPhoneNumber,
     String userCity,
+    String userBusinessCategory,
     Map<String, dynamic> frameSize,
   ) {
 
@@ -2816,8 +2858,11 @@ class AdminPostFeedWidgetHelpers {
             final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
             final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
             final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
+            final double businessCategoryXBase = (businessCategorySettings['x'] ?? 50) / 100 * width;
+            final double businessCategoryY = (businessCategorySettings['y'] ?? 75) / 100 * height;
             final double textX = userName.length > 15 ? textXBase + 30 : textXBase;
             final double addressX = userAddress.length > 15 ? addressXBase + 45 : addressXBase;
+            final double businessCategoryX = userBusinessCategory.length > 15 ? businessCategoryXBase + 35 : businessCategoryXBase;
 
             return SizedBox(
               width: width,
@@ -2916,6 +2961,33 @@ class AdminPostFeedWidgetHelpers {
                               fontFamily: phoneSettings['font'] ?? 'Arial',
                               fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 1 : 1.0),
                               color: parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Business category text overlay (for business users)
+                  if (userUsageType == 'Business' && businessCategorySettings['enabled'] == true && userBusinessCategory.isNotEmpty)
+                    Positioned(
+                      left: businessCategoryX,
+                      top: businessCategoryY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (businessCategorySettings['fontSize'] ?? 16) * (userBusinessCategory.length / 2), -20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: businessCategorySettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: parseColor(businessCategorySettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userBusinessCategory.length > 15 ? userBusinessCategory : userBusinessCategory,
+                            style: TextStyle(
+                              fontFamily: businessCategorySettings['font'] ?? 'Arial',
+                              fontSize: (businessCategorySettings['fontSize'] ?? 16).toDouble() * (userBusinessCategory.length > 15 ? 0.9 : 1.0),
+                              color: parseColor(businessCategorySettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
                           ),

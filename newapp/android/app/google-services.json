@@ -38,6 +38,14 @@
           }
         },
         {
+          "client_id": "344256821707-dn8a3dc01fmdb5i6rmgmi161aleon388.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aksmlibts.primestatus",
+            "certificate_hash": "1c7bfc600bb74c53814609e25615917a619d3d00"
+          }
+        },
+        {
           "client_id": "344256821707-l7s5577fe8k3pssji3u39fjmqvsq934v.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CategoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetch all categories from Firebase ordered by position
+  // Fetch all categories from Firebase ordered by position (excluding business categories)
   Future<List<Map<String, dynamic>>> getCategories() async {
     try {
       final QuerySnapshot querySnapshot = await _firestore
@@ -18,8 +18,15 @@ class CategoryService {
           'nameEn': data['nameEn'] ?? '',
           'nameKn': data['nameKn'] ?? '',
           'position': data['position'] ?? 0,
+          'isBusiness': data['isBusiness'] ?? false,
         };
-      }).toList();
+      }).where((category) => 
+        !category['isBusiness'] && // Filter out business categories
+        category['nameEn'] != null && 
+        category['nameEn'].toString().trim().isNotEmpty &&
+        category['nameEn'] != 'null' &&
+        category['nameEn'] != 'undefined'
+      ).toList(); // Filter out business categories and null/empty names
     } catch (e) {
       print('Error fetching categories: $e');
       // Return fallback categories if Firebase fails
@@ -37,6 +44,31 @@ class CategoryService {
         {'id': '11', 'nameEn': 'Happy Sunday', 'nameKn': 'ಶುಭ ಭಾನುವಾರ', 'position': 10},
         {'id': '12', 'nameEn': 'Political', 'nameKn': 'ರಾಜಕೀಯ', 'position': 11},
       ];
+    }
+  }
+
+  // Fetch business categories only (for admin portal)
+  Future<List<Map<String, dynamic>>> getBusinessCategories() async {
+    try {
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('categories')
+          .where('isBusiness', isEqualTo: true)
+          .orderBy('position', descending: false)
+          .get();
+      
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'nameEn': data['nameEn'] ?? '',
+          'nameKn': data['nameKn'] ?? '',
+          'position': data['position'] ?? 0,
+          'isBusiness': true,
+        };
+      }).toList();
+    } catch (e) {
+      print('Error fetching business categories: $e');
+      return [];
     }
   }
 

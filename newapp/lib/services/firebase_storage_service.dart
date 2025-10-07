@@ -36,6 +36,35 @@ class FirebaseStorageService {
     }
   }
 
+  // Upload business logo
+  Future<String> uploadBusinessLogo(File imageFile, String userId) async {
+    try {
+      print('FirebaseStorageService: Starting business logo upload');
+      print('FirebaseStorageService: Image file path: ${imageFile.path}');
+      print('FirebaseStorageService: User ID: $userId');
+      
+      String fileName = 'business_logos/$userId/${_uuid.v4()}.jpg';
+      print('FirebaseStorageService: File name: $fileName');
+      
+      Reference ref = _storage.ref().child(fileName);
+      print('FirebaseStorageService: Created storage reference');
+      
+      print('FirebaseStorageService: Starting upload task...');
+      UploadTask uploadTask = ref.putFile(imageFile);
+      TaskSnapshot snapshot = await uploadTask;
+      print('FirebaseStorageService: Upload task completed');
+      
+      print('FirebaseStorageService: Getting download URL...');
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+      print('FirebaseStorageService: Download URL: $downloadUrl');
+      
+      return downloadUrl;
+    } catch (e) {
+      print('FirebaseStorageService: Error uploading business logo: $e');
+      throw 'Failed to upload business logo: $e';
+    }
+  }
+
   // Upload quote image
   Future<String> uploadQuoteImage(File imageFile, String userId, String quoteId) async {
     try {

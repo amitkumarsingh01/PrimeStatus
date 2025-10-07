@@ -20,6 +20,14 @@ class OnboardingService {
   String? address;
   String? dateOfBirth;
   String? city;
+  
+  // Personal usage fields
+  String? designation;
+  
+  // Business usage fields
+  String? businessName;
+  String? businessLogoUrl;
+  String? businessCategory;
 
   void reset() {
     language = null;
@@ -33,5 +41,9 @@ class OnboardingService {
     address = null;
     dateOfBirth = null;
     city = null;
+    designation = null;
+    businessName = null;
+    businessLogoUrl = null;
+    businessCategory = null;
   }
 } 

@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FirebaseFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Collections
   CollectionReference get _usersCollection => _firestore.collection('users');
@@ -27,6 +25,10 @@ class FirebaseFirestoreService {
     String? address,
     String? dateOfBirth,
     String? city,
+    String? designation,
+    String? businessName,
+    String? businessLogoUrl,
+    String? businessCategory,
   }) async {
     try {
       await _usersCollection.doc(uid).set({
@@ -43,6 +45,10 @@ class FirebaseFirestoreService {
         'address': address,
         'dateOfBirth': dateOfBirth,
         'city': city,
+        'designation': designation,
+        'businessName': businessName,
+        'businessLogoUrl': businessLogoUrl,
+        'businessCategory': businessCategory,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });

@@ -44,6 +44,10 @@ class UserService {
           address: '',
           dateOfBirth: '',
           city: '',
+          designation: '',
+          businessName: '',
+          businessLogoUrl: '',
+          businessCategory: '',
         );
       }
 
@@ -97,6 +101,30 @@ class UserService {
     } catch (e) {
       print('UserService: Error uploading profile photo: $e');
       throw 'Failed to upload profile photo: $e';
+    }
+  }
+
+  // Upload business logo
+  Future<String> uploadBusinessLogo(File imageFile, String userId) async {
+    try {
+      print('UserService: Starting business logo upload');
+      print('UserService: Image file path: ${imageFile.path}');
+      print('UserService: User ID: $userId');
+      
+      String downloadUrl = await _storageService.uploadBusinessLogo(imageFile, userId);
+      print('UserService: Upload successful, download URL: $downloadUrl');
+      
+      // Update user document with new logo URL
+      print('UserService: Updating Firestore user document');
+      await _firestoreService.updateUser(userId, {
+        'businessLogoUrl': downloadUrl,
+      });
+
+      print('UserService: Business logo upload completed successfully');
+      return downloadUrl;
+    } catch (e) {
+      print('UserService: Error uploading business logo: $e');
+      throw 'Failed to upload business logo: $e';
     }
   }
 

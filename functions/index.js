@@ -239,6 +239,158 @@ exports.getUsers = functions.https.onRequest((req, res) => {
   });
 });
 
+// Scheduled function to check and publish scheduled posts every minute
+exports.publishScheduledPosts = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {
+  console.log('🕐 [SCHEDULED_POSTS] Checking for scheduled posts...');
+  
+  try {
+    const now = new Date();
+    console.log('🕐 [SCHEDULED_POSTS] Current time:', now.toISOString());
+    
+    // Query for scheduled posts that should be published now
+    const scheduledPostsQuery = db.collection('admin_posts')
+      .where('isScheduled', '==', true)
+      .where('isPublished', '==', false)
+      .where('scheduledDateTime', '<=', now.toISOString());
+    
+    const scheduledPostsSnapshot = await scheduledPostsQuery.get();
+    
+    if (scheduledPostsSnapshot.empty) {
+      console.log('📭 [SCHEDULED_POSTS] No scheduled posts to publish');
+      return null;
+    }
+    
+    console.log(`📝 [SCHEDULED_POSTS] Found ${scheduledPostsSnapshot.size} scheduled posts to publish`);
+    
+    const batch = db.batch();
+    const publishedPosts = [];
+    
+    scheduledPostsSnapshot.forEach(doc => {
+      const postData = doc.data();
+      console.log(`📝 [SCHEDULED_POSTS] Publishing post: ${doc.id}`);
+      console.log(`📝 [SCHEDULED_POSTS] Scheduled for: ${postData.scheduledDateTime}`);
+      
+      // Update the post to mark it as published
+      batch.update(doc.ref, {
+        isPublished: true,
+        publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      publishedPosts.push({
+        id: doc.id,
+        ...postData
+      });
+    });
+    
+    // Commit the batch update
+    await batch.commit();
+    console.log(`✅ [SCHEDULED_POSTS] Successfully published ${publishedPosts.length} posts`);
+    
+    // Send notifications for published posts (if they have notification settings)
+    for (const post of publishedPosts) {
+      if (post.sendNotification) {
+        try {
+          const notificationData = {
+            title: 'New Post Available!',
+            body: `Check out the latest post by PrimeStatus`,
+            imageUrl: post.mainImage,
+            postId: post.id,
+            adminName: post.adminName,
+            categories: post.categories,
+            businessCategory: post.businessCategory,
+            regions: post.regions,
+            language: post.language,
+            topic: 'all_users',
+            status: 'pending',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            fcmData: {
+              postId: post.id,
+              adminName: post.adminName,
+              imageUrl: post.mainImage,
+              click_action: 'FLUTTER_NOTIFICATION_CLICK'
+            }
+          };
+          
+          await db.collection('pending_notifications').add(notificationData);
+          console.log(`📢 [SCHEDULED_POSTS] Notification queued for post: ${post.id}`);
+        } catch (notificationError) {
+          console.error(`❌ [SCHEDULED_POSTS] Error creating notification for post ${post.id}:`, notificationError);
+        }
+      }
+    }
+    
+    return { success: true, publishedCount: publishedPosts.length };
+    
+  } catch (error) {
+    console.error('❌ [SCHEDULED_POSTS] Error processing scheduled posts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Test function to manually trigger scheduled posts check
+exports.testScheduledPosts = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      console.log('🧪 [TEST_SCHEDULED] Manually triggering scheduled posts check...');
+      
+      const now = new Date();
+      console.log('🧪 [TEST_SCHEDULED] Current time:', now.toISOString());
+      
+      // Query for scheduled posts that should be published now
+      const scheduledPostsQuery = db.collection('admin_posts')
+        .where('isScheduled', '==', true)
+        .where('isPublished', '==', false)
+        .where('scheduledDateTime', '<=', now.toISOString());
+      
+      const scheduledPostsSnapshot = await scheduledPostsQuery.get();
+      
+      if (scheduledPostsSnapshot.empty) {
+        console.log('📭 [TEST_SCHEDULED] No scheduled posts to publish');
+        return res.json({ success: true, message: 'No scheduled posts to publish', count: 0 });
+      }
+      
+      console.log(`📝 [TEST_SCHEDULED] Found ${scheduledPostsSnapshot.size} scheduled posts to publish`);
+      
+      const batch = db.batch();
+      const publishedPosts = [];
+      
+      scheduledPostsSnapshot.forEach(doc => {
+        const postData = doc.data();
+        console.log(`📝 [TEST_SCHEDULED] Publishing post: ${doc.id}`);
+        console.log(`📝 [TEST_SCHEDULED] Scheduled for: ${postData.scheduledDateTime}`);
+        
+        // Update the post to mark it as published
+        batch.update(doc.ref, {
+          isPublished: true,
+          publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        publishedPosts.push({
+          id: doc.id,
+          scheduledDateTime: postData.scheduledDateTime,
+          adminName: postData.adminName
+        });
+      });
+      
+      // Commit the batch update
+      await batch.commit();
+      console.log(`✅ [TEST_SCHEDULED] Successfully published ${publishedPosts.length} posts`);
+      
+      res.json({ 
+        success: true, 
+        message: `Successfully published ${publishedPosts.length} scheduled posts`,
+        publishedPosts: publishedPosts
+      });
+      
+    } catch (error) {
+      console.error('❌ [TEST_SCHEDULED] Error processing scheduled posts:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+});
+
 // Health check endpoint
 exports.healthCheck = functions.https.onRequest((req, res) => {
   cors(req, res, () => {

@@ -113,6 +113,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         'dateOfBirth': _onboardingService.dateOfBirth ?? '',
         'city': _onboardingService.city ?? '',
         'email': currentUser.email ?? '',
+        'designation': _onboardingService.designation ?? '',
+        'businessName': _onboardingService.businessName ?? '',
+        'businessLogoUrl': _onboardingService.businessLogoUrl ?? '',
+        'businessCategory': _onboardingService.businessCategory ?? '',
       });
 
       // Show success message

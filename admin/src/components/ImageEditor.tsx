@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, X, Type, Move, Circle, Square, Palette, Eye, EyeOff, MapPin, Phone, Tag, MapPin as MapPinIcon, Bell } from 'lucide-react';
 import { db, uploadMediaFile } from '../firebase';
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 // Add @font-face declarations for local Kannada fonts
 const fontFaceStyles = `
@@ -278,10 +278,14 @@ function getFontFamily(font: string) {
 
 export default function ImageEditor({ media, frameSize, mediaType, language, userName, onSave, onCancel }: ImageEditorProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; nameEn: string; nameKn: string; isBusiness?: boolean }[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedBusinessCategory, setSelectedBusinessCategory] = useState<string>('');
   const [sendNotification, setSendNotification] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
 
   // Default settings for 1080x1350 (Portrait)
   const portraitDefaults = {
@@ -403,18 +407,89 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     const fetchCategories = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'categories'));
-        const fetchedCategories = querySnapshot.docs.map(docSnap => ({
+        let fetchedCategories = querySnapshot.docs.map(docSnap => ({
           id: docSnap.id,
           nameEn: docSnap.data().nameEn || '',
           nameKn: docSnap.data().nameKn || '',
+          isBusiness: docSnap.data().isBusiness || false,
         }));
+
+        // Check if business categories exist, if not create them
+        const businessCategoryNames = [
+          'Education & Training', 'Health & Services', 'Retail & Shopping', 
+          'Finance & Services', 'Travel & Ticketing', 'Digital & Tech', 
+          'Food & Lifestyle', 'Online Services'
+        ];
+        
+        const existingBusinessCategories = fetchedCategories.filter(cat => cat.isBusiness);
+        const existingBusinessCategoryNames = existingBusinessCategories.map(cat => cat.nameEn);
+        
+        // Find missing business categories
+        const missingBusinessCategories = businessCategoryNames.filter(name => 
+          !existingBusinessCategoryNames.includes(name)
+        );
+        
+        if (missingBusinessCategories.length > 0) {
+          console.log('Creating missing business categories in Firestore:', missingBusinessCategories);
+          const businessCategories = [
+            { nameEn: 'Education & Training', nameKn: 'ಶಿಕ್ಷಣ ಮತ್ತು ತರಬೇತಿ', position: 2 },
+            { nameEn: 'Health & Services', nameKn: 'ಆರೋಗ್ಯ ಮತ್ತು ಸೇವೆಗಳು', position: 3 },
+            { nameEn: 'Retail & Shopping', nameKn: 'ರಿಟೇಲ್ ಮತ್ತು ಶಾಪಿಂಗ್', position: 4 },
+            { nameEn: 'Finance & Services', nameKn: 'ಹಣಕಾಸು ಮತ್ತು ಸೇವೆಗಳು', position: 5 },
+            { nameEn: 'Travel & Ticketing', nameKn: 'ಪ್ರಯಾಣ ಮತ್ತು ಟಿಕೆಟಿಂಗ್', position: 6 },
+            { nameEn: 'Digital & Tech', nameKn: 'ಡಿಜಿಟಲ್ ಮತ್ತು ತಂತ್ರಜ್ಞಾನ', position: 7 },
+            { nameEn: 'Food & Lifestyle', nameKn: 'ಆಹಾರ ಮತ್ತು ಜೀವನಶೈಲಿ', position: 8 },
+            { nameEn: 'Online Services', nameKn: 'ಆನ್ಲೈನ್ ಸೇವೆಗಳು', position: 9 }
+          ].filter(cat => missingBusinessCategories.includes(cat.nameEn));
+
+          const batch = writeBatch(db);
+          businessCategories.forEach((businessCat) => {
+            const newCategoryRef = doc(collection(db, 'categories'));
+            batch.set(newCategoryRef, {
+              nameEn: businessCat.nameEn,
+              nameKn: businessCat.nameKn,
+              position: businessCat.position,
+              isFixed: true,
+              isBusiness: true,
+              type: 'business'
+            });
+          });
+          await batch.commit();
+          console.log('Missing business categories created in Firestore');
+
+          // Fetch categories again to get the updated list
+          const updatedQuerySnapshot = await getDocs(collection(db, 'categories'));
+          fetchedCategories = updatedQuerySnapshot.docs.map(docSnap => ({
+            id: docSnap.id,
+            nameEn: docSnap.data().nameEn || '',
+            nameKn: docSnap.data().nameKn || '',
+            isBusiness: docSnap.data().isBusiness || false,
+          }));
+        }
+        
+        // Remove duplicate business categories (keep only unique ones)
+        const uniqueBusinessCategories = [];
+        const seenBusinessNames = new Set();
+        
+        fetchedCategories.forEach(cat => {
+          if (cat.isBusiness && !seenBusinessNames.has(cat.nameEn)) {
+            seenBusinessNames.add(cat.nameEn);
+            uniqueBusinessCategories.push(cat);
+          }
+        });
+        
+        // Replace business categories with unique ones
+        const nonBusinessCategories = fetchedCategories.filter(cat => !cat.isBusiness);
+        fetchedCategories = [...nonBusinessCategories, ...uniqueBusinessCategories];
+
+        console.log('All categories loaded:', fetchedCategories.map(cat => ({ name: cat.nameEn, isBusiness: cat.isBusiness })));
         setCategories(fetchedCategories);
         
         // Auto-select all regions only
         setSelectedRegions([...REGIONS]);
         
       } catch (e) {
-        // Optionally handle error
+        console.error('Error fetching/creating categories:', e);
       }
     };
     fetchCategories();
@@ -471,7 +546,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (isScheduledPost: boolean = false) => {
     if (selectedCategories.length === 0) {
       alert('Please select at least one category');
       return;
@@ -479,6 +554,17 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
     if (selectedRegions.length === 0) {
       alert('Please select at least one region');
       return;
+    }
+    if (isScheduledPost && (!scheduledDate || !scheduledTime)) {
+      alert('Please select both date and time for scheduled post');
+      return;
+    }
+    if (isScheduledPost) {
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+      if (scheduledDateTime <= new Date()) {
+        alert('Scheduled time must be in the future');
+        return;
+      }
     }
 
     let mainImageUrl = media;
@@ -504,14 +590,20 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       x: phoneSettings.x - 5
     };
 
-    // Get category names instead of IDs
+    // Get category names instead of IDs (excluding business categories)
     const selectedCategoryNames = categories
-      .filter(cat => selectedCategories.includes(cat.id))
+      .filter(cat => selectedCategories.includes(cat.id) && !cat.isBusiness)
       .map(cat => cat.nameEn);
+
+    // Get business category name if selected
+    const businessCategoryName = selectedBusinessCategory 
+      ? categories.find(cat => cat.id === selectedBusinessCategory)?.nameEn || ''
+      : '';
 
     const postData = {
       mainImage: mainImageUrl,
       categories: selectedCategoryNames,
+      businessCategory: businessCategoryName,
       regions: selectedRegions,
       frameSize,
       mediaType,
@@ -524,7 +616,10 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       adminPhotoUrl: profileSettings.enabled ? '' : '',
       likes: 0,
       shares: 0,
-      isPublished: true,
+      isPublished: !isScheduledPost, // Only publish immediately if not scheduled
+      isScheduled: isScheduledPost,
+      scheduledDateTime: isScheduledPost ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString() : null,
+      sendNotification: sendNotification, // Include notification preference
       createdBy: userName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -534,8 +629,8 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
       // Save the post to Firestore
       const docRef = await addDoc(collection(db, 'admin_posts'), postData);
       
-      // If notification is enabled, create a notification document for automatic sending
-      if (sendNotification) {
+      // If notification is enabled and not scheduled, create a notification document for automatic sending
+      if (sendNotification && !isScheduledPost) {
         const notificationData = {
           title: 'New Post Available!',
           body: `Check out the latest post by PrimeStatus`,
@@ -543,6 +638,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
           postId: docRef.id,
           adminName: userName,
           categories: selectedCategoryNames,
+          businessCategory: businessCategoryName,
           regions: selectedRegions,
           language: language,
           topic: 'all_users', // Topic to send to
@@ -558,9 +654,14 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
         
         await addDoc(collection(db, 'pending_notifications'), notificationData);
         console.log('Notification document created. Will be sent automatically.');
-        alert('Post saved! Notification will be sent automatically to all users.');
+      }
+      
+      // Show success message
+      if (isScheduledPost) {
+        const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+        alert(`Post scheduled successfully! It will be published on ${scheduledDateTime.toLocaleDateString()} at ${scheduledDateTime.toLocaleTimeString()}`);
       } else {
-        alert('Post saved to Firestore!');
+        alert('Post saved and published successfully!' + (sendNotification ? ' Notification will be sent to all users.' : ''));
       }
       
       onSave?.(postData);
@@ -608,13 +709,23 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                 <X className="h-4 w-4" />
                 <span>Cancel</span>
               </button>
-              <button
-                onClick={handleSave}
-                className="px-6 py-2 bg-gradient-to-r from-orange-400 to-blue-400 text-black rounded-xl hover:from-orange-500 hover:to-blue-500 transition-all duration-200 flex items-center space-x-2 shadow-lg"
-              >
-                <Save className="h-4 w-4" />
-                <span>Save Post</span>
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => handleSave(false)}
+                  className="px-6 py-2 bg-gradient-to-r from-orange-400 to-blue-400 text-black rounded-xl hover:from-orange-500 hover:to-blue-500 transition-all duration-200 flex items-center space-x-2 shadow-lg"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Save Post</span>
+                </button>
+                <button
+                  onClick={() => handleSave(true)}
+                  disabled={!isScheduled || !scheduledDate || !scheduledTime}
+                  className="px-6 py-2 bg-gradient-to-r from-green-400 to-teal-400 text-black rounded-xl hover:from-green-500 hover:to-teal-500 transition-all duration-200 flex items-center space-x-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Schedule Post</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -630,7 +741,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
               <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <Bell className="h-5 w-5 mr-2 text-purple-400" />
-                Notification
+                Notification & Scheduling
               </h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3 cursor-pointer group">
@@ -657,6 +768,51 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                     </p>
                   </div>
                 )}
+
+                {/* Scheduling Option */}
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center space-x-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      id="isScheduled"
+                      checked={isScheduled}
+                      onChange={(e) => setIsScheduled(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="isScheduled" className="text-sm text-gray-700 group-hover:text-black transition-colors cursor-pointer">
+                      Schedule this post
+                    </label>
+                  </div>
+                  
+                  {isScheduled && (
+                    <div className="ml-7 mt-3 space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-xs text-blue-600">
+                          ⏰ Post will be automatically published at the scheduled time
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -670,7 +826,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
                 {categories.length === 0 ? (
                   <div className="text-gray-400 text-sm">No categories found. Add some in Category Manager.</div>
                 ) : (
-                  categories.map(cat => (
+                  categories.filter(cat => !cat.isBusiness).map(cat => (
                     <label key={cat.id} className="flex items-center space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -693,10 +849,42 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
               {selectedCategories.length > 0 && (
                 <div className="mt-3 p-2 bg-orange-500/10 rounded-lg">
                   <p className="text-xs text-orange-300">
-                    Selected: {categories.filter(cat => selectedCategories.includes(cat.id)).map(cat => language === 'kannada' ? cat.nameKn : cat.nameEn).join(', ')}
+                    Selected: {categories.filter(cat => selectedCategories.includes(cat.id) && !cat.isBusiness).map(cat => language === 'kannada' ? cat.nameKn : cat.nameEn).join(', ')}
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Business Category Selection */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
+              <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
+                <Tag className="h-5 w-5 mr-2 text-purple-400" />
+                Business Categories
+              </h3>
+              <div className="space-y-3">
+                <select
+                  value={selectedBusinessCategory}
+                  onChange={(e) => setSelectedBusinessCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="">Select a business category (optional)</option>
+                  {categories.filter(cat => cat.isBusiness).map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {language === 'kannada' ? cat.nameKn : cat.nameEn}
+                    </option>
+                  ))}
+                </select>
+                {selectedBusinessCategory && (
+                  <div className="mt-3 p-2 bg-purple-500/10 rounded-lg">
+                    <p className="text-xs text-purple-300">
+                      Selected: {categories.find(cat => cat.id === selectedBusinessCategory)?.nameEn || ''}
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  💡 This will help business users find posts relevant to their industry
+                </p>
+              </div>
             </div>
 
             {/* Regions */}

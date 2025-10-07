@@ -4,7 +4,6 @@ import '../data/quote_data.dart';
 import '../constants/app_constants.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/admin_post_feed_widget.dart';
-import '../widgets/user_posts_widget.dart';
 import 'quote_editor_screen.dart';
 import 'AllSubscription.dart';
 import 'package:newapp/services/user_service.dart';
@@ -21,7 +20,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:newapp/widgets/fullscreen_post_viewer.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'dart:typed_data';
 import 'dart:async';
@@ -55,6 +53,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String userPhoneNumber = '';
   String userAddress = '';
   String userCity = '';
+  String userBusinessCategory = '';
   late TextEditingController _quoteController;
   String quoteOfTheDay = '';
   List<String> favoriteQuotes = [];
@@ -84,21 +83,24 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _filteredCategories = [];
 
   // Helper method to get category name based on user language
-  String _getCategoryName(Map<String, dynamic> category) {
+  String? _getCategoryName(Map<String, dynamic> category) {
     // Default to English if no language is set
     if (userLanguage.isEmpty) {
-      return category['nameEn'] as String? ?? 'Unknown';
+      final name = category['nameEn'] as String?;
+      return (name != null && name.isNotEmpty && name.trim().isNotEmpty && name != 'null' && name != 'undefined') ? name.trim() : null;
     }
 
     if (userLanguage.toLowerCase() == 'kannada') {
       final kannadaName = category['nameKn'] as String?;
-      if (kannadaName != null && kannadaName.isNotEmpty) {
-        return kannadaName;
+      if (kannadaName != null && kannadaName.isNotEmpty && kannadaName.trim().isNotEmpty && kannadaName != 'null' && kannadaName != 'undefined') {
+        return kannadaName.trim();
       }
       // Fallback to English if Kannada name is empty or null
-      return category['nameEn'] as String? ?? 'Unknown';
+      final englishName = category['nameEn'] as String?;
+      return (englishName != null && englishName.isNotEmpty && englishName.trim().isNotEmpty && englishName != 'null' && englishName != 'undefined') ? englishName.trim() : null;
     }
-    return category['nameEn'] as String? ?? 'Unknown';
+    final name = category['nameEn'] as String?;
+    return (name != null && name.isNotEmpty && name.trim().isNotEmpty && name != 'null' && name != 'undefined') ? name.trim() : null;
   }
 
   // Helper method to get English category name for filtering/searching
@@ -195,9 +197,12 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       final categories = await _categoryService.getCategories();
+      
+      List<Map<String, dynamic>> allCategories = List.from(categories);
+      
       setState(() {
-        _firebaseCategories = categories;
-        _filteredCategories = categories; // Initialize filtered categories
+        _firebaseCategories = allCategories;
+        _filteredCategories = allCategories; // Initialize filtered categories
         _isLoadingCategories = false;
       });
     } catch (e) {
@@ -260,6 +265,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           userAddress = userData['address'] ?? '';
           userDob = userData['dateOfBirth'] ?? '';
           userCity = userData['city'] ?? '';
+          userBusinessCategory = userData['businessCategory'] ?? '';
         });
 
         // Fetch user's profile photos
@@ -1451,6 +1457,7 @@ Download now: $shareLink
                             itemBuilder: (context, index) {
                               final category = _filteredCategories[index];
                               final categoryName = _getCategoryName(category);
+                              if (categoryName == null) return SizedBox.shrink();
                               return ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: Colors.deepOrange.shade100,
@@ -1499,7 +1506,7 @@ Download now: $shareLink
         final categoryName = _getCategoryName(category);
         final englishCategoryName = _getEnglishCategoryName(category);
         // Search in both display name and English name
-        return categoryName.toLowerCase().contains(query.toLowerCase()) ||
+        return (categoryName?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
             englishCategoryName.toLowerCase().contains(query.toLowerCase());
       }).toList();
     }
@@ -1538,6 +1545,7 @@ Download now: $shareLink
     String? address,
     String? dateOfBirth,
     String? city,
+    String? businessCategory,
   }) async {
     if (_currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1558,6 +1566,7 @@ Download now: $shareLink
       if (address != null) updateData['address'] = address;
       if (dateOfBirth != null) updateData['dateOfBirth'] = dateOfBirth;
       if (city != null) updateData['city'] = city;
+      if (businessCategory != null) updateData['businessCategory'] = businessCategory;
 
       await _userService.updateUserData(_currentUser!.uid, updateData);
 
@@ -1626,43 +1635,41 @@ Download now: $shareLink
           croppedImageFile = imageFile;
         }
 
-        if (croppedImageFile != null) {
-          // Upload original
-          String downloadUrl = await _userService.uploadProfilePhoto(
-            croppedImageFile,
-            _currentUser!.uid,
-          );
-          // Remove background and upload processed image
-          String? processedUrl = await _bgRemovalService.removeBackground(
-            croppedImageFile,
-          );
-          String? downloadUrlNoBg;
-          if (processedUrl != null) {
-            // Download processed image and upload to Firebase Storage
-            final response = await http.get(Uri.parse(processedUrl));
-            if (response.statusCode == 200) {
-              final tempDir = Directory.systemTemp;
-              final tempFile = File(
-                '${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png',
-              );
-              await tempFile.writeAsBytes(response.bodyBytes);
-              downloadUrlNoBg = await _userService.uploadProfilePhoto(
-                tempFile,
-                _currentUser!.uid,
-              );
-              await tempFile.delete();
-            }
+        // Upload original
+        String downloadUrl = await _userService.uploadProfilePhoto(
+          croppedImageFile,
+          _currentUser!.uid,
+        );
+        // Remove background and upload processed image
+        String? processedUrl = await _bgRemovalService.removeBackground(
+          croppedImageFile,
+        );
+        String? downloadUrlNoBg;
+        if (processedUrl != null) {
+          // Download processed image and upload to Firebase Storage
+          final response = await http.get(Uri.parse(processedUrl));
+          if (response.statusCode == 200) {
+            final tempDir = Directory.systemTemp;
+            final tempFile = File(
+              '${tempDir.path}/profile_nobg_${DateTime.now().millisecondsSinceEpoch}.png',
+            );
+            await tempFile.writeAsBytes(response.bodyBytes);
+            downloadUrlNoBg = await _userService.uploadProfilePhoto(
+              tempFile,
+              _currentUser!.uid,
+            );
+            await tempFile.delete();
           }
-          // Add both to Firestore
-          await _addProfilePhotoToGallery(
-            downloadUrl,
-            photoUrlNoBg: downloadUrlNoBg,
-          );
-          await _fetchUserProfilePhotos();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profile photo added to gallery!')),
-          );
         }
+        // Add both to Firestore
+        await _addProfilePhotoToGallery(
+          downloadUrl,
+          photoUrlNoBg: downloadUrlNoBg,
+        );
+        await _fetchUserProfilePhotos();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile photo added to gallery!')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2129,6 +2136,7 @@ Download now: $shareLink
                       SizedBox(width: 8),
                       _buildCategoryChip('Love ❤️', false),
                       SizedBox(width: 8),
+                      // Business categories (only show if user is business user)
                       _buildCategoryChip('More (8)', false),
                     ],
                   ),
@@ -2334,10 +2342,12 @@ Download now: $shareLink
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: 4),
-            itemCount: _firebaseCategories.length,
+            itemCount: _firebaseCategories.where((cat) => !cat['isBusiness']).length,
             itemBuilder: (context, index) {
-              final category = _firebaseCategories[index];
+              final nonBusinessCategories = _firebaseCategories.where((cat) => !cat['isBusiness']).toList();
+              final category = nonBusinessCategories[index];
               final categoryName = _getCategoryName(category);
+              if (categoryName == null) return SizedBox.shrink();
               return Container(
                 width:
                     MediaQuery.of(context).size.width /
@@ -2659,9 +2669,9 @@ Download now: $shareLink
                   .where(
                     (category) =>
                         _categorySearchQuery.isEmpty ||
-                        _getCategoryName(category).toLowerCase().contains(
+                        (_getCategoryName(category)?.toLowerCase().contains(
                           _categorySearchQuery.toLowerCase(),
-                        ),
+                        ) ?? false),
                   )
                   .toList()
                   .length,
@@ -2670,13 +2680,14 @@ Download now: $shareLink
                     .where(
                       (category) =>
                           _categorySearchQuery.isEmpty ||
-                          _getCategoryName(category).toLowerCase().contains(
+                          (_getCategoryName(category)?.toLowerCase().contains(
                             _categorySearchQuery.toLowerCase(),
-                          ),
+                          ) ?? false),
                     )
                     .toList();
                 final category = filteredCategories[index];
                 final categoryName = _getCategoryName(category);
+                if (categoryName == null) return SizedBox.shrink();
                 return Card(
                   margin: EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
@@ -3275,6 +3286,12 @@ Download now: $shareLink
                               final categoryName = _getCategoryName(category);
                               final englishCategoryName =
                                   _getEnglishCategoryName(category);
+                              
+                              // Skip categories with null or empty names
+                              if (categoryName == null || categoryName.isEmpty) {
+                                return SizedBox.shrink();
+                              }
+                              
                               final isSelected = _selectedCategories.contains(
                                 englishCategoryName,
                               );
@@ -3319,6 +3336,43 @@ Download now: $shareLink
                                 ),
                               );
                             }).toList(),
+                            // Show user's selected business category (only if they have one selected)
+                            if ((userUsageType == 'Business' || userUsageType == 'ವ್ಯಾಪಾರ') && userBusinessCategory.isNotEmpty) ...[
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCategories = {userBusinessCategory};
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _selectedCategories.contains(userBusinessCategory)
+                                        ? const Color(0xffd74d02)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      width: 0.5,
+                                      color: const Color.fromARGB(255, 255, 119, 34),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    userBusinessCategory,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: _selectedCategories.contains(userBusinessCategory)
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                 ),
@@ -3666,12 +3720,12 @@ Download now: $shareLink
                                 itemCount: userProfilePhotos.length,
                                 itemBuilder: (context, index) {
                                   final photoDoc = userProfilePhotos[index];
-                                  final photoUrl = photoDoc is String
-                                      ? photoDoc
-                                      : photoDoc['photoUrl'] as String?;
-                                  final photoUrlNoBg = photoDoc is String
+                                  final String? photoUrl = photoDoc is String
+                                      ? photoDoc as String
+                                      : (photoDoc as Map<String, dynamic>)['photoUrl'] as String?;
+                                  final String? photoUrlNoBg = photoDoc is String
                                       ? null
-                                      : photoDoc['photoUrlNoBg'] as String?;
+                                      : (photoDoc as Map<String, dynamic>)['photoUrlNoBg'] as String?;
                                   final isActive =
                                       photoUrl == userProfilePhotoUrl;
                                   return Row(
@@ -3679,11 +3733,11 @@ Download now: $shareLink
                                       if (photoUrl != null)
                                         GestureDetector(
                                           onTap: () => _selectProfilePhoto(
-                                            photoUrl as String,
+                                            photoUrl!,
                                           ),
                                           onLongPress: () =>
                                               _showDeletePhotoDialog(
-                                                photoUrl as String,
+                                                photoUrl!,
                                                 index,
                                               ),
                                           child: Stack(
@@ -3691,7 +3745,7 @@ Download now: $shareLink
                                               CircleAvatar(
                                                 radius: 40,
                                                 backgroundImage: NetworkImage(
-                                                  photoUrl as String,
+                                                  photoUrl!,
                                                 ),
                                                 backgroundColor:
                                                     Colors.grey.shade200,
@@ -3719,7 +3773,7 @@ Download now: $shareLink
                                                 child: GestureDetector(
                                                   onTap: () =>
                                                       _showDeletePhotoDialog(
-                                                        photoUrl as String,
+                                                        photoUrl!,
                                                         index,
                                                       ),
                                                   child: Container(
@@ -3746,11 +3800,11 @@ Download now: $shareLink
                                           ),
                                           child: GestureDetector(
                                             onTap: () => _selectProfilePhoto(
-                                              photoUrlNoBg as String,
+                                              photoUrlNoBg,
                                             ),
                                             onLongPress: () =>
                                                 _showDeletePhotoDialog(
-                                                  photoUrlNoBg as String,
+                                                  photoUrlNoBg,
                                                   index,
                                                 ),
                                             child: Stack(
@@ -3758,7 +3812,7 @@ Download now: $shareLink
                                                 CircleAvatar(
                                                   radius: 40,
                                                   backgroundImage: NetworkImage(
-                                                    photoUrlNoBg as String,
+                                                    photoUrlNoBg,
                                                   ),
                                                   backgroundColor:
                                                       Colors.grey.shade200,
@@ -3789,8 +3843,7 @@ Download now: $shareLink
                                                   child: GestureDetector(
                                                     onTap: () =>
                                                         _showDeletePhotoDialog(
-                                                          photoUrlNoBg
-                                                              as String,
+                                                          photoUrlNoBg,
                                                           index,
                                                         ),
                                                     child: Container(
@@ -3874,6 +3927,14 @@ Download now: $shareLink
                         Icons.email,
                         isEditable: false, // Email cannot be changed
                       ),
+                      // Business category for business users
+                      if (userUsageType == 'Business' || userUsageType == 'ವ್ಯಾಪಾರ')
+                        _buildUserDataCard(
+                          'Business Category',
+                          userBusinessCategory.isNotEmpty ? userBusinessCategory : 'Not selected',
+                          Icons.category,
+                          onTap: () => _showBusinessCategoryDialog(),
+                        ),
                       // _buildUserDataCard(
                       //   'Name',
                       //   userName,
@@ -4120,6 +4181,7 @@ Download now: $shareLink
                   itemBuilder: (context, index) {
                     final category = _firebaseCategories[index];
                     final categoryName = _getCategoryName(category);
+                    if (categoryName == null) return SizedBox.shrink();
                     return ListTile(
                       title: Text(categoryName),
                       onTap: () {
@@ -4572,6 +4634,48 @@ Download now: $shareLink
                   _updateUserDetails(usageType: usageType);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Usage type updated successfully')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBusinessCategoryDialog() {
+    final businessCategories = [
+      {'name': 'Education & Training', 'icon': Icons.school},
+      {'name': 'Health & Services', 'icon': Icons.health_and_safety},
+      {'name': 'Retail & Shopping', 'icon': Icons.shopping_cart},
+      {'name': 'Finance & Services', 'icon': Icons.account_balance},
+      {'name': 'Travel & Ticketing', 'icon': Icons.flight},
+      {'name': 'Digital & Tech', 'icon': Icons.computer},
+      {'name': 'Food & Lifestyle', 'icon': Icons.restaurant},
+      {'name': 'Online Services', 'icon': Icons.web},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select Business Category'),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: businessCategories.length,
+            itemBuilder: (context, index) {
+              final category = businessCategories[index];
+              return ListTile(
+                leading: Icon(category['icon'] as IconData),
+                title: Text(category['name'] as String),
+                onTap: () {
+                  Navigator.pop(context);
+                  _updateUserDetails(businessCategory: category['name'] as String);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Business category updated successfully')),
                   );
                 },
               );
