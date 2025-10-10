@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users as UsersIcon, Search, Filter, Mail, Phone, MapPin, Calendar, Eye, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users as UsersIcon, Search, Filter, Eye, Trash2, Crown, DollarSign } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
@@ -43,6 +43,9 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'business' | 'personal'>('all');
+  const [subscriptionFilter, setSubscriptionFilter] = useState<'all' | 'free' | 'paid'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'subscription' | 'subscriptionDate' | 'createdAt'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchUsers();
@@ -111,6 +114,11 @@ export default function Users() {
     }
   };
 
+  // Helper function to determine if user is paid
+  const isPaidUser = (user: FirebaseUser) => {
+    return user.subscription && user.subscription.toLowerCase() !== 'free' && user.subscription.toLowerCase() !== '';
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = (user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -120,7 +128,40 @@ export default function Users() {
                          (filterType === 'business' && user.usageType === 'Business') ||
                          (filterType === 'personal' && user.usageType === 'Personal');
     
-    return matchesSearch && matchesFilter;
+    const matchesSubscription = subscriptionFilter === 'all' ||
+                               (subscriptionFilter === 'free' && !isPaidUser(user)) ||
+                               (subscriptionFilter === 'paid' && isPaidUser(user));
+    
+    return matchesSearch && matchesFilter && matchesSubscription;
+  });
+
+  // Sort users based on selected criteria
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'name':
+        comparison = (a.name || '').localeCompare(b.name || '');
+        break;
+      case 'subscription':
+        const aPaid = isPaidUser(a);
+        const bPaid = isPaidUser(b);
+        comparison = aPaid === bPaid ? 0 : aPaid ? 1 : -1;
+        break;
+      case 'subscriptionDate':
+        const aSubDate = a.subscriptionDate?.seconds || 0;
+        const bSubDate = b.subscriptionDate?.seconds || 0;
+        comparison = bSubDate - aSubDate;
+        break;
+      case 'createdAt':
+      default:
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        comparison = bTime - aTime;
+        break;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   return (
@@ -138,13 +179,15 @@ export default function Users() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-gray-800">{filteredUsers.length}</div>
-              <div className="text-sm text-gray-600">Total Users</div>
+              <div className="text-2xl font-bold text-gray-800">{sortedUsers.length}</div>
+              <div className="text-sm text-gray-600">
+                Total Users ({sortedUsers.filter(u => isPaidUser(u)).length} Paid, {sortedUsers.filter(u => !isPaidUser(u)).length} Free)
+              </div>
             </div>
           </div>
 
           {/* Search and Filter */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
@@ -155,17 +198,31 @@ export default function Users() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as 'all' | 'business' | 'personal')}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Users</option>
-                <option value="business">Business Users</option>
-                <option value="personal">Personal Users</option>
-              </select>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-gray-400" />
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as 'all' | 'business' | 'personal')}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="all">All Users</option>
+                  <option value="business">Business Users</option>
+                  <option value="personal">Personal Users</option>
+                </select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 text-gray-400" />
+                <select
+                  value={subscriptionFilter}
+                  onChange={(e) => setSubscriptionFilter(e.target.value as 'all' | 'free' | 'paid')}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="all">All Subscriptions</option>
+                  <option value="free">Free Users</option>
+                  <option value="paid">Paid Users</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -174,7 +231,7 @@ export default function Users() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#d74d02' }}></div>
               <p className="text-gray-600">Loading users...</p>
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : sortedUsers.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <UsersIcon className="h-16 w-16 mx-auto" />
@@ -210,7 +267,7 @@ export default function Users() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
+                  {sortedUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-2 py-2">
                         <img
@@ -229,7 +286,24 @@ export default function Users() {
                       <td className="px-2 py-2">{formatCell(user.language)}</td>
                       <td className="px-2 py-2">{formatCell(user.dateOfBirth)}</td>
                       <td className="px-2 py-2">{formatCell(user.religion)}</td>
-                      <td className="px-2 py-2">{formatCell(user.subscription)}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center space-x-1">
+                          {isPaidUser(user) ? (
+                            <>
+                              <Crown className="h-3 w-3 text-yellow-500" />
+                              <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full text-xs">
+                                {formatCell(user.subscription)}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-full text-xs">
+                                Free
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-2">{formatCell(user.subscriptionDate)}</td>
                       <td className="px-2 py-2">{formatCell(user.updatedAt)}</td>
                       <td className="px-2 py-2">{formatCell(user.createdAt)}</td>
