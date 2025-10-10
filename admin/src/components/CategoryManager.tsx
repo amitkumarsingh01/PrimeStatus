@@ -119,6 +119,96 @@ export default function CategoryManager() {
         isFixed: true,
         isBusiness: true,
         type: 'business'
+      },
+      {
+        id: 'tea-stall',
+        nameEn: 'Tea Stall',
+        nameKn: 'ಚಹಾ ಅಂಗಡಿ',
+        position: 10,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'general-store',
+        nameEn: 'General Store',
+        nameKn: 'ಸಾಮಾನ್ಯ ಅಂಗಡಿ',
+        position: 11,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'mobile-shop',
+        nameEn: 'Mobile Shop',
+        nameKn: 'ಮೊಬೈಲ್ ಅಂಗಡಿ',
+        position: 12,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'online-centre',
+        nameEn: 'Online Centre',
+        nameKn: 'ಆನ್ಲೈನ್ ಕೇಂದ್ರ',
+        position: 13,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'computers-institute',
+        nameEn: 'Computers Institute',
+        nameKn: 'ಕಂಪ್ಯೂಟರ್ ಸಂಸ್ಥೆ',
+        position: 14,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'jewellery-shop',
+        nameEn: 'Jewellery Shop',
+        nameKn: 'ಆಭರಣ ಅಂಗಡಿ',
+        position: 15,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'bjp-party',
+        nameEn: 'BJP Party',
+        nameKn: 'ಬಿಜೆಪಿ ಪಕ್ಷ',
+        position: 16,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'congress-party',
+        nameEn: 'Congress Party',
+        nameKn: 'ಕಾಂಗ್ರೆಸ್ ಪಕ್ಷ',
+        position: 17,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'jds-party',
+        nameEn: 'JDS Party',
+        nameKn: 'ಜೆಡಿಎಸ್ ಪಕ್ಷ',
+        position: 18,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
+      },
+      {
+        id: 'premium-poster',
+        nameEn: 'Premium Poster',
+        nameKn: 'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್',
+        position: 19,
+        isFixed: true,
+        isBusiness: true,
+        type: 'business'
       }
     ];
   };

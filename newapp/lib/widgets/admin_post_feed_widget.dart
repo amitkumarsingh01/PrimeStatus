@@ -656,7 +656,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () => _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post),
+                    onPressed: () => _handlePostActionWithPayment('share', post),
                     icon: const Icon(Icons.share, color: Colors.white),
                     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -672,7 +672,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () => _downloadImage(post),
+                    onPressed: () => _handlePostActionWithPayment('download', post),
                     icon: const Icon(Icons.download, color: Colors.white),
                     label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -842,6 +842,59 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     }
   }
 
+  // Handle post actions with payment logic for business users
+  Future<void> _handlePostActionWithPayment(String action, Map<String, dynamic> post) async {
+    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+    final userUsageType = homeScreenState?.userUsageType ?? '';
+    final isBusinessUser = userUsageType == 'Business';
+    
+    // For personal users, allow actions without payment
+    if (!isBusinessUser) {
+      switch (action) {
+        case 'share':
+          await _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post);
+          break;
+        case 'download':
+          await _downloadImage(post);
+          break;
+      }
+      return;
+    }
+    
+    // For business users, check subscription status
+    final currentUser = _userService.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please sign in to continue')),
+      );
+      return;
+    }
+    
+    try {
+      final hasActiveSubscription = await PaymentService.hasActiveSubscription(currentUser.uid);
+      
+      if (hasActiveSubscription) {
+        // User has active subscription, proceed with action
+        switch (action) {
+          case 'share':
+            await _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post);
+            break;
+          case 'download':
+            await _downloadImage(post);
+            break;
+        }
+      } else {
+        // User needs to subscribe, show payment dialog
+        _showPaymentRequiredDialog(action, post);
+      }
+    } catch (e) {
+      print('Error checking subscription: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error checking subscription status')),
+      );
+    }
+  }
+
   void _showReportDialog(String postId) {
     showDialog(
       context: context,
@@ -869,6 +922,95 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         ],
       ),
     );
+  }
+
+  // Show payment required dialog for business users
+  void _showPaymentRequiredDialog(String action, Map<String, dynamic> post) {
+    final actionText = action == 'share' ? 'share' : 'download';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Subscription Required'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'To $actionText posts as a business user, you need an active subscription.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Business Subscription Benefits:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text('• Unlimited post sharing'),
+                  Text('• Unlimited downloads'),
+                  Text('• Priority support'),
+                  Text('• Advanced features'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateToSubscription();
+            },
+            child: Text('Subscribe Now'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Navigate to subscription screen
+  void _navigateToSubscription() {
+    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
+    if (homeScreenState != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubscriptionPlansScreen(
+            userName: homeScreenState.userName,
+            userEmail: homeScreenState.userEmail,
+            userPhone: homeScreenState.userPhoneNumber,
+            userUsageType: homeScreenState.userUsageType,
+          ),
+        ),
+      );
+    }
   }
 
   void _createDesignFromPost(Map<String, dynamic> post) {

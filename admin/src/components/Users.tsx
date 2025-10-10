@@ -135,29 +135,50 @@ export default function Users() {
     return matchesSearch && matchesFilter && matchesSubscription;
   });
 
+  // Helper function to get timestamp from Firestore data
+  const getTimestamp = (dateField: any): number => {
+    if (!dateField) return 0;
+    // Firestore Timestamp object
+    if (typeof dateField === 'object' && dateField.seconds !== undefined) {
+      return dateField.seconds;
+    }
+    // Regular Date object or string
+    if (dateField instanceof Date) {
+      return dateField.getTime() / 1000;
+    }
+    if (typeof dateField === 'string') {
+      return new Date(dateField).getTime() / 1000;
+    }
+    return 0;
+  };
+
   // Sort users based on selected criteria
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let comparison = 0;
     
     switch (sortBy) {
       case 'name':
-        comparison = (a.name || '').localeCompare(b.name || '');
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        comparison = aName.localeCompare(bName);
         break;
       case 'subscription':
         const aPaid = isPaidUser(a);
         const bPaid = isPaidUser(b);
-        comparison = aPaid === bPaid ? 0 : aPaid ? 1 : -1;
+        // For "Paid First" (desc): paid users should come first (negative comparison)
+        // For "Free First" (asc): free users should come first (positive comparison)
+        comparison = aPaid === bPaid ? 0 : aPaid ? -1 : 1;
         break;
       case 'subscriptionDate':
-        const aSubDate = a.subscriptionDate?.seconds || 0;
-        const bSubDate = b.subscriptionDate?.seconds || 0;
-        comparison = bSubDate - aSubDate;
+        const aSubDate = getTimestamp(a.subscriptionDate);
+        const bSubDate = getTimestamp(b.subscriptionDate);
+        comparison = bSubDate - aSubDate; // Most recent first by default
         break;
       case 'createdAt':
       default:
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
-        comparison = bTime - aTime;
+        const aTime = getTimestamp(a.createdAt);
+        const bTime = getTimestamp(b.createdAt);
+        comparison = bTime - aTime; // Most recent first by default
         break;
     }
     
@@ -221,6 +242,24 @@ export default function Users() {
                   <option value="all">All Subscriptions</option>
                   <option value="free">Free Users</option>
                   <option value="paid">Paid Users</option>
+                </select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-');
+                    setSortBy(field as 'name' | 'subscription' | 'subscriptionDate' | 'createdAt');
+                    setSortOrder(order as 'asc' | 'desc');
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                  <option value="subscription-desc">Paid First</option>
+                  <option value="subscription-asc">Free First</option>
+                  <option value="subscriptionDate-desc">Recent Subscriptions</option>
+                  <option value="subscriptionDate-asc">Old Subscriptions</option>
                 </select>
               </div>
             </div>

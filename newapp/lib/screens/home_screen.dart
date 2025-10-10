@@ -5113,6 +5113,16 @@ Download now: $shareLink
       {'name': 'Digital & Tech', 'icon': Icons.computer},
       {'name': 'Food & Lifestyle', 'icon': Icons.restaurant},
       {'name': 'Online Services', 'icon': Icons.web},
+      {'name': 'Tea Stall', 'icon': Icons.local_cafe},
+      {'name': 'General Store', 'icon': Icons.store},
+      {'name': 'Mobile Shop', 'icon': Icons.phone_android},
+      {'name': 'Online Centre', 'icon': Icons.computer},
+      {'name': 'Computers Institute', 'icon': Icons.school},
+      {'name': 'Jewellery Shop', 'icon': Icons.diamond},
+      {'name': 'BJP Party', 'icon': Icons.flag},
+      {'name': 'Congress Party', 'icon': Icons.flag},
+      {'name': 'JDS Party', 'icon': Icons.flag},
+      {'name': 'Premium Poster', 'icon': Icons.image},
     ];
 
     showDialog(

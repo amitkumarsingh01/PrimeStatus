@@ -339,7 +339,7 @@ class LocalMediaProcessingService {
           // 1080x1080: use original, else use alternate
            final double textXBase = isSquare
                ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 28 : 8)
-               : (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 10 : 0);
+               : ((((textSettings['x'] ?? 50) / 100 * width) + 50) / 1.96) + (isForVideo ? 10 : 0);
           final double textX = userName.length > 15 ? textXBase + 6 : textXBase;
           final double textY = isSquare
               ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10
@@ -373,10 +373,10 @@ class LocalMediaProcessingService {
               : (((businessNameSettings['y'] ?? 20) / 100 * height) / 1.96) - 10;
            final double designationXBase = isSquare
                ? (((designationSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 28 : -12)
-               : (((designationSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 0 : -20);
+               : ((((designationSettings['x'] ?? 50) / 100 * width) + 130) / 1.96) + (isForVideo ? 0 : -20);
           final double designationX = userDesignation.length > 15 ? designationXBase + 6 : designationXBase;
           final double designationY = isSquare
-              ? (((designationSettings['y'] ?? 25) / 100 * height) / 1.96) - 10
+              ? (((designationSettings['y'] ?? 25) / 100 * height) / 1.96) - 10 
               : (((designationSettings['y'] ?? 25) / 100 * height) / 1.96) - 10;
           
           // For video overlays, move the profile image 10px left and up

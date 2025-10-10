@@ -128,7 +128,7 @@ class VideoProcessingService {
             // Text overlay
             if (textSettings.isNotEmpty)
               Positioned(
-                left: (textSettings['x'] ?? 50) / 100 * frameSize['width'],
+                left: ((textSettings['x'] ?? 50) / 100 * frameSize['width']),
                 top: (textSettings['y'] ?? 90) / 100 * frameSize['height'],
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
