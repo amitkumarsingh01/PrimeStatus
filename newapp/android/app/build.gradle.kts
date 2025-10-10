@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,10 +9,16 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.aksmlibts.primestatus"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -20,23 +29,30 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.aksmlibts.primestatus"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 6
+        versionName = "1.5"
         multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }
 }
@@ -48,10 +64,15 @@ flutter {
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     implementation("androidx.multidex:multidex:2.0.1")
-    // Optional Firebase native SDKs if used directly by plugins/features
+    
+    // Core Firebase features
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-messaging")
+
+    // Required for OTP + Play Integrity / reCAPTCHA support
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.android.gms:play-services-base:18.4.0")
+    implementation("com.google.android.gms:play-services-safetynet:18.0.1")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
-    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.firebase:firebase-messaging")
 }
