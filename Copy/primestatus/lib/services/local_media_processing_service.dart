@@ -378,7 +378,7 @@ class LocalMediaProcessingService {
                             userName.length > 15 ? userName : userName,
                             style: TextStyle(
                               fontFamily: getFontFamily(textSettings['font']),
-                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.9 : 1.0),
+                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35 * 2.0) * (userName.length > 15 ? 0.9 : 1.0),
                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),

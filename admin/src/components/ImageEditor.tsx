@@ -1266,7 +1266,7 @@ export default function ImageEditor({ media, frameSize, mediaType, language, use
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-xl">
               <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
                 <MapPin className="h-5 w-5 mr-2 text-orange-400" />
-                Designation
+                Address
               </h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">

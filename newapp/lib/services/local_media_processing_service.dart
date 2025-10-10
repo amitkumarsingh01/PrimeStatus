@@ -42,6 +42,8 @@ class LocalMediaProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       print('=== PROCESSING IMAGE WITH OVERLAYS ===');
@@ -63,6 +65,8 @@ class LocalMediaProcessingService {
         userAddress: userAddress,
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
+        userBusinessName: userBusinessName,
+        userDesignation: userDesignation,
       );
       if (overlayImagePath == null) {
         print('Failed to create overlay image');
@@ -95,6 +99,8 @@ class LocalMediaProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       print('=== PROCESSING VIDEO WITH OVERLAYS ===');
@@ -124,6 +130,8 @@ class LocalMediaProcessingService {
         userAddress: userAddress,
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
+        userBusinessName: userBusinessName,
+        userDesignation: userDesignation,
         isForVideo: true,
       );
       if (overlayImagePath == null) {
@@ -157,6 +165,8 @@ class LocalMediaProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       print('=== CREATING VIDEO THUMBNAIL WITH OVERLAY ===');
@@ -185,6 +195,8 @@ class LocalMediaProcessingService {
         userAddress: userAddress,
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
+        userBusinessName: userBusinessName,
+        userDesignation: userDesignation,
         isForVideo: true,
       );
       if (overlayImagePath == null) {
@@ -285,6 +297,8 @@ class LocalMediaProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
     bool isForVideo = false,
   }) async {
     try {
@@ -292,6 +306,8 @@ class LocalMediaProcessingService {
       final profileSettings = post['profileSettings'] ?? {};
       final addressSettings = post['addressSettings'] ?? {};
       final phoneSettings = post['phoneSettings'] ?? {};
+      final businessNameSettings = post['businessNameSettings'] ?? {};
+      final designationSettings = post['designationSettings'] ?? {};
       final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
 
       // Debug prints for overlay data
@@ -303,6 +319,10 @@ class LocalMediaProcessingService {
       print('addressSettings: $addressSettings');
       print('userPhoneNumber: $userPhoneNumber');
       print('phoneSettings: $phoneSettings');
+      print('userBusinessName: $userBusinessName');
+      print('businessNameSettings: $businessNameSettings');
+      print('userDesignation: $userDesignation');
+      print('designationSettings: $designationSettings');
       print('userProfilePhotoUrl: $userProfilePhotoUrl');
       print('frameSize: $frameSize');
       print('--------------------------');
@@ -317,9 +337,9 @@ class LocalMediaProcessingService {
           // Use different formulas for 1080x1080 vs others
           bool isSquare = width == 1080 && height == 1080;
           // 1080x1080: use original, else use alternate
-          final double textXBase = isSquare
-              ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + 8
-              : (((textSettings['x'] ?? 50) / 100 * width) / 1.96);
+           final double textXBase = isSquare
+               ? (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 28 : 8)
+               : (((textSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 10 : 0);
           final double textX = userName.length > 15 ? textXBase + 6 : textXBase;
           final double textY = isSquare
               ? (((textSettings['y'] ?? 90) / 100 * height) / 1.96) - 10
@@ -330,10 +350,10 @@ class LocalMediaProcessingService {
           final double profileY = isSquare
               ? (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) + 22
               : (((profileSettings['y'] ?? 20) / 100 * height) / 1.96) - 0;
-          final double profileSize = ((profileSettings['size'] ?? 80).toDouble());
+           final double profileSize = ((profileSettings['size'] ?? 80).toDouble()) * (isForVideo ? 0.8 : 1.0);
           final double addressXBase = isSquare
-              ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 14
-              : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 10;
+              ? (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 34
+              : (((addressSettings['x'] ?? 50) / 100 * width) / 1.96) - 30;
           final double addressX = userAddress.length > 15 ? addressXBase + 49 : addressXBase;
           final double addressY = isSquare
               ? (((addressSettings['y'] ?? 80) / 100 * height) / 1.96) - 11
@@ -344,6 +364,20 @@ class LocalMediaProcessingService {
           final double phoneY = isSquare
               ? ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 8
               : ((((phoneSettings['y'] ?? 85) / 100 * height) / 1.96)) - 13;
+          final double businessNameXBase = isSquare
+              ? (((businessNameSettings['x'] ?? 50) / 100 * width) / 1.96) - 12
+              : (((businessNameSettings['x'] ?? 50) / 100 * width) / 1.96) - 20;
+          final double businessNameX = userBusinessName.length > 15 ? businessNameXBase + 6 : businessNameXBase;
+          final double businessNameY = isSquare
+              ? (((businessNameSettings['y'] ?? 20) / 100 * height) / 1.96) - 10
+              : (((businessNameSettings['y'] ?? 20) / 100 * height) / 1.96) - 10;
+           final double designationXBase = isSquare
+               ? (((designationSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 28 : -12)
+               : (((designationSettings['x'] ?? 50) / 100 * width) / 1.96) + (isForVideo ? 0 : -20);
+          final double designationX = userDesignation.length > 15 ? designationXBase + 6 : designationXBase;
+          final double designationY = isSquare
+              ? (((designationSettings['y'] ?? 25) / 100 * height) / 1.96) - 10
+              : (((designationSettings['y'] ?? 25) / 100 * height) / 1.96) - 10;
           
           // For video overlays, move the profile image 10px left and up
           final double imageOffsetX = isForVideo ? 6.0 : 7.0;
@@ -378,7 +412,7 @@ class LocalMediaProcessingService {
                             userName.length > 15 ? userName : userName,
                             style: TextStyle(
                               fontFamily: getFontFamily(textSettings['font']),
-                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.9 : 1.0),
+                              fontSize: ((textSettings['fontSize'] ?? 24).toDouble() * 1.35) * (userName.length > 15 ? 0.9 : 1.0) * (isForVideo ? 0.65 : 1.0),
                               color: _parseColor(textSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -405,7 +439,7 @@ class LocalMediaProcessingService {
                             userAddress.length > 15 ? userAddress : userAddress,
                             style: TextStyle(
                               fontFamily: getFontFamily(addressSettings['font']),
-                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.9 : 1.0),
+                              fontSize: ((addressSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userAddress.length > 15 ? 0.9 : 1.0) * (isForVideo ? 0.65 : 1.0),
                               color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
@@ -432,8 +466,62 @@ class LocalMediaProcessingService {
                             userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                             style: TextStyle(
                               fontFamily: getFontFamily(phoneSettings['font']),
-                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.9 : 1.0),
+                              fontSize: ((phoneSettings['fontSize'] ?? 18).toDouble() * 1.35) * (userPhoneNumber.length > 15 ? 0.9 : 1.0) * (isForVideo ? 0.65 : 1.0),
                               color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Business Name overlay
+                  if (userUsageType == 'Business' && businessNameSettings['enabled'] == true && userBusinessName.isNotEmpty)
+                    Positioned(
+                      left: businessNameX,
+                      top: businessNameY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (((businessNameSettings['fontSize'] ?? 14) * 1.35) * 0.98) * (userBusinessName.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: businessNameSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(businessNameSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userBusinessName.length > 15 ? userBusinessName : userBusinessName,
+                            style: TextStyle(
+                              fontFamily: getFontFamily(businessNameSettings['font']),
+                              fontSize: ((businessNameSettings['fontSize'] ?? 14).toDouble() * 1.35) * (userBusinessName.length > 15 ? 0.9 : 1.0) * (isForVideo ? 0.65 : 1.0),
+                              color: _parseColor(businessNameSettings['color'] ?? '#ffffff'),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Designation overlay
+                  if (userUsageType == 'Personal' && designationSettings['enabled'] == true && userDesignation.isNotEmpty)
+                    Positioned(
+                      left: designationX,
+                      top: designationY,
+                      child: Transform.translate(
+                        offset: Offset(-0.5 * (((designationSettings['fontSize'] ?? 16) * 1.35) * 0.98) * (userDesignation.length / 2), -20),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: designationSettings['hasBackground'] == true
+                              ? BoxDecoration(
+                                  color: _parseColor(designationSettings['backgroundColor'] ?? '#000000'),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Text(
+                            userDesignation.length > 15 ? userDesignation : userDesignation,
+                            style: TextStyle(
+                              fontFamily: getFontFamily(designationSettings['font']),
+                              fontSize: ((designationSettings['fontSize'] ?? 16).toDouble() * 1.35) * (userDesignation.length > 15 ? 0.9 : 1.0) * (isForVideo ? 0.65 : 1.0),
+                              color: _parseColor(designationSettings['color'] ?? '#ffffff'),
                               fontWeight: FontWeight.bold,
                             ),
                           ),

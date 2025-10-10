@@ -99,6 +99,8 @@ class FullscreenPostViewer extends StatefulWidget {
   final String userAddress;
   final String userPhoneNumber;
   final String userCity;
+  final String userBusinessName;
+  final String userDesignation;
 
   const FullscreenPostViewer({
     Key? key,
@@ -110,6 +112,8 @@ class FullscreenPostViewer extends StatefulWidget {
     required this.userAddress,
     required this.userPhoneNumber,
     required this.userCity,
+    required this.userBusinessName,
+    required this.userDesignation,
   }) : super(key: key);
 
   @override
@@ -383,6 +387,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
       if (processedFilePath != null) {
         await Share.shareXFiles(
@@ -449,6 +455,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
 
       if (processedFilePath != null) {
@@ -511,6 +519,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
 
       if (processedFilePath != null) {
@@ -678,6 +688,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
 
       if (processedFilePath != null) {
@@ -841,6 +853,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
 
       if (processedFilePath != null) {
@@ -909,9 +923,9 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
     Map<String, dynamic> post,
   ) async {
     try {
-      final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
-      final int cropWidth = frameSize['width'] ?? 1080;
-      final int cropHeight = frameSize['height'] ?? 1920;
+      final frameSize = post['frameSize'] ?? {'width': 720, 'height': 1280};
+      final int cropWidth = frameSize['width'] ?? 720;
+      final int cropHeight = frameSize['height'] ?? 1280;
 
       final Widget imageWithOverlays = Container(
         width: cropWidth.toDouble(),
@@ -1661,6 +1675,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
             userAddress: widget.userAddress,
             userPhoneNumber: widget.userPhoneNumber,
             userCity: widget.userCity,
+            userBusinessName: widget.userBusinessName,
+            userDesignation: widget.userDesignation,
           );
 
       if (thumbnailPath != null) {

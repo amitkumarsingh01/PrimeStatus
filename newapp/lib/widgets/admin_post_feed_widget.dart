@@ -410,15 +410,15 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
               final double profileX = (profileSettings['x'] ?? 20) / 100 * width;
               final double profileY = (profileSettings['y'] ?? 20) / 100 * height;
               final double profileSize = (profileSettings['size'] ?? 80).toDouble();
-              final double addressXBase = (addressSettings['x'] ?? 50) / 100 * width;
+              final double addressXBase = ((addressSettings['x'] ?? 50) / 100 * width) - 20;
               final double addressY = (addressSettings['y'] ?? 80) / 100 * height;
               final double phoneX = (phoneSettings['x'] ?? 50) / 100 * width;
               final double phoneY = (phoneSettings['y'] ?? 85) / 100 * height;
               final double businessCategoryXBase = (businessCategorySettings['x'] ?? 50) / 100 * width;
               final double businessCategoryY = (businessCategorySettings['y'] ?? 75) / 100 * height;
-              final double businessNameXBase = (businessNameSettings['x'] ?? 50) / 100 * width;
+              final double businessNameXBase = ((businessNameSettings['x'] ?? 50) / 100 * width) - 20;
               final double businessNameY = (businessNameSettings['y'] ?? 20) / 100 * height;
-              final double designationXBase = (designationSettings['x'] ?? 50) / 100 * width;
+              final double designationXBase = ((designationSettings['x'] ?? 50) / 100 * width) - 20;
               final double designationY = (designationSettings['y'] ?? 25) / 100 * height;
               final double textX = userName.length > 15 ? textXBase + 10 : textXBase;
               // final double addressX = userAddress.length > 15 ? addressXBase + 25 : addressXBase;
@@ -1160,6 +1160,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
           userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
           userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+          userBusinessName: context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '',
+          userDesignation: context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '',
         );
       } else {
         processedFilePath = await LocalMediaProcessingService.createVideoThumbnailWithOverlay(
@@ -1171,6 +1173,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
           userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
           userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
           userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+          userBusinessName: context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '',
+          userDesignation: context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '',
         );
       }
       if (processedFilePath != null) {
@@ -1217,6 +1221,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
         userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
         userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+        userBusinessName: context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '',
+        userDesignation: context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '',
       );
       if (processedFilePath != null) {
         await Share.shareXFiles(
@@ -1309,6 +1315,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
         userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
         userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+        userBusinessName: context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '',
+        userDesignation: context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '',
       );
       if (processedFilePath != null) {
         final hasPermission = await _requestStoragePermission();
@@ -1371,6 +1379,8 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
         userAddress: context.findAncestorStateOfType<HomeScreenState>()?.userAddress ?? '',
         userPhoneNumber: context.findAncestorStateOfType<HomeScreenState>()?.userPhoneNumber ?? '',
         userCity: context.findAncestorStateOfType<HomeScreenState>()?.userCity ?? '',
+        userBusinessName: context.findAncestorStateOfType<HomeScreenState>()?.userBusinessName ?? '',
+        userDesignation: context.findAncestorStateOfType<HomeScreenState>()?.userDesignation ?? '',
       );
       
       if (processedFilePath != null) {

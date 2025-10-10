@@ -80,6 +80,8 @@ class FullscreenPostViewer extends StatefulWidget {
   final String userAddress;
   final String userPhoneNumber;
   final String userCity;
+  final String userBusinessName;
+  final String userDesignation;
 
   const FullscreenPostViewer({
     Key? key,
@@ -91,6 +93,8 @@ class FullscreenPostViewer extends StatefulWidget {
     required this.userAddress,
     required this.userPhoneNumber,
     required this.userCity,
+    required this.userBusinessName,
+    required this.userDesignation,
   }) : super(key: key);
 
   @override
@@ -347,6 +351,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           userAddress: widget.userAddress,
           userPhoneNumber: widget.userPhoneNumber,
           userCity: widget.userCity,
+          userBusinessName: widget.userBusinessName,
+          userDesignation: widget.userDesignation,
         );
       } else {
         // Create thumbnail with overlay using local FFmpeg
@@ -359,6 +365,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           userAddress: widget.userAddress,
           userPhoneNumber: widget.userPhoneNumber,
           userCity: widget.userCity,
+          userBusinessName: widget.userBusinessName,
+          userDesignation: widget.userDesignation,
         );
       }
 
@@ -506,6 +514,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         userAddress: widget.userAddress,
         userPhoneNumber: widget.userPhoneNumber,
         userCity: widget.userCity,
+        userBusinessName: widget.userBusinessName,
+        userDesignation: widget.userDesignation,
       );
 
       if (processedFilePath != null) {
@@ -727,6 +737,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         userAddress: widget.userAddress,
         userPhoneNumber: widget.userPhoneNumber,
         userCity: widget.userCity,
+        userBusinessName: widget.userBusinessName,
+        userDesignation: widget.userDesignation,
       );
 
       if (processedFilePath != null) {
@@ -882,6 +894,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           userAddress: widget.userAddress,
           userPhoneNumber: widget.userPhoneNumber,
           userCity: widget.userCity,
+          userBusinessName: widget.userBusinessName,
+          userDesignation: widget.userDesignation,
         );
       } else {
         // Create thumbnail with overlay using local FFmpeg
@@ -894,6 +908,8 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
           userAddress: widget.userAddress,
           userPhoneNumber: widget.userPhoneNumber,
           userCity: widget.userCity,
+          userBusinessName: widget.userBusinessName,
+          userDesignation: widget.userDesignation,
         );
       }
 
@@ -1638,6 +1654,8 @@ Future<Uint8List?> _captureImageWithOverlays(String imageUrl, Map<String, dynami
         userAddress: widget.userAddress,
         userPhoneNumber: widget.userPhoneNumber,
         userCity: widget.userCity,
+        userBusinessName: widget.userBusinessName,
+        userDesignation: widget.userDesignation,
       );
       
       if (thumbnailPath != null) {

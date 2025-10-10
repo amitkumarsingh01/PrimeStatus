@@ -22,6 +22,8 @@ class VideoProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       print('Starting video processing for: $videoUrl');
@@ -37,6 +39,8 @@ class VideoProcessingService {
         userAddress: userAddress,
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
+        userBusinessName: userBusinessName,
+        userDesignation: userDesignation,
       );
 
       if (processedImagePath != null) {
@@ -102,13 +106,17 @@ class VideoProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       final textSettings = post['textSettings'] ?? {};
       final profileSettings = post['profileSettings'] ?? {};
       final addressSettings = post['addressSettings'] ?? {};
       final phoneSettings = post['phoneSettings'] ?? {};
-      final frameSize = post['frameSize'] ?? {'width': 1080, 'height': 1920};
+      final businessNameSettings = post['businessNameSettings'] ?? {};
+      final designationSettings = post['designationSettings'] ?? {};
+      final frameSize = post['frameSize'] ?? {'width': 720, 'height': 1280};
 
       // Create simple overlay widget
       final Widget overlayWidget = Container(
@@ -134,7 +142,7 @@ class VideoProcessingService {
                     userName.length > 15 ? userName : userName,
                     style: TextStyle(
                       fontFamily: textSettings['font'] ?? 'Arial',
-                      fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.6 : 1.0),
+                      fontSize: (textSettings['fontSize'] ?? 24).toDouble() * (userName.length > 15 ? 0.6 : 1.0) * 0.65,
                       color: _parseColor(textSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),
@@ -144,7 +152,7 @@ class VideoProcessingService {
             // Address overlay
             if (userUsageType == 'Business' && addressSettings['enabled'] == true && userAddress.isNotEmpty)
               Positioned(
-                left: (addressSettings['x'] ?? 50) / 100 * frameSize['width'],
+                left: ((addressSettings['x'] ?? 50) / 100 * frameSize['width']) - 20,
                 top: (addressSettings['y'] ?? 80) / 100 * frameSize['height'],
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -158,7 +166,7 @@ class VideoProcessingService {
                     userAddress.length > 15 ? userAddress : userAddress,
                     style: TextStyle(
                       fontFamily: addressSettings['font'] ?? 'Arial',
-                      fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.6 : 1.0),
+                      fontSize: (addressSettings['fontSize'] ?? 18).toDouble() * (userAddress.length > 15 ? 0.6 : 1.0) * 0.65,
                       color: _parseColor(addressSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),
@@ -182,8 +190,56 @@ class VideoProcessingService {
                     userPhoneNumber.length > 15 ? userPhoneNumber : userPhoneNumber,
                     style: TextStyle(
                       fontFamily: phoneSettings['font'] ?? 'Arial',
-                      fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.6 : 1.0),
+                      fontSize: (phoneSettings['fontSize'] ?? 18).toDouble() * (userPhoneNumber.length > 15 ? 0.6 : 1.0) * 0.65,
                       color: _parseColor(phoneSettings['color'] ?? '#ffffff'),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            // Business Name overlay
+            if (userUsageType == 'Business' && businessNameSettings['enabled'] == true && userBusinessName.isNotEmpty)
+              Positioned(
+                left: ((businessNameSettings['x'] ?? 50) / 100 * frameSize['width']) - 20,
+                top: (businessNameSettings['y'] ?? 20) / 100 * frameSize['height'],
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: businessNameSettings['hasBackground'] == true
+                      ? BoxDecoration(
+                          color: _parseColor(businessNameSettings['backgroundColor'] ?? '#000000'),
+                          borderRadius: BorderRadius.circular(8),
+                        )
+                      : null,
+                  child: Text(
+                    userBusinessName.length > 15 ? userBusinessName : userBusinessName,
+                    style: TextStyle(
+                      fontFamily: businessNameSettings['font'] ?? 'Arial',
+                      fontSize: (businessNameSettings['fontSize'] ?? 14).toDouble() * (userBusinessName.length > 15 ? 0.6 : 1.0) * 0.65,
+                      color: _parseColor(businessNameSettings['color'] ?? '#ffffff'),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            // Designation overlay
+            if (userUsageType == 'Personal' && designationSettings['enabled'] == true && userDesignation.isNotEmpty)
+              Positioned(
+                left: ((designationSettings['x'] ?? 50) / 100 * frameSize['width']) - 20,
+                top: (designationSettings['y'] ?? 25) / 100 * frameSize['height'],
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: designationSettings['hasBackground'] == true
+                      ? BoxDecoration(
+                          color: _parseColor(designationSettings['backgroundColor'] ?? '#000000'),
+                          borderRadius: BorderRadius.circular(8),
+                        )
+                      : null,
+                  child: Text(
+                    userDesignation.length > 15 ? userDesignation : userDesignation,
+                    style: TextStyle(
+                      fontFamily: designationSettings['font'] ?? 'Arial',
+                      fontSize: (designationSettings['fontSize'] ?? 16).toDouble() * (userDesignation.length > 15 ? 0.6 : 1.0) * 0.65,
+                      color: _parseColor(designationSettings['color'] ?? '#ffffff'),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -279,6 +335,8 @@ class VideoProcessingService {
     required String userAddress,
     required String userPhoneNumber,
     required String userCity,
+    required String userBusinessName,
+    required String userDesignation,
   }) async {
     try {
       print('Creating thumbnail with overlay...');
@@ -292,6 +350,8 @@ class VideoProcessingService {
         userAddress: userAddress,
         userPhoneNumber: userPhoneNumber,
         userCity: userCity,
+        userBusinessName: userBusinessName,
+        userDesignation: userDesignation,
       );
       if (overlayImagePath == null) return null;
 
