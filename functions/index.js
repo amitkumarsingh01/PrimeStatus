@@ -565,4 +565,95 @@ exports.testRazorpay = functions.https.onRequest((req, res) => {
       });
     }
   });
+});
+
+// Cloud Function to update Firebase Remote Config
+exports.updateRemoteConfig = functions.https.onCall(async (data, context) => {
+  // Allow admin access (you can add additional validation here if needed)
+  console.log('updateRemoteConfig called by:', context.auth ? context.auth.uid : 'admin');
+
+  try {
+    console.log('Updating Remote Config with data:', data);
+
+    const { parameters } = data;
+
+    if (!parameters) {
+      throw new functions.https.HttpsError('invalid-argument', 'Parameters are required');
+    }
+
+    // Get the current Remote Config template
+    const remoteConfig = admin.remoteConfig();
+    const template = await remoteConfig.getTemplate();
+
+    // Update parameters
+    const updatedParameters = {
+      ...template.parameters,
+      min_app_version: {
+        defaultValue: {
+          value: parameters.min_app_version || '1.0.0'
+        },
+        description: 'Minimum required app version'
+      },
+      latest_app_version: {
+        defaultValue: {
+          value: parameters.latest_app_version || '1.0.0'
+        },
+        description: 'Latest available app version'
+      },
+      force_update_enabled: {
+        defaultValue: {
+          value: parameters.force_update_enabled ? 'true' : 'false'
+        },
+        description: 'Whether to force users to update'
+      },
+      update_title: {
+        defaultValue: {
+          value: parameters.update_title || 'Update Available'
+        },
+        description: 'Title shown in update dialog'
+      },
+      update_message: {
+        defaultValue: {
+          value: parameters.update_message || 'A new version of the app is available. Please update to continue using the app.'
+        },
+        description: 'Message shown in update dialog'
+      },
+      play_store_url: {
+        defaultValue: {
+          value: parameters.play_store_url || 'https://play.google.com/store/apps/details?id=com.example.newapp'
+        },
+        description: 'Google Play Store URL'
+      },
+      app_store_url: {
+        defaultValue: {
+          value: parameters.app_store_url || 'https://apps.apple.com/app/id1234567890'
+        },
+        description: 'Apple App Store URL'
+      }
+    };
+
+    // Update the template
+    template.parameters = updatedParameters;
+
+    // Publish the updated template
+    const publishedTemplate = await remoteConfig.publishTemplate(template);
+    
+    console.log('Successfully updated Remote Config:', publishedTemplate.versionNumber);
+
+    return {
+      success: true,
+      versionNumber: publishedTemplate.versionNumber,
+      message: 'Remote Config updated successfully'
+    };
+
+  } catch (error) {
+    console.error('Error updating Remote Config:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to update Remote Config', {
+      error: error.message,
+      details: {
+        code: error.code,
+        statusCode: error.statusCode
+      }
+    });
+  }
 }); 

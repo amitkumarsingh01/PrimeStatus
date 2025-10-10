@@ -1,10 +1,10 @@
 import React from 'react';
-import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon, Tag, CreditCard, Share2 } from 'lucide-react';
+import { Settings, Users, Image as ImageIcon, LogOut, Eye, VideoIcon, Tag, CreditCard, Share2, Smartphone } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 interface SidebarProps {
-  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link';
-  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link') => void;
+  activePage: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link' | 'app-update';
+  onPageChange: (page: 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link' | 'app-update') => void;
 }
 
 export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
@@ -52,6 +52,12 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
       label: 'Share Link',
       icon: Share2,
       description: 'Share your site with others'
+    },
+    {
+      id: 'app-update' as const,
+      label: 'App Updates',
+      icon: Smartphone,
+      description: 'Manage app version updates'
     }
   ];
 

@@ -8,6 +8,7 @@ import 'package:newapp/screens/onboarding/splash_screen.dart';
 // import 'services/firebase_config.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 // ✅ This must be a top-level function (not inside a class)
 @pragma('vm:entry-point')
@@ -36,6 +37,9 @@ void main() async {
 
     // Step 3: Initialize Firebase Messaging
     await _initFirebaseMessaging();
+
+    // Step 4: Initialize Firebase Remote Config
+    await _initFirebaseRemoteConfig();
   } catch (e) {
     print('Firebase initialization/setup failed: $e');
   }
@@ -114,6 +118,36 @@ Future<void> _initFirebaseMessaging() async {
       // to show a heads-up notification while the app is in the foreground.
     }
   });
+}
+
+Future<void> _initFirebaseRemoteConfig() async {
+  try {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    
+    // Set default values for app update configuration
+    await remoteConfig.setDefaults({
+      'min_app_version': '1.0.0',
+      'latest_app_version': '1.0.0',
+      'force_update_enabled': false,
+      'update_title': 'Update Available',
+      'update_message': 'A new version of the app is available. Please update to continue using the app.',
+      'play_store_url': 'https://play.google.com/store/apps/details?id=com.example.newapp',
+      'app_store_url': 'https://apps.apple.com/app/id1234567890',
+    });
+
+    // Set fetch timeout and minimum fetch interval
+    await remoteConfig.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(hours: 1),
+    ));
+
+    // Fetch and activate
+    await remoteConfig.fetchAndActivate();
+    
+    print('✅ Firebase Remote Config initialized successfully');
+  } catch (e) {
+    print('❌ Error initializing Firebase Remote Config: $e');
+  }
 }
 
 class QuoteCraftApp extends StatelessWidget {

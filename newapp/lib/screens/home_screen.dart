@@ -26,6 +26,8 @@ import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:newapp/services/app_update_service.dart';
+import 'package:newapp/widgets/update_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -66,11 +68,14 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Timer for periodic payment status check
   Timer? _paymentCheckTimer;
+  // Timer for periodic update check
+  Timer? _updateCheckTimer;
 
   final UserService _userService = UserService();
   final QuoteService _quoteService = QuoteService();
   final BackgroundRemovalService _bgRemovalService = BackgroundRemovalService();
   final CategoryService _categoryService = CategoryService();
+  final AppUpdateService _updateService = AppUpdateService();
   User? _currentUser;
 
   // Multi-category selection state
@@ -137,6 +142,9 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Start periodic payment status check timer
     _startPaymentCheckTimer();
+    
+    // Start periodic update check timer
+    _startUpdateCheckTimer();
   }
 
   @override
@@ -153,12 +161,14 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (_currentUser != null) {
         refreshUserSubscription();
       }
-      // Restart the payment check timer when app resumes
+      // Restart the timers when app resumes
       _startPaymentCheckTimer();
+      _startUpdateCheckTimer();
     } else if (state == AppLifecycleState.paused) {
-      print('⏸️ [LIFECYCLE] App paused - stopping payment check timer');
-      // Stop the timer when app is paused
+      print('⏸️ [LIFECYCLE] App paused - stopping timers');
+      // Stop the timers when app is paused
       _stopPaymentCheckTimer();
+      _stopUpdateCheckTimer();
     }
   }
 
@@ -191,6 +201,31 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _paymentCheckTimer?.cancel();
     _paymentCheckTimer = null;
     print('⏹️ [TIMER] Payment check timer stopped');
+  }
+
+  /// Start the periodic update check timer
+  void _startUpdateCheckTimer() {
+    // Cancel existing timer if any
+    _stopUpdateCheckTimer();
+
+    // Start new timer that fires every 6 hours
+    _updateCheckTimer = Timer.periodic(Duration(hours: 6), (timer) {
+      print('🔄 [TIMER] Periodic update check triggered');
+      if (mounted) {
+        _checkForUpdatesSilent();
+      }
+    });
+
+    print(
+      '🚀 [TIMER] Update check timer started - will check every 6 hours',
+    );
+  }
+
+  /// Stop the periodic update check timer
+  void _stopUpdateCheckTimer() {
+    _updateCheckTimer?.cancel();
+    _updateCheckTimer = null;
+    print('⏹️ [TIMER] Update check timer stopped');
   }
 
   Future<void> _fetchCategories() async {
@@ -548,7 +583,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             icon: Icon(Icons.refresh, size: 16),
             label: Text('Check Payment'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: Colors.amber,
               foregroundColor: Colors.white,
             ),
           ),
@@ -606,7 +641,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final difference = subscriptionEndDate!.difference(now);
 
     if (difference.inDays < 0) {
-      return Colors.red;
+      return Colors.amber;
     } else if (difference.inDays < 7) {
       return Colors.orange;
     } else {
@@ -744,6 +779,37 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Check for updates silently (for timer calls) - no dialogs
+  Future<void> _checkForUpdatesSilent() async {
+    try {
+      print('🔄 [TIMER] Silent update check triggered');
+      
+      final updateInfo = await _updateService.checkForUpdate();
+      
+      if (updateInfo != null) {
+        final shouldShow = await _updateService.shouldShowUpdate(updateInfo);
+        
+        if (shouldShow && mounted) {
+          print('📱 [TIMER] Update available - showing dialog');
+          // Show update dialog
+          await showUpdateDialog(
+            context,
+            updateInfo,
+            onDismiss: () async {
+              await _updateService.dismissUpdate(updateInfo);
+            },
+          );
+        } else {
+          print('🚫 [TIMER] Update available but not showing (dismissed or too recent)');
+        }
+      } else {
+        print('✅ [TIMER] No update available');
+      }
+    } catch (e) {
+      print('❌ [TIMER] Error in silent update check: $e');
+    }
+  }
+
   /// Update user subscription status to paid
   Future<void> _updateSubscriptionToPaid(String paymentId) async {
     try {
@@ -814,7 +880,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.payment, color: Colors.blue),
+            Icon(Icons.payment, color: Colors.amber),
             SizedBox(width: 8),
             Text(title),
           ],
@@ -870,7 +936,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             },
             child: Text('Check Again'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: Colors.amber,
               foregroundColor: Colors.white,
             ),
           ),
@@ -923,7 +989,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.share, color: Colors.blue),
+              Icon(Icons.share, color: Colors.amber),
               SizedBox(width: 8),
               Text('Share App'),
             ],
@@ -964,7 +1030,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       shareLink,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.blue[700],
+                        color: Colors.amber[700],
                         decoration: TextDecoration.underline,
                       ),
                     ),
@@ -1000,7 +1066,7 @@ class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               icon: Icon(Icons.share, size: 16),
               label: Text('Share'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: Colors.amber,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -1085,7 +1151,7 @@ Download now: $shareLink
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to open share dialog: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.amber,
         ),
       );
     }
@@ -1556,8 +1622,8 @@ Download now: $shareLink
                               final isHighlighted = category['isHighlighted'] == true;
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: isHighlighted 
-                                      ? Colors.red.shade100 
+                              backgroundColor: isHighlighted 
+                                      ? Colors.amber.shade100 
                                       : Colors.deepOrange.shade100,
                                   child: Icon(
                                     _getCategoryIcon(categoryName),
@@ -1573,7 +1639,7 @@ Download now: $shareLink
                                       categoryName,
                                       style: TextStyle(
                                         fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w600,
-                                        color: isHighlighted ? Colors.white : null,
+                                        color: isHighlighted ? Colors.black : null,
                                       ),
                                     ),
                                     if (isHighlighted) ...[
@@ -1581,18 +1647,11 @@ Download now: $shareLink
                                       Container(
                                         padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: Colors.red.shade600,
+                                          color: Colors.amber.shade600,
                                           borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.red.shade400),
+                                          border: Border.all(color: Colors.amber.shade400),
                                         ),
-                                        child: Text(
-                                          'HIGHLIGHTED',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                       
                                       ),
                                     ],
                                   ],
@@ -2524,18 +2583,18 @@ Download now: $shareLink
                               tween: Tween(begin: 0.0, end: 1.0),
                               duration: Duration(seconds: 3),
                               builder: (context, value, child) {
-                                // Create color animation from red to blue to red
+                              // Create color animation from gold to red to gold
                                 Color color1, color2;
                                 if (value < 0.5) {
-                                  // First half: red to blue
+                                  // First half: gold to red
                                   final progress = value * 2;
-                                  color1 = Color.lerp(Colors.red, Colors.blue, progress)!;
-                                  color2 = Color.lerp(Colors.red.shade700, Colors.blue.shade700, progress)!;
+                                  color1 = Color.lerp(Colors.amber, Colors.red, progress)!;
+                                  color2 = Color.lerp(Colors.amber.shade700, Colors.red.shade700, progress)!;
                                 } else {
-                                  // Second half: blue to red
+                                  // Second half: red to gold
                                   final progress = (value - 0.5) * 2;
-                                  color1 = Color.lerp(Colors.blue, Colors.red, progress)!;
-                                  color2 = Color.lerp(Colors.blue.shade700, Colors.red.shade700, progress)!;
+                                  color1 = Color.lerp(Colors.red, Colors.amber, progress)!;
+                                  color2 = Color.lerp(Colors.red.shade700, Colors.amber.shade700, progress)!;
                                 }
                                 
                                 return Transform.scale(
@@ -2628,9 +2687,9 @@ Download now: $shareLink
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade600,
+                          color: Colors.amber.shade600,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade400),
+                          border: Border.all(color: Colors.amber.shade400),
                         ),
                         child: Text(
                           'HIGHLIGHTED',
@@ -3208,7 +3267,7 @@ Download now: $shareLink
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.favorite, color: Colors.red),
+                          icon: Icon(Icons.favorite, color: Colors.amber),
                           onPressed: () {
                             setState(() {
                               favoriteQuotes.remove(quote);
@@ -3465,7 +3524,10 @@ Download now: $shareLink
       body: Column(
         children: [
           Container(
-            height: 125,
+            constraints: BoxConstraints(
+              minHeight: 100,
+              maxHeight: 160,
+            ),
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -3474,19 +3536,20 @@ Download now: $shareLink
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  child: _isLoadingCategories
-                      ? Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        )
-                      : Wrap(
-                          spacing: 4,
-                          runSpacing: 6,
-                          children: [
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    child: _isLoadingCategories
+                        ? Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          )
+                        : Wrap(
+                            spacing: 3,
+                            runSpacing: 4,
+                            children: [
                             // Always show "All" option
                             GestureDetector(
                               onTap: () {
@@ -3496,8 +3559,8 @@ Download now: $shareLink
                               },
                               child: Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
                                   color: _selectedCategories.contains('All')
@@ -3517,7 +3580,7 @@ Download now: $shareLink
                                 child: Text(
                                   'All',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                     color: _selectedCategories.contains('All')
                                         ? Colors.white
@@ -3553,26 +3616,26 @@ Download now: $shareLink
                                 child: AnimatedContainer(
                                   duration: Duration(milliseconds: 300),
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
+                                    horizontal: 8,
+                                    vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xffd74d02)
                 : isHighlighted
-                    ? Colors.red.shade100
+                    ? Colors.amber.shade100
                     : Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       width: isHighlighted ? 2 : 0.5,
                                       color: isHighlighted
-                                          ? Colors.red.shade400
+                                          ? Colors.amber.shade400
                                           : const Color.fromARGB(255, 255, 119, 34),
                                     ),
                                     boxShadow: isHighlighted && !isSelected
                                         ? [
                                             BoxShadow(
-                                              color: Colors.red.withOpacity(0.3),
+                                              color: Colors.amber.withOpacity(0.3),
                                               blurRadius: 8,
                                               spreadRadius: 1,
                                               offset: Offset(0, 2),
@@ -3584,33 +3647,66 @@ Download now: $shareLink
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (isHighlighted && !isSelected) ...[
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: LinearGradient(
-                                              colors: [Colors.red, Colors.blue],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                          ),
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween(begin: 0.0, end: 1.0),
+                                          duration: Duration(seconds: 2),
+                                          builder: (context, value, child) {
+                                            return Transform.scale(
+                                              scale: 0.8 + (0.2 * (0.5 - (value - 0.5).abs())),
+                                              child: Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.amber.withOpacity(0.8 + (0.2 * value)),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.amber.withOpacity(0.4 * value),
+                                                      blurRadius: 4 * value,
+                                                      spreadRadius: 1 * value,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                         SizedBox(width: 4),
                                       ],
-                                      Text(
-                                        categoryName,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : isHighlighted
-                                                ? Colors.red.shade800
-                                                : Colors.black,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
+                                      isHighlighted && !isSelected
+                                          ? TweenAnimationBuilder<double>(
+                                              tween: Tween(begin: 0.0, end: 1.0),
+                                              duration: Duration(seconds: 2),
+                                              builder: (context, value, child) {
+                                                return Text(
+                                                  categoryName,
+                                                  style: TextStyle(
+                                                    fontSize: 10 + (1 * (0.5 - (value - 0.5).abs())),
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.amber.shade800,
+                                                    shadows: [
+                                                      Shadow(
+                                                        color: Colors.amber.withOpacity(0.3 * value),
+                                                        blurRadius: 2 * value,
+                                                        offset: Offset(0, 1),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                );
+                                              },
+                                            )
+                                          : Text(
+                                              categoryName,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
                                     ],
                                   ),
                                 ),
@@ -3626,8 +3722,8 @@ Download now: $shareLink
                                 },
                                 child: Container(
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
+                                    horizontal: 8,
+                                    vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
                                     color: _selectedCategories.contains(userBusinessCategory)
@@ -3642,7 +3738,7 @@ Download now: $shareLink
                                   child: Text(
                                     userBusinessCategory,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                       color: _selectedCategories.contains(userBusinessCategory)
                                           ? Colors.white
@@ -3655,8 +3751,9 @@ Download now: $shareLink
                             ],
                           ],
                         ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -4056,12 +4153,12 @@ Download now: $shareLink
                                                         photoUrl!,
                                                         index,
                                                       ),
-                                                  child: Container(
-                                                    padding: EdgeInsets.all(4),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.red,
-                                                      shape: BoxShape.circle,
-                                                    ),
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.amber,
+                                                    shape: BoxShape.circle,
+                                                  ),
                                                     child: Icon(
                                                       Icons.delete,
                                                       color: Colors.white,
@@ -4126,14 +4223,14 @@ Download now: $shareLink
                                                           photoUrlNoBg,
                                                           index,
                                                         ),
-                                                    child: Container(
-                                                      padding: EdgeInsets.all(
-                                                        4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.red,
-                                                        shape: BoxShape.circle,
-                                                      ),
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(
+                                                      4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber,
+                                                      shape: BoxShape.circle,
+                                                    ),
                                                       child: Icon(
                                                         Icons.delete,
                                                         color: Colors.white,
@@ -4357,7 +4454,7 @@ Download now: $shareLink
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue[100],
+                                        color: Colors.amber[100],
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
@@ -4365,7 +4462,7 @@ Download now: $shareLink
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.blue[700],
+                                          color: Colors.amber[700],
                                         ),
                                       ),
                                     ),
@@ -4442,7 +4539,7 @@ Download now: $shareLink
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.red.shade600, Colors.red.shade800],
+                        colors: [Colors.amber.shade600, Colors.amber.shade800],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -4503,7 +4600,7 @@ Download now: $shareLink
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: LinearGradient(
-                                  colors: [Colors.red, Colors.blue],
+                                  colors: [Colors.amber, Colors.amber],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -4524,9 +4621,9 @@ Download now: $shareLink
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.red.shade600,
+                                color: Colors.amber.shade600,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red.shade400),
+                                border: Border.all(color: Colors.amber.shade400),
                               ),
                               child: Text(
                                 'HIGHLIGHTED',
@@ -4611,7 +4708,7 @@ Download now: $shareLink
                                   isFavorite
                                       ? Icons.favorite
                                       : Icons.favorite_border,
-                                  color: isFavorite ? Colors.red : Colors.grey,
+                                  color: isFavorite ? Colors.amber : Colors.grey,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -4630,7 +4727,7 @@ Download now: $shareLink
                                 },
                                 child: Text('Create'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepOrange,
+                                  backgroundColor: Colors.amber,
                                   foregroundColor: Colors.white,
                                 ),
                               ),
@@ -4689,7 +4786,7 @@ Download now: $shareLink
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Sign in failed: ${e.toString()}'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.amber,
                     ),
                   );
                 }
@@ -5160,6 +5257,7 @@ Download now: $shareLink
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopPaymentCheckTimer(); // Stop the timer when disposing
+    _stopUpdateCheckTimer(); // Stop the update timer when disposing
     _quoteController.dispose();
     super.dispose();
   }
@@ -5261,7 +5359,7 @@ Download now: $shareLink
             },
             child: Text('Delete'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.amber,
               foregroundColor: Colors.white,
             ),
           ),
@@ -5329,7 +5427,7 @@ Download now: $shareLink
                   onPressed: () => Navigator.pop(context, true),
                   child: Text('Logout'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.amber,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -5361,7 +5459,7 @@ Download now: $shareLink
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Logout failed: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.amber,
         ),
       );
     }

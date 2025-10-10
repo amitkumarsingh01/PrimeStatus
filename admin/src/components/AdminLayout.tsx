@@ -9,8 +9,9 @@ import NewImageEditor from './NewImageEditor';
 import CategoryManager from './CategoryManager';
 import Payment from './Payment';
 import ShareLink from './ShareLink';
+import AppUpdateManager from './AppUpdateManager';
 
-type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link';
+type AdminPage = 'dashboard' | 'users' | 'image-editor' | 'existing-posts' | 'video-editor' | 'category-manager' | 'payment' | 'share-link' | 'app-update';
 
 export default function AdminLayout() {
   const [activePage, setActivePage] = useState<AdminPage>('existing-posts');
@@ -77,6 +78,8 @@ export default function AdminLayout() {
         return <Payment />;
       case 'share-link':
         return <ShareLink />;
+      case 'app-update':
+        return <AppUpdateManager />;
       default:
         return <AdminDashboard onOpenImageEditor={openEditor} />;
     }

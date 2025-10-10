@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:newapp/services/firebase_auth_service.dart';
 import 'package:newapp/services/user_service.dart';
 import 'package:newapp/services/firebase_firestore_service.dart';
+import 'package:newapp/services/app_update_service.dart';
+import 'package:newapp/widgets/update_dialog.dart';
 import 'login_screen.dart';
 import '../home_screen.dart';
 import 'language_selection_screen.dart';
@@ -17,6 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   final FirebaseAuthService _authService = FirebaseAuthService();
   final UserService _userService = UserService();
   final FirebaseFirestoreService _firestoreService = FirebaseFirestoreService();
+  final AppUpdateService _updateService = AppUpdateService();
 
   @override
   void initState() {
@@ -31,6 +34,10 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     try {
+      // Check for app updates first
+      print('🔄 Checking for app updates...');
+      await _checkForUpdates();
+
       // First check the loginType from Firestore
       print('🔍 Checking loginType from Firestore...');
       bool loginType = await _firestoreService.getLoginType();
@@ -93,6 +100,32 @@ class _SplashScreenState extends State<SplashScreen> {
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
+    }
+  }
+
+  /// Check for app updates
+  Future<void> _checkForUpdates() async {
+    try {
+      await _updateService.initialize();
+      final updateInfo = await _updateService.checkForUpdate();
+      
+      if (updateInfo != null) {
+        final shouldShow = await _updateService.shouldShowUpdate(updateInfo);
+        
+        if (shouldShow && mounted) {
+          // Show update dialog
+          await showUpdateDialog(
+            context,
+            updateInfo,
+            onDismiss: () async {
+              await _updateService.dismissUpdate(updateInfo);
+            },
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking for updates: $e');
+      // Continue with normal flow even if update check fails
     }
   }
 
