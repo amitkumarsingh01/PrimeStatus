@@ -19,7 +19,7 @@ interface VideoEditorProps {
 const FRAME_SIZES = [
   { label: 'Square (1080x1080)', width: 1080, height: 1080 },
   { label: 'Portrait (1350x1080)', width: 1080, height: 1350 },
-  { label: 'Tall Portrait (1280x720)', width: 720, height: 1280 },
+  { label: 'Tall Portrait (1920x1080)', width: 1080, height: 1920 },
 ];
 
 export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
@@ -30,7 +30,7 @@ export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
   const [loading, setLoading] = useState(false);
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<string | null>(null);
-  const [frameSize, setFrameSize] = useState({ width: 720, height: 1280 });
+  const [frameSize, setFrameSize] = useState({ width: 1080, height: 1920 });
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -374,7 +374,7 @@ export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
                 <p className="text-sm text-blue-700">
                   You can upload videos.
                   <br />
-                  Videos will be resized to 720x1280 (Portrait).
+                  Videos will be resized to 1080x1920 (Portrait).
                   <br />
                   You can choose multiple categories and regions for each post.
                   <br />
@@ -391,7 +391,7 @@ export default function VideoEditor({ onOpenEditor }: VideoEditorProps) {
                     <span className="font-semibold">Click to upload</span> media file
                   </p>
                   <p className="text-xs text-gray-500">Videos up to 50MB</p>
-                  <p className="text-xs text-gray-500 mt-2">Will be resized to 720x1280 (Portrait)</p>
+                  <p className="text-xs text-gray-500 mt-2">Will be resized to 1080x1920 (Portrait)</p>
                   <p className="text-xs text-blue-600 mt-2">Categories & regions selected in editor</p>
                 </div>
                 <input
