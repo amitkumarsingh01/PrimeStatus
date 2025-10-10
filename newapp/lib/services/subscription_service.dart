@@ -183,16 +183,23 @@ class SubscriptionService {
 
       if (userDoc.exists) {
         final userData = userDoc.data() as Map<String, dynamic>;
+        final usageType = userData['usageType'] ?? 'Personal';
         final subscription = userData['subscription'];
         final subscriptionDate = userData['subscriptionDate'];
 
+        // Personal users always have free access
+        if (usageType == 'Personal') {
+          return true;
+        }
+
+        // For Business users, check subscription
         if (subscription == null || subscriptionDate == null) {
           return false;
         }
 
         // Check if subscription is 'free'
         if (subscription == 'free') {
-          return true; // Free users always have access
+          return false; // Business users need paid subscription
         }
 
         // Check subscription expiry based on subscription type

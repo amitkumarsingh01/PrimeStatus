@@ -553,13 +553,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
 
   // Download functionality
   Future<void> _downloadImage(Map<String, dynamic> post) async {
-    // For personal users, allow download without payment
-    if (widget.userUsageType != 'Business') {
-      await _proceedWithDownload(post);
-      return;
-    }
-    
-    // For business users, check subscription status
+    // Check if user has active subscription
     final currentUser = _userService.currentUser;
     if (currentUser != null) {
       final hasSubscription = await SubscriptionService().hasActiveSubscription(
@@ -585,12 +579,7 @@ class _FullscreenPostViewerState extends State<FullscreenPostViewer> {
         return;
       }
     }
-    
-    await _proceedWithDownload(post);
-  }
 
-  // Proceed with download after payment check
-  Future<void> _proceedWithDownload(Map<String, dynamic> post) async {
     setState(() {
       _isProcessingDownload = true;
     });

@@ -80,6 +80,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
     WidgetsBinding.instance.addObserver(this);
     // Check for pending payments when screen loads
     _checkPendingPayments();
+    // Check if business user already has active subscription
+    _checkBusinessSubscriptionStatus();
   }
 
   @override
@@ -122,6 +124,37 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> with 
       }
     } catch (e) {
       print('Error checking pending payments: $e');
+    }
+  }
+
+  // Check if business user already has active subscription
+  Future<void> _checkBusinessSubscriptionStatus() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && selectedUsageType == 'Business') {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          final subscriptionStatus = userData['subscriptionStatus'] ?? 'inactive';
+          
+          if (subscriptionStatus == 'active') {
+            // Business user already has active subscription, go back
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('You already have an active subscription!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking business subscription status: $e');
     }
   }
 

@@ -363,6 +363,23 @@ class PaymentService {
   /// Check if user has active subscription
   static Future<bool> hasActiveSubscription(String userId) async {
     try {
+      // First check user's usage type
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final usageType = userData['usageType'] ?? 'Personal';
+
+        // Personal users always have free access
+        if (usageType == 'Personal') {
+          return true;
+        }
+      }
+
+      // For Business users, check subscription
       final subscription = await getUserSubscription(userId);
       if (subscription == null) return false;
 

@@ -1240,13 +1240,25 @@ Download now: $shareLink
   }
 
   /// Navigate to subscription screen
-  void _navigateToSubscription() {
+  void _navigateToSubscription() async {
     print('🚀 [HOME] Navigating to subscription screen...');
     print('📋 [HOME] User details for subscription:');
     print('   - Usage Type: $userUsageType');
     print('   - Name: $userName');
     print('   - Email: $userEmail');
     print('   - Phone: $userPhoneNumber');
+
+    // Check if user is business and has active subscription
+    if (userUsageType == 'Business' && subscriptionStatus == 'active') {
+      print('✅ [HOME] Business user with active subscription - skipping subscription page');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('You already have an active subscription!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      return;
+    }
 
     Navigator.push(
       context,

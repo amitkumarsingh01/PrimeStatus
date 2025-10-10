@@ -8,7 +8,6 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../screens/home_screen.dart';
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart' show launchUrl, canLaunchUrl, LaunchMode;
 import 'package:video_player/video_player.dart';
 import 'dart:typed_data';
 import '../screens/onboarding/subscription_screen.dart';
@@ -16,15 +15,11 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:ui' as ui;
-import 'fullscreen_post_viewer.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import '../services/subscription_service.dart';
 import '../services/payment_service.dart';
-import '../screens/postsubscription.dart';
 import '../screens/AllSubscription.dart';
 import '../services/local_media_processing_service.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -656,7 +651,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () => _handlePostActionWithPayment('share', post),
+                    onPressed: () => _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post),
                     icon: const Icon(Icons.share, color: Colors.white),
                     label: const Text('Whatsapp', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -672,7 +667,7 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
                 Expanded(
                   flex: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () => _handlePostActionWithPayment('download', post),
+                    onPressed: () => _downloadImage(post),
                     icon: const Icon(Icons.download, color: Colors.white),
                     label: const Text('Download', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -842,59 +837,6 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     }
   }
 
-  // Handle post actions with payment logic for business users
-  Future<void> _handlePostActionWithPayment(String action, Map<String, dynamic> post) async {
-    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-    final userUsageType = homeScreenState?.userUsageType ?? '';
-    final isBusinessUser = userUsageType == 'Business';
-    
-    // For personal users, allow actions without payment
-    if (!isBusinessUser) {
-      switch (action) {
-        case 'share':
-          await _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post);
-          break;
-        case 'download':
-          await _downloadImage(post);
-          break;
-      }
-      return;
-    }
-    
-    // For business users, check subscription status
-    final currentUser = _userService.currentUser;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please sign in to continue')),
-      );
-      return;
-    }
-    
-    try {
-      final hasActiveSubscription = await PaymentService.hasActiveSubscription(currentUser.uid);
-      
-      if (hasActiveSubscription) {
-        // User has active subscription, proceed with action
-        switch (action) {
-          case 'share':
-            await _shareToWhatsApp(post['mainImage'] ?? post['imageUrl'] ?? '', post);
-            break;
-          case 'download':
-            await _downloadImage(post);
-            break;
-        }
-      } else {
-        // User needs to subscribe, show payment dialog
-        _showPaymentRequiredDialog(action, post);
-      }
-    } catch (e) {
-      print('Error checking subscription: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error checking subscription status')),
-      );
-    }
-  }
-
   void _showReportDialog(String postId) {
     showDialog(
       context: context,
@@ -924,95 +866,6 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     );
   }
 
-  // Show payment required dialog for business users
-  void _showPaymentRequiredDialog(String action, Map<String, dynamic> post) {
-    final actionText = action == 'share' ? 'share' : 'download';
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Subscription Required'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'To $actionText posts as a business user, you need an active subscription.',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Business Subscription Benefits:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text('• Unlimited post sharing'),
-                  Text('• Unlimited downloads'),
-                  Text('• Priority support'),
-                  Text('• Advanced features'),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _navigateToSubscription();
-            },
-            child: Text('Subscribe Now'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Navigate to subscription screen
-  void _navigateToSubscription() {
-    final homeScreenState = context.findAncestorStateOfType<HomeScreenState>();
-    if (homeScreenState != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SubscriptionPlansScreen(
-            userName: homeScreenState.userName,
-            userEmail: homeScreenState.userEmail,
-            userPhone: homeScreenState.userPhoneNumber,
-            userUsageType: homeScreenState.userUsageType,
-          ),
-        ),
-      );
-    }
-  }
-
   void _createDesignFromPost(Map<String, dynamic> post) {
     // Navigate to quote editor with post content
     Navigator.pushNamed(
@@ -1032,6 +885,23 @@ class _AdminPostFeedWidgetState extends State<AdminPostFeedWidget> {
     if (currentUser == null) return true;
     
     try {
+      // Check usage type first
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final usageType = userData['usageType'] ?? 'Personal';
+
+        // Personal users always have free access
+        if (usageType == 'Personal') {
+          return false; // Not a free user, has access
+        }
+      }
+
+      // For Business users, check subscription
       final subscription = await PaymentService.getUserSubscription(currentUser.uid);
       if (subscription == null) return true;
       
